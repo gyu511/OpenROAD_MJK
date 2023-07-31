@@ -150,6 +150,9 @@ namespace dft {
 class Dft;
 }
 
+namespace mdm {
+class MultiDieManager;
+}
 namespace ord {
 
 using std::string;
@@ -195,6 +198,7 @@ class OpenRoad
   dst::Distributed* getDistributed() { return distributer_; }
   stt::SteinerTreeBuilder* getSteinerTreeBuilder() { return stt_builder_; }
   dft::Dft* getDft() { return dft_; }
+  mdm::MultiDieManager* getMultiDieManager() { return multi_die_manager_; };
 
   // Return the bounding box of the db rows.
   odb::Rect getCore();
@@ -276,6 +280,7 @@ class OpenRoad
   dst::Distributed* distributer_ = nullptr;
   stt::SteinerTreeBuilder* stt_builder_ = nullptr;
   dft::Dft* dft_ = nullptr;
+  mdm::MultiDieManager* multi_die_manager_ = nullptr;
 
   std::set<OpenRoadObserver*> observers_;
 

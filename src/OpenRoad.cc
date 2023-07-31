@@ -87,6 +87,7 @@
 #include "triton_route/MakeTritonRoute.h"
 #include "utl/Logger.h"
 #include "utl/MakeLogger.h"
+#include "mdm/MakeMultiDieManager.hh"
 
 namespace sta {
 extern const char* openroad_swig_tcl_inits[];
@@ -153,6 +154,7 @@ OpenRoad::~OpenRoad()
   deleteICeWall(icewall_);
   deleteDistributed(distributer_);
   deleteSteinerTreeBuilder(stt_builder_);
+  deleteMultiDieManager(multi_die_manager_);
   dft::deleteDft(dft_);
   delete logger_;
 }
@@ -212,6 +214,7 @@ void OpenRoad::init(Tcl_Interp* tcl_interp)
   distributer_ = makeDistributed();
   stt_builder_ = makeSteinerTreeBuilder();
   dft_ = dft::makeDft();
+  multi_die_manager_ = makeMultiDieManager();
 
   // Init components.
   Openroad_swig_Init(tcl_interp);
@@ -252,6 +255,7 @@ void OpenRoad::init(Tcl_Interp* tcl_interp)
   initDistributed(this);
   initSteinerTreeBuilder(this);
   dft::initDft(this);
+  initMultiDieManager(this);
 
   // Import exported commands to global namespace.
   Tcl_Eval(tcl_interp, "sta::define_sta_cmds");
