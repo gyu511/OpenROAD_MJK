@@ -62,7 +62,10 @@ void initMultiDieManager(OpenRoad* openroad)
   sta::evalTclInit(tcl_interp, sta::mdm_tcl_inits);
 
   openroad->getMultiDieManager()->init(openroad->getDb(),
-                                       openroad->getLogger());
+                                       openroad->getLogger(),
+                                       openroad->getPartitionMgr(),
+                                       openroad->getReplace(),
+                                       openroad->getOpendp());
 }
 
 }  // namespace ord

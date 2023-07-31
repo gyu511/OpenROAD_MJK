@@ -13,8 +13,9 @@
 //
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
-#include <iostream>
 #include "mdm/MultiDieManager.hh"
+
+#include <iostream>
 
 namespace mdm {
 
@@ -26,9 +27,17 @@ MultiDieManager::~MultiDieManager()
 {
 }
 
-void MultiDieManager::init(odb::dbDatabase* db, utl::Logger* logger)
+void MultiDieManager::init(odb::dbDatabase* db,
+                           utl::Logger* logger,
+                           par::PartitionMgr* partition_mgr,
+                           gpl::Replace* replace,
+                           dpl::Opendp* opendp)
 {
   db_ = db;
+  logger_ = logger;
+  partition_mgr_ = partition_mgr;
+  replace_ = replace;
+  opendp_ = opendp;
 }
 
 void MultiDieManager::setParam1(double param1)

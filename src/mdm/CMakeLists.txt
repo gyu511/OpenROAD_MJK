@@ -57,6 +57,9 @@ target_include_directories(mdm
 target_link_libraries(mdm
         OpenSTA
         odb
+        gpl
+        dpl_lib
+        par_lib
 )
 
 messages(

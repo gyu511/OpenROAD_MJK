@@ -36,7 +36,11 @@
 #define OPENROAD_SRC_MDM_INCLUDE_MDM_MULTIDIEMANAGER_H_
 #include <tcl.h>
 
+#include "../../../par/include/par/PartitionMgr.h"
+#include "dpl/Opendp.h"
+#include "gpl/Replace.h"
 #include "odb/db.h"
+#include "par/PartitionMgr.h"
 
 namespace mdm {
 class MultiDieManager
@@ -45,7 +49,11 @@ class MultiDieManager
   MultiDieManager();
   ~MultiDieManager();
 
-  void init(odb::dbDatabase* odb, utl::Logger* logger);
+  void init(odb::dbDatabase* db,
+            utl::Logger* logger,
+            par::PartitionMgr* partition_mgr,
+            gpl::Replace* replace,
+            dpl::Opendp* opendp);
 
   void setParam1(double param1);
   void setFlag1(bool flag1);
@@ -53,6 +61,12 @@ class MultiDieManager
 
  private:
   odb::dbDatabase* db_;
+  utl::Logger* logger_;
+  par::PartitionMgr* partition_mgr_;
+  gpl::Replace* replace_;
+  dpl::Opendp* opendp_;
+
+
   double param1_;
   bool flag1_;
 };
