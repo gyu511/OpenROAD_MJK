@@ -35,14 +35,16 @@
 #ifndef OPENROAD_SRC_MDM_INCLUDE_MDM_MULTIDIEMANAGER_H_
 #define OPENROAD_SRC_MDM_INCLUDE_MDM_MULTIDIEMANAGER_H_
 #include <tcl.h>
-
-#include "../../../par/include/par/PartitionMgr.h"
+#include <vector>
 #include "dpl/Opendp.h"
 #include "gpl/Replace.h"
 #include "odb/db.h"
 #include "par/PartitionMgr.h"
+#include "HybridBond.h"
 
 namespace mdm {
+class HybridBond;
+class HybridBondInfo;
 class MultiDieManager
 {
  public:
@@ -55,7 +57,11 @@ class MultiDieManager
             gpl::Replace* replace,
             dpl::Opendp* opendp);
 
-  void setDieNum(int number_of_die);
+  void set3DIC(int number_of_die,
+               uint hybrid_bond_x=10,
+               uint hybrid_bond_y=10,
+               uint hybrid_bond_space_x=10,
+               uint hybrid_bond_space_y=10);
 
  private:
   /**
@@ -65,13 +71,15 @@ class MultiDieManager
    * */
   void partitionInstances();
 
-  odb::dbDatabase* db_;
-  utl::Logger* logger_;
-  par::PartitionMgr* partition_mgr_;
-  gpl::Replace* replace_;
-  dpl::Opendp* opendp_;
+  odb::dbDatabase* db_{};
+  utl::Logger* logger_{};
+  par::PartitionMgr* partition_mgr_{};
+  gpl::Replace* replace_{};
+  dpl::Opendp* opendp_{};
 
-  int number_of_die_;
+  int number_of_die_{};
+  std::vector<HybridBond> hybridbond_set_;
+  HybridBondInfo hybrid_bond_info_;
 };
 }  // namespace mdm
 

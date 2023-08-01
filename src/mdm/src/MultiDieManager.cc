@@ -14,9 +14,9 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include "mdm/MultiDieManager.hh"
-#include "utl/Logger.h"
-
 #include <iostream>
+
+#include "utl/Logger.h"
 
 namespace mdm {
 
@@ -41,12 +41,18 @@ void MultiDieManager::init(odb::dbDatabase* db,
   opendp_ = opendp;
 }
 
-void MultiDieManager::setDieNum(int number_of_die)
+void MultiDieManager::set3DIC(int number_of_die,
+                              uint hybrid_bond_x,
+                              uint hybrid_bond_y,
+                              uint hybrid_bond_space_x,
+                              uint hybrid_bond_space_y)
 {
+  hybrid_bond_info_.setHybridBondInfo(
+      hybrid_bond_x, hybrid_bond_y, hybrid_bond_space_x, hybrid_bond_space_y);
   number_of_die_ = number_of_die;
-  // partition_mgr_->setDieNum(number_of_die_);
-  // replace_->setDieNum(number_of_die_);
-  // opendp_->setDieNum(number_of_die_);
+  // partition_mgr_->set3DIC(number_of_die_);
+  // replace_->set3DIC(number_of_die_);
+  // opendp_->set3DIC(number_of_die_);
   logger_->info(utl::MDM, 1, "Set number of die to {}", number_of_die_);
 }
 void MultiDieManager::partitionInstances()

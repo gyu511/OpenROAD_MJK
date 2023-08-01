@@ -32,9 +32,9 @@ getMultiDieManager()
 %inline %{
 
 void
-set_die_number(int number_of_die)
+set_3D_IC(int number_of_die)
 {
-  getMultiDieManager()->setDieNum(number_of_die);
+  getMultiDieManager()->set3DIC(number_of_die);
 }
 
 %} // inline

@@ -47,11 +47,14 @@ target_sources(mdm
         PRIVATE
         src/MakeMultiDieManager.cc
         src/MultiDieManager.cc
+        src/HybridBond.cpp
 )
 
 target_include_directories(mdm
         PUBLIC
         include
+        PRIVATE
+        src
 )
 
 target_link_libraries(mdm

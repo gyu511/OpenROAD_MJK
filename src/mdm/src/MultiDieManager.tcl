@@ -25,13 +25,13 @@ proc mdm_helper { } {
 }
 }
 
-sta::define_cmd_args "set_die_number" {[-die_number die_number]}
+sta::define_cmd_args "set_3D_IC" {[-die_number die_number]}
 
-proc set_die_number { args } {
-  sta::parse_key_args "set_die_number" args \
+proc set_3D_IC { args } {
+  sta::parse_key_args "set_3D_IC" args \
    keys {-die_number} flags {}
 
   set die_number $keys(-die_number)
-  mdm::set_die_number $die_number
+  mdm::set_3D_IC $die_number
 }
 
