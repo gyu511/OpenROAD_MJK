@@ -14,12 +14,13 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include "mdm/MultiDieManager.hh"
+#include "utl/Logger.h"
 
 #include <iostream>
 
 namespace mdm {
 
-MultiDieManager::MultiDieManager() : param1_(0.0), flag1_(false)
+MultiDieManager::MultiDieManager()
 {
 }
 
@@ -40,18 +41,16 @@ void MultiDieManager::init(odb::dbDatabase* db,
   opendp_ = opendp;
 }
 
-void MultiDieManager::setParam1(double param1)
+void MultiDieManager::setDieNum(int number_of_die)
 {
-  param1_ = param1;
+  number_of_die_ = number_of_die;
+  // partition_mgr_->setDieNum(number_of_die_);
+  // replace_->setDieNum(number_of_die_);
+  // opendp_->setDieNum(number_of_die_);
+  logger_->info(utl::MDM, 1, "Set number of die to {}", number_of_die_);
 }
-
-void MultiDieManager::setFlag1(bool flag1)
+void MultiDieManager::partitionInstances()
 {
-  flag1_ = flag1;
-}
-void MultiDieManager::getFlag1()
-{
-  std::cout << flag1_ << std::endl;
 }
 
 }  // namespace mdm

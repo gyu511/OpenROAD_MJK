@@ -55,20 +55,23 @@ class MultiDieManager
             gpl::Replace* replace,
             dpl::Opendp* opendp);
 
-  void setParam1(double param1);
-  void setFlag1(bool flag1);
-  void getFlag1();
+  void setDieNum(int number_of_die);
 
  private:
+  /**
+   * \brief
+   * Partition instances into different die.
+   * This will consider the size of technologies and the utilization of each die.
+   * */
+  void partitionInstances();
+
   odb::dbDatabase* db_;
   utl::Logger* logger_;
   par::PartitionMgr* partition_mgr_;
   gpl::Replace* replace_;
   dpl::Opendp* opendp_;
 
-
-  double param1_;
-  bool flag1_;
+  int number_of_die_;
 };
 }  // namespace mdm
 
