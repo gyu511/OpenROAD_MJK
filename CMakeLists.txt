@@ -153,3 +153,6 @@ if(ENABLE_TESTS)
 endif()
 
 add_subdirectory(src)
+
+add_executable(test_db test/test.cpp)
+target_link_libraries(test_db odb)
