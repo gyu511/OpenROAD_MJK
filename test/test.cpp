@@ -7,24 +7,27 @@
 
 using namespace odb;  // NOLINT(*-build-using-namespace)
 using namespace std;  // NOLINT(*-build-using-namespace)
+void saveDb(odb::dbDatabase *db_database, const std::string &db_path) {
+  FILE *stream = std::fopen(db_path.c_str(), "w");
+  if (stream) {
+    db_database->write(stream);
+    std::fclose(stream);
+  }
+}
+
 int main()
 {
   dbDatabase* db_database = dbDatabase::create();
-  dbTech* tech1 = dbTech::create(db_database, "top_tech");
-  dbTech* tech2 = dbTech::create(db_database, "bottom_tech");
-  auto* layer1
-      = dbTechLayer::create(tech1, "top_layer", dbTechLayerType::MASTERSLICE);
-  auto* layer2
-      = dbTechLayer::create(tech2, "bottom_layer", dbTechLayerType::ROUTING);
-  dbLib* lib1 = dbLib::create(db_database, "top_lib", tech1);
-  dbLib* lib2 = dbLib::create(db_database, "bottom_lib", tech2);
+  dbTech* tech = dbTech::create(db_database, "top_tech");
+  auto* layer
+      = dbTechLayer::create(tech, "top_layer", dbTechLayerType::MASTERSLICE);
+  dbLib* lib1 = dbLib::create(db_database, "top_lib", tech);
+  dbLib* lib2 = dbLib::create(db_database, "bottom_lib", tech);
   dbChip* chip = dbChip::create(db_database);
-  dbBlock* block1 = dbBlock::create(chip, "top", tech1);
-  dbBlock* block2 = dbBlock::create(block1, "bottom", tech2);
+  dbBlock* block = dbBlock::create(chip, "top", tech);
   // die size setting
   Rect die_rect(0, 0, 1000, 1000);
-  block1->setDieArea(die_rect);
-  block2->setDieArea(die_rect);
+  block->setDieArea(die_rect);
 
   vector<dbInst*> inst_collector_top;
   vector<dbInst*> inst_collector_bottom;
@@ -44,15 +47,16 @@ int main()
     for (int j = 0; j < pin_num; ++j) {
       dbSigType sig_type = dbSigType::SIGNAL;
       dbIoType io_type;
-      if (j < pin_num - 1)
+      if (j < pin_num - 1) {
         io_type = dbIoType::INPUT;
-      else
+      } else {
         io_type = dbIoType::OUTPUT;
+      }
       string pin_name = "top_pin_" + to_string(j);
       dbMTerm* master_terminal
           = dbMTerm::create(master, pin_name.c_str(), io_type, sig_type);
       dbMPin* master_pin = dbMPin::create(master_terminal);
-      dbBox::create(master_pin, layer1, j * 2, j * 2, j * 2 + 1, j * 2 + 1);
+      dbBox::create(master_pin, layer, j * 2, j * 2, j * 2 + 1, j * 2 + 1);
     }
     master->setFrozen();
   }
@@ -70,8 +74,9 @@ int main()
     string inst_name = "top_inst_" + to_string(i);
     dbMaster* master = db_database->findMaster(
         ("top_cell_" + to_string(lib_cell_id)).c_str());
-    auto inst = dbInst::create(block1, master, inst_name.c_str());
+    auto inst = dbInst::create(block, master, inst_name.c_str());
     inst->setLocation(x, y);
+    inst->setPlacementStatus(odb::dbPlacementStatus::PLACED);
     inst_collector_top.push_back(inst);
   }
 
@@ -98,7 +103,7 @@ int main()
       dbMTerm* master_terminal
           = dbMTerm::create(master, pin_name.c_str(), io_type, sig_type);
       dbMPin* master_pin = dbMPin::create(master_terminal);
-      dbBox::create(master_pin, layer2, j * 2, j * 2, j * 2 + 1, j * 2 + 1);
+      dbBox::create(master_pin, layer, j * 2, j * 2, j * 2 + 1, j * 2 + 1);
     }
     master->setFrozen();
   }
@@ -113,8 +118,9 @@ int main()
     string inst_name = "bottom_inst_" + to_string(i);
     dbMaster* master = db_database->findMaster(
         ("bottom_cell_" + to_string(lib_cell_id)).c_str());
-    auto inst = dbInst::create(block2, master, inst_name.c_str());
+    auto inst = dbInst::create(block, master, inst_name.c_str());
     inst->setLocation(x, y);
+    inst->setPlacementStatus(odb::dbPlacementStatus::PLACED);
     inst_collector_bottom.push_back(inst);
   }
 
@@ -122,7 +128,7 @@ int main()
   int inst_id2 = 4;
 
   // intersected net test
-  dbNet* net = dbNet::create(block1, ("net_" + to_string(inst_id1)).c_str());
+  dbNet* net = dbNet::create(block, "net_");
   dbInst* inst1_top = inst_collector_top.at(inst_id1);
   dbInst* inst2_top = inst_collector_top.at(inst_id2);
   dbInst* inst1_bottom = inst_collector_bottom.at(inst_id1);
@@ -142,6 +148,7 @@ int main()
     cout << i_term->getInst()->getName() << '\n';
   }
 
+  saveDb(db_database, "../test.db");
   /**
    * Console result:
    * \code
