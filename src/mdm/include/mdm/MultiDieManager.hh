@@ -61,9 +61,29 @@ class MultiDieManager
                uint hybrid_bond_x=10,
                uint hybrid_bond_y=10,
                uint hybrid_bond_space_x=10,
-               uint hybrid_bond_space_y=10);
+               uint hybrid_bond_space_y=10,
+               float area_ratio=0.5);
 
  private:
+
+  void setUp();
+
+  /**
+   * \brief
+   * Make shrunk lef files.
+   * If the area_ratio is 0.5,
+   * then the first lef ratio is 1.0, the second lef ratio is 0.5,
+   * the third lef ratio is 0.25 .. \n
+   * This affects only library information.
+   * This will not affect tech information, because the multi several tech is not supported completely in odb.
+   * */
+   void makeShrunkLefs();
+   void makeShrunkLef();
+
+   void readShrunkLibs();
+
+   void switchMasters();
+
   /**
    * \brief
    * Partition instances into different die.
@@ -78,6 +98,10 @@ class MultiDieManager
   dpl::Opendp* opendp_{};
 
   int number_of_die_{};
+  float shrink_area_ratio{};
+  std::vector<float> shrink_length_ratios_;
+
+  // Hybrid Bond information --> This would be absorbed in odb later.
   std::vector<HybridBond> hybridbond_set_;
   HybridBondInfo hybrid_bond_info_;
 };
