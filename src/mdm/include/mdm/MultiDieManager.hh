@@ -57,7 +57,7 @@ class MultiDieManager
             gpl::Replace* replace,
             dpl::Opendp* opendp);
 
-  void set3DIC(int number_of_die,
+  void set3DIC(int number_of_die=2,
                uint hybrid_bond_x=10,
                uint hybrid_bond_y=10,
                uint hybrid_bond_space_x=10,
@@ -68,6 +68,8 @@ class MultiDieManager
    * \brief
    * Partition instances into different die.
    * This will consider the size of technologies and the utilization of each die.
+   * \n
+   * This is temporal code currently.
    * */
   void partitionInstances();
 
@@ -79,7 +81,7 @@ class MultiDieManager
 
   int number_of_die_{};
   std::vector<HybridBond> hybridbond_set_;
-  HybridBondInfo hybrid_bond_info_;
+  HybridBondInfo hybrid_bond_info_{};
 };
 }  // namespace mdm
 

@@ -1154,7 +1154,7 @@ void PlacerBase::initInstsForUnusableSites()
   // if there is no group, then mark all as Row, and then for each power domain,
   // mark the sites that belong to the power domain as Empty
 
-  if (group_ != nullptr) {
+  if (group_ != nullptr && group_->getRegion()->getBoundaries().size() != 0) {
     for (auto boundary : group_->getRegion()->getBoundaries()) {
       Rect rect = boundary->getBox();
 

@@ -14,19 +14,17 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include "mdm/MultiDieManager.hh"
+
+#include <cstddef>
 #include <iostream>
 
 #include "utl/Logger.h"
 
 namespace mdm {
 
-MultiDieManager::MultiDieManager()
-{
-}
+MultiDieManager::MultiDieManager() = default;
 
-MultiDieManager::~MultiDieManager()
-{
-}
+MultiDieManager::~MultiDieManager() = default;
 
 void MultiDieManager::init(odb::dbDatabase* db,
                            utl::Logger* logger,
@@ -54,9 +52,40 @@ void MultiDieManager::set3DIC(int number_of_die,
   // replace_->set3DIC(number_of_die_);
   // opendp_->set3DIC(number_of_die_);
   logger_->info(utl::MDM, 1, "Set number of die to {}", number_of_die_);
+
+  partitionInstances();
 }
 void MultiDieManager::partitionInstances()
 {
+  // read partition information
+  // Here, let's do partitioning randomly, just for gpl testing.
+  assert(number_of_die_ == 2);
+  uint64_t area_sum = 0;
+  for (auto inst : db_->getChip()->getBlock()->getInsts())
+    area_sum += (static_cast<uint64_t>(inst->getBBox()->getDX()
+                                       * inst->getBBox()->getDY()));
+
+  uint64_t half_total_area = floor(area_sum / 2);
+  area_sum = 0;
+  auto block = db_->getChip()->getBlock();
+  auto region1 = odb::dbRegion::create(block, "region1");
+  auto region2 = odb::dbRegion::create(block, "region2");
+  auto group1 = odb::dbGroup::create(region1, "top");
+  auto group2 = odb::dbGroup::create(region2, "bottom");
+  group1->setType(odb::dbGroupType::PHYSICAL_CLUSTER);
+  group2->setType(odb::dbGroupType::PHYSICAL_CLUSTER);
+
+  for (auto inst : db_->getChip()->getBlock()->getInsts()) {
+    uint area = inst->getBBox()->getDX() * inst->getBBox()->getDY();
+    area_sum += (static_cast<uint64_t>(area));
+    if (area_sum < half_total_area) {
+      group1->addInst(inst);
+    } else {
+      group2->addInst(inst);
+    }
+  }
+  logger_->info(utl::MDM, 2, "Mark Instances into Dies");
+
 }
 
 }  // namespace mdm

@@ -188,13 +188,13 @@ void Replace::doIncrementalPlace()
 
     pbc_ = std::make_shared<PlacerBaseCommon>(db_, pbVars, log_);
 
-    pbVec_.push_back(std::make_shared<PlacerBase>(db_, pbc_, log_));
+    auto pb = std::make_shared<PlacerBase>(db_, pbc_, log_);
+    if (!pb->insts().empty()) {
+      pbVec_.push_back(pb);
+    }
 
-    for (auto pd : db_->getChip()->getBlock()->getPowerDomains()) {
-      if (pd->getGroup()) {
-        pbVec_.push_back(
-            std::make_shared<PlacerBase>(db_, pbc_, log_, pd->getGroup()));
-      }
+    for (odb::dbGroup* group : db_->getChip()->getBlock()->getGroups()) {
+      pbVec_.push_back(std::make_shared<PlacerBase>(db_, pbc_, log_, group));
     }
 
     total_placeable_insts_ = 0;
@@ -266,13 +266,13 @@ void Replace::doInitialPlace()
 
     pbc_ = std::make_shared<PlacerBaseCommon>(db_, pbVars, log_);
 
-    pbVec_.push_back(std::make_shared<PlacerBase>(db_, pbc_, log_));
+    auto pb = std::make_shared<PlacerBase>(db_, pbc_, log_);
+    if (!pb->insts().empty()) {
+      pbVec_.push_back(pb);
+    }
 
-    for (auto pd : db_->getChip()->getBlock()->getPowerDomains()) {
-      if (pd->getGroup()) {
-        pbVec_.push_back(
-            std::make_shared<PlacerBase>(db_, pbc_, log_, pd->getGroup()));
-      }
+    for (odb::dbGroup* group : db_->getChip()->getBlock()->getGroups()) {
+      pbVec_.push_back(std::make_shared<PlacerBase>(db_, pbc_, log_, group));
     }
 
     total_placeable_insts_ = 0;
@@ -298,7 +298,7 @@ void Replace::doInitialPlace()
 
 bool Replace::initNesterovPlace()
 {
-  if (!pbc_) {
+  if (pbc_ == nullptr) {
     PlacerBaseVars pbVars;
     pbVars.padLeft = padLeft_;
     pbVars.padRight = padRight_;
@@ -306,13 +306,13 @@ bool Replace::initNesterovPlace()
 
     pbc_ = std::make_shared<PlacerBaseCommon>(db_, pbVars, log_);
 
-    pbVec_.push_back(std::make_shared<PlacerBase>(db_, pbc_, log_));
+    auto pb = std::make_shared<PlacerBase>(db_, pbc_, log_);
+    if (!pb->insts().empty()) {
+      pbVec_.push_back(pb);
+    }
 
-    for (auto pd : db_->getChip()->getBlock()->getPowerDomains()) {
-      if (pd->getGroup()) {
-        pbVec_.push_back(
-            std::make_shared<PlacerBase>(db_, pbc_, log_, pd->getGroup()));
-      }
+    for (odb::dbGroup* group : db_->getChip()->getBlock()->getGroups()) {
+      pbVec_.push_back(std::make_shared<PlacerBase>(db_, pbc_, log_, group));
     }
 
     total_placeable_insts_ = 0;
