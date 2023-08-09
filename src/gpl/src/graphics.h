@@ -97,6 +97,7 @@ class Graphics : public gui::Renderer, public gui::HeatMapDataSource
 
   // Is the GUI being displayed (true) or are we in batch mode (false)
   static bool guiActive();
+  void saveImg(const std::string& file_name="");
 
  private:
   enum HeatMapType

@@ -92,7 +92,7 @@ void InitialPlace::doBicgstabPlace()
     graphics = make_unique<Graphics>(log_, pbc_, pbVec_);
   }
 
-  placeInstsCenter();
+  // placeInstsCenter();
 
   // set ExtId for idx reference // easy recovery
   setPlaceInstExtId();
