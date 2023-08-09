@@ -37,4 +37,10 @@ set_3D_IC(int number_of_die)
   getMultiDieManager()->set3DIC(number_of_die);
 }
 
+void
+twoDieDetailPlace()
+{
+  getMultiDieManager()->twoDieDetailPlacement();
+}
+
 %} // inline
