@@ -75,7 +75,18 @@ void MultiDieManager::partitionInstances()
   group1->setType(odb::dbGroupType::PHYSICAL_CLUSTER);
   group2->setType(odb::dbGroupType::PHYSICAL_CLUSTER);
 
+  for (auto macro : db_->getChip()->getBlock()->getInsts()) {
+    if (macro->isBlock()) {
+      group1->addInst(macro);
+      uint area = macro->getBBox()->getDX() * macro->getBBox()->getDY();
+      area_sum += (static_cast<uint64_t>(area));
+    }
+  }
+
   for (auto inst : db_->getChip()->getBlock()->getInsts()) {
+    if (inst->isBlock()) {
+      continue;
+    }
     uint area = inst->getBBox()->getDX() * inst->getBBox()->getDY();
     area_sum += (static_cast<uint64_t>(area));
     if (area_sum < half_total_area) {
@@ -85,7 +96,6 @@ void MultiDieManager::partitionInstances()
     }
   }
   logger_->info(utl::MDM, 2, "Mark Instances into Dies");
-
 }
 
 }  // namespace mdm
