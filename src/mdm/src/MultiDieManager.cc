@@ -14,19 +14,18 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include "mdm/MultiDieManager.hh"
+
+#include <cstddef>
 #include <iostream>
 
 #include "utl/Logger.h"
 
 namespace mdm {
+using namespace std;
 
-MultiDieManager::MultiDieManager()
-{
-}
+MultiDieManager::MultiDieManager() = default;
 
-MultiDieManager::~MultiDieManager()
-{
-}
+MultiDieManager::~MultiDieManager() = default;
 
 void MultiDieManager::init(odb::dbDatabase* db,
                            utl::Logger* logger,
@@ -54,9 +53,35 @@ void MultiDieManager::set3DIC(int number_of_die,
   // replace_->set3DIC(number_of_die_);
   // opendp_->set3DIC(number_of_die_);
   logger_->info(utl::MDM, 1, "Set number of die to {}", number_of_die_);
+  partitionInstances();
 }
 void MultiDieManager::partitionInstances()
 {
+  // check the partition information exists and apply the information at the
+  // same time
+  for (auto chip : db_->getChips()) {
+    auto block = chip->getBlock();
+    for (auto inst : block->getInsts()) {
+      auto partition_info = odb::dbIntProperty::find(inst, "partition_id");
+      if (partition_info) {
+        int partition_info_int = partition_info->getValue();
+        string partition_info_str = "Die" + to_string(partition_info_int);
+        odb::dbIntProperty::create(inst, "which_die", partition_info_int);
+
+        auto group = odb::dbGroup::create(block, partition_info_str.c_str());
+        if (group == nullptr) {
+          group = odb::dbGroup::getGroup(block, partition_info_int);
+        }
+        group->addInst(inst);
+      } else {
+        logger_->error(utl::MDM,
+                       2,
+                       "Do partition first. There are some instances that "
+                       "don't have a partition info");
+      }
+    }
+  }
+  logger_->info(utl::MDM, 3, "Partition information is applied to instances");
 }
 
 }  // namespace mdm
