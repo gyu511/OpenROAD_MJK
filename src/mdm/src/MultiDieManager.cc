@@ -72,18 +72,113 @@ void MultiDieManager::setUp()
 
 void MultiDieManager::makeShrunkLefs()
 {
-  // set `shrink_length_ratios_`
-  auto db_database_original = db_;
-  const std::string& lef_path = "../../src/mdm/test/shrunkLefs/";
-
   float shrink_length_ratio = 1.0;
   for (int i = 0; i < number_of_die_; ++i) {
     shrink_length_ratios_.push_back(shrink_length_ratio);
     shrink_length_ratio = std::sqrt(shrink_length_ratio);
   }
+  makeShrunkLef();
+  db_->findMaster("OAI2BB1X4");
+  db_->findLib("ispd18_test1.input_top")->findMaster("OAI2BB1X4");
+
 }
 void MultiDieManager::makeShrunkLef()
 {
+  std::string which_die = "_top";
+  double shrunk_ratio = 0.7;
+
+  auto libs_original = db_->getLibs();
+  auto tech = db_->getTech();
+
+  // TODO:
+  // Making multiple Technology should be implemented after the updated odb
+
+  uint lib_number = libs_original.size();
+  uint lib_idx = 0;
+  for (auto lib_original : libs_original) {
+    lib_idx++;
+    if (lib_idx > lib_number)  // NOLINT(*-braces-around-statements)
+      break;
+
+    auto lib = odb::dbLib::create(
+        db_, (lib_original->getName() + which_die).c_str(), tech);
+    lib->setLefUnits(lib_original->getLefUnits());
+    for (auto site_original : lib_original->getSites()) {
+      auto site = odb::dbSite::create(
+          lib, (site_original->getName() + which_die).c_str());
+      // apply shrink factor on site
+      site->setWidth(static_cast<int>(
+          static_cast<float>(site_original->getWidth()) * shrunk_ratio));
+      site->setHeight(static_cast<int>(
+          static_cast<float>(site_original->getHeight()) * shrunk_ratio));
+    }
+
+    for (auto master_original : lib_original->getMasters()) {
+      odb::dbMaster* master = odb::dbMaster::create(
+          lib, (master_original->getName()).c_str());
+
+      master->setType(master_original->getType());
+      if (master_original->getEEQ())
+        master->setEEQ(master_original->getEEQ());
+      if (master_original->getLEQ())
+        master->setLEQ(master_original->getLEQ());
+      int width = static_cast<int>(
+          static_cast<float>(master_original->getWidth()) * shrunk_ratio);
+      int height = static_cast<int>(
+          static_cast<float>(master_original->getHeight()) * shrunk_ratio);
+      master->setWidth(width);
+      master->setHeight(height);
+
+      int master_origin_x, master_origin_y;
+      master_original->getOrigin(master_origin_x, master_origin_y);
+      master_origin_x = static_cast<int>(static_cast<float>(master_origin_x)
+                                         * shrunk_ratio);
+      master_origin_y = static_cast<int>(static_cast<float>(master_origin_y)
+                                         * shrunk_ratio);
+      master->setOrigin(master_origin_x, master_origin_y);
+
+      std::string site_name = master_original->getSite()->getName() + which_die;
+      auto site = lib->findSite(site_name.c_str());
+      master->setSite(site);
+
+      if (master_original->getSymmetryX())
+        master->setSymmetryX();
+      if (master_original->getSymmetryY())
+        master->setSymmetryY();
+      if (master_original->getSymmetryR90())
+        master->setSymmetryR90();
+
+      master->setMark(master_original->isMarked());
+      master->setSequential(master_original->isSequential());
+      master->setSpecialPower(master_original->isSpecialPower());
+
+      for (auto m_term_original : master_original->getMTerms()) {
+        auto db_m_term = odb::dbMTerm::create(master,
+                                              m_term_original->getConstName(),
+                                              m_term_original->getIoType(),
+                                              m_term_original->getSigType(),
+                                              m_term_original->getShape());
+
+        for (auto pin_original : m_term_original->getMPins()) {
+          auto db_m_pin = odb::dbMPin::create(db_m_term);
+          for (auto geometry : pin_original->getGeometry()) {
+            int x1, y1, x2, y2;
+            x1 = static_cast<int>(static_cast<float>(geometry->xMin())
+                                  * shrunk_ratio);
+            y1 = static_cast<int>(static_cast<float>(geometry->yMin())
+                                  * shrunk_ratio);
+            x2 = static_cast<int>(static_cast<float>(geometry->xMax())
+                                  * shrunk_ratio);
+            y2 = static_cast<int>(static_cast<float>(geometry->yMax())
+                                  * shrunk_ratio);
+            odb::dbBox::create(
+                db_m_pin, geometry->getTechLayer(), x1, y1, x2, y2);
+          }
+        }
+      }
+      master->setFrozen();
+    }
+  }
 }
 void MultiDieManager::readShrunkLibs()
 {
@@ -92,6 +187,9 @@ void MultiDieManager::partitionInstances()
 {
 }
 void MultiDieManager::switchMasters()
+{
+}
+void MultiDieManager::switchMaster(odb::dbInst* inst, odb::dbMaster* master)
 {
 }
 
