@@ -15,20 +15,14 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include "mdm/MultiDieManager.hh"
 
-#include <cmath>
-#include <iostream>
-
 #include "utl/Logger.h"
 
 namespace mdm {
+using namespace std;
 
-MultiDieManager::MultiDieManager()
-{
-}
+MultiDieManager::MultiDieManager() = default;
 
-MultiDieManager::~MultiDieManager()
-{
-}
+MultiDieManager::~MultiDieManager() = default;
 
 void MultiDieManager::init(odb::dbDatabase* db,
                            utl::Logger* logger,
@@ -76,17 +70,16 @@ void MultiDieManager::makeShrunkLefs()
   for (int i = 0; i < number_of_die_; ++i) {
     shrink_length_ratios_.push_back(shrink_length_ratio);
     shrink_length_ratio = std::sqrt(shrink_length_ratio);
+    if (i == 0) {
+      continue;
+    }
+    string die_name = "Die" + to_string(i);
+    makeShrunkLef(die_name, shrink_length_ratio);
   }
-  makeShrunkLef();
-  db_->findMaster("OAI2BB1X4");
-  db_->findLib("ispd18_test1.input_top")->findMaster("OAI2BB1X4");
-
 }
-void MultiDieManager::makeShrunkLef()
+void MultiDieManager::makeShrunkLef(const string& which_die,
+                                    double shrunk_ratio)
 {
-  std::string which_die = "_top";
-  double shrunk_ratio = 0.7;
-
   auto libs_original = db_->getLibs();
   auto tech = db_->getTech();
 
@@ -114,8 +107,8 @@ void MultiDieManager::makeShrunkLef()
     }
 
     for (auto master_original : lib_original->getMasters()) {
-      odb::dbMaster* master = odb::dbMaster::create(
-          lib, (master_original->getName()).c_str());
+      odb::dbMaster* master
+          = odb::dbMaster::create(lib, (master_original->getName()).c_str());
 
       master->setType(master_original->getType());
       if (master_original->getEEQ())
@@ -180,11 +173,33 @@ void MultiDieManager::makeShrunkLef()
     }
   }
 }
-void MultiDieManager::readShrunkLibs()
-{
-}
 void MultiDieManager::partitionInstances()
 {
+  // check the partition information exists and apply the information at the
+  // same time
+  for (auto chip : db_->getChips()) {
+    auto block = chip->getBlock();
+    for (auto inst : block->getInsts()) {
+      auto partition_info = odb::dbIntProperty::find(inst, "partition_id");
+      if (partition_info) {
+        int partition_info_int = partition_info->getValue();
+        string partition_info_str = "Die" + to_string(partition_info_int);
+        odb::dbIntProperty::create(inst, "which_die", partition_info_int);
+
+        auto group = odb::dbGroup::create(block, partition_info_str.c_str());
+        if (group == nullptr) {
+          group = odb::dbGroup::getGroup(block, partition_info_int);
+        }
+        group->addInst(inst);
+      } else {
+        logger_->error(utl::MDM,
+                       2,
+                       "Do partition first. There are some instances that "
+                       "don't have a partition info");
+      }
+    }
+  }
+  logger_->info(utl::MDM, 3, "Partition information is applied to instances");
 }
 void MultiDieManager::switchMasters()
 {

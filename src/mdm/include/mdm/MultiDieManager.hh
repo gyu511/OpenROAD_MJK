@@ -80,12 +80,7 @@ class MultiDieManager
    * not supported completely in odb.
    * */
   void makeShrunkLefs();
-  void makeShrunkLef();
-
-  void readShrunkLibs();
-
-  void switchMasters();
-  void switchMaster(odb::dbInst* inst, odb::dbMaster* master);
+  void makeShrunkLef(const std::string& die_name, double shrunk_ratio);
 
   /**
    * \brief
@@ -96,6 +91,11 @@ class MultiDieManager
    * change the function name as applyPartitionInfo after merge branch
    * */
   void partitionInstances();
+
+
+  void switchMasters();
+  void switchMaster(odb::dbInst* inst, odb::dbMaster* master);
+
 
   odb::dbDatabase* db_{};
   utl::Logger* logger_{};
