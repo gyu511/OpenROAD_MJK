@@ -187,8 +187,22 @@ void Graphics::drawNesterov(gui::Painter& painter)
 
     gui::Painter::Color color;
     if (gCell->isInstance()) {
-      color = gCell->instance()->isLocked() ? gui::Painter::dark_cyan
-                                            : gui::Painter::dark_green;
+      if (nbVec_.size() <= 1) {
+        color = gCell->instance()->isLocked() ? gui::Painter::dark_cyan
+                                              : gui::Painter::dark_green;
+      } else {
+        // multi group case
+        std::string group_name(
+            gCell->instance()->dbInst()->getGroup()->getName());
+        if (group_name == "top") {
+          color = gui::Painter::cyan;
+        } else if (group_name == "bottom") {
+          color = gui::Painter::gray;
+        } else {
+          color = gCell->instance()->isLocked() ? gui::Painter::dark_cyan
+                                                : gui::Painter::dark_green;
+        }
+      }
     } else if (gCell->isFiller()) {
       color = gui::Painter::dark_magenta;
     }
@@ -406,6 +420,10 @@ void Graphics::combineMapData(bool base_has_value,
 bool Graphics::guiActive()
 {
   return gui::Gui::enabled();
+}
+void Graphics::saveImg(const std::string& file_name)
+{
+  gui::Gui::get()->saveImage(file_name);
 }
 
 }  // namespace gpl

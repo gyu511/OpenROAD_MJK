@@ -327,6 +327,7 @@ int NesterovPlace::doNesterovPlace(int start_iter)
   }
 
   if (graphics_) {
+    updateDb();
     graphics_->cellPlot(true);
   }
 
@@ -433,6 +434,7 @@ int NesterovPlace::doNesterovPlace(int start_iter)
       if (update) {
         bool pause
             = (iter == 0 || (iter + 1) % npVars_.debug_pause_iterations == 0);
+        updateDb();
         graphics_->cellPlot(pause);
       }
     }

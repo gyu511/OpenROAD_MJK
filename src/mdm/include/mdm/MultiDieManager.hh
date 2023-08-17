@@ -35,7 +35,6 @@
 #ifndef OPENROAD_SRC_MDM_INCLUDE_MDM_MULTIDIEMANAGER_H_
 #define OPENROAD_SRC_MDM_INCLUDE_MDM_MULTIDIEMANAGER_H_
 #include <tcl.h>
-
 #include <vector>
 
 #include "HybridBond.h"
@@ -95,6 +94,7 @@ class MultiDieManager
 
   void switchMasters();
   void switchMaster(odb::dbInst* inst, odb::dbMaster* master);
+  odb::dbLib* findLibByPartitionInfo(int value);
 
 
   odb::dbDatabase* db_{};
@@ -109,8 +109,7 @@ class MultiDieManager
 
   // Hybrid Bond information --> This would be absorbed in odb later.
   std::vector<HybridBond> hybridbond_set_;
-  HybridBondInfo hybrid_bond_info_;
-  odb::dbLib* findLibByPartitionInfo(int value);
+  HybridBondInfo hybrid_bond_info_{};
 };
 }  // namespace mdm
 
