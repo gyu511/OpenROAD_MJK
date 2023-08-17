@@ -1241,7 +1241,6 @@ void TritonPart::ReadNetlist(const std::string& fixed_file,
       const sta::LibertyCell* liberty_cell;
       if (timing_aware_flag_) {
         liberty_cell = network_->libertyCell(inst);
-
         if (liberty_cell == nullptr) {
           continue;  // ignore the instance with no liberty
         }
@@ -1256,14 +1255,17 @@ void TritonPart::ReadNetlist(const std::string& fixed_file,
       if (box->xMin() >= fence_.lx && box->xMax() <= fence_.ux
           && box->yMin() >= fence_.ly && box->yMax() <= fence_.uy) {
         float area;
-        if (timing_aware_flag_)
+        if (timing_aware_flag_) {
           area = liberty_cell->area();
-        else
+        } else {
           area = static_cast<float>(inst->getBBox()->getBox().area());
+        }
         std::vector<float> vwts(vertex_dimensions_, area);
         vertex_weights_.emplace_back(vwts);
         if (master->isBlock()) {
           vertex_types_.emplace_back(MACRO);
+        } else if (!timing_aware_flag_) {
+          vertex_types_.emplace_back(COMB_STD_CELL);
         } else if (liberty_cell->hasSequentials()) {
           vertex_types_.emplace_back(SEQ_STD_CELL);
         } else {
@@ -1307,14 +1309,17 @@ void TritonPart::ReadNetlist(const std::string& fixed_file,
         continue;
       }
       float area;
-      if(timing_aware_flag_)
+      if (timing_aware_flag_) {
         area = liberty_cell->area();
-      else
+      } else {
         area = inst->getBBox()->getBox().area();
+      }
       std::vector<float> vwts(vertex_dimensions_, area);
       vertex_weights_.emplace_back(vwts);
       if (master->isBlock()) {
         vertex_types_.emplace_back(MACRO);
+      } else if (!timing_aware_flag_) {
+        vertex_types_.emplace_back(COMB_STD_CELL);
       } else if (liberty_cell->hasSequentials()) {
         vertex_types_.emplace_back(SEQ_STD_CELL);
       } else {
