@@ -1238,9 +1238,12 @@ void TritonPart::ReadNetlist(const std::string& fixed_file,
     for (auto inst : block_->getInsts()) {
       // -1 means that the instance is not used by the partitioner
       odb::dbIntProperty::create(inst, "vertex_id", -1);
-      const sta::LibertyCell* liberty_cell = network_->libertyCell(inst);
-      if (liberty_cell == nullptr) {
-        continue;  // ignore the instance with no liberty
+      const sta::LibertyCell* liberty_cell;
+      if (timing_aware_flag_) {
+        liberty_cell = network_->libertyCell(inst);
+        if (liberty_cell == nullptr) {
+          continue;  // ignore the instance with no liberty
+        }
       }
       odb::dbMaster* master = inst->getMaster();
       // check if the instance is a pad or a cover macro
@@ -1251,11 +1254,18 @@ void TritonPart::ReadNetlist(const std::string& fixed_file,
       // check if the inst is within the fence
       if (box->xMin() >= fence_.lx && box->xMax() <= fence_.ux
           && box->yMin() >= fence_.ly && box->yMax() <= fence_.uy) {
-        const float area = liberty_cell->area();
+        float area;
+        if (timing_aware_flag_) {
+          area = liberty_cell->area();
+        } else {
+          area = static_cast<float>(inst->getBBox()->getBox().area());
+        }
         std::vector<float> vwts(vertex_dimensions_, area);
         vertex_weights_.emplace_back(vwts);
         if (master->isBlock()) {
           vertex_types_.emplace_back(MACRO);
+        } else if (!timing_aware_flag_) {
+          vertex_types_.emplace_back(COMB_STD_CELL);
         } else if (liberty_cell->hasSequentials()) {
           vertex_types_.emplace_back(SEQ_STD_CELL);
         } else {
@@ -1286,20 +1296,30 @@ void TritonPart::ReadNetlist(const std::string& fixed_file,
     for (auto inst : block_->getInsts()) {
       // -1 means that the instance is not used by the partitioner
       odb::dbIntProperty::create(inst, "vertex_id", -1);
-      const sta::LibertyCell* liberty_cell = network_->libertyCell(inst);
-      if (liberty_cell == nullptr) {
-        continue;  // ignore the instance with no liberty
+      const sta::LibertyCell* liberty_cell;
+      if (timing_aware_flag_) {
+        liberty_cell = network_->libertyCell(inst);
+        if (liberty_cell == nullptr) {
+          continue;  // ignore the instance with no liberty
+        }
       }
       odb::dbMaster* master = inst->getMaster();
       // check if the instance is a pad or a cover macro
       if (master->isPad() || master->isCover()) {
         continue;
       }
-      const float area = liberty_cell->area();
+      float area;
+      if (timing_aware_flag_) {
+        area = liberty_cell->area();
+      } else {
+        area = inst->getBBox()->getBox().area();
+      }
       std::vector<float> vwts(vertex_dimensions_, area);
       vertex_weights_.emplace_back(vwts);
       if (master->isBlock()) {
         vertex_types_.emplace_back(MACRO);
+      } else if (!timing_aware_flag_) {
+        vertex_types_.emplace_back(COMB_STD_CELL);
       } else if (liberty_cell->hasSequentials()) {
         vertex_types_.emplace_back(SEQ_STD_CELL);
       } else {
