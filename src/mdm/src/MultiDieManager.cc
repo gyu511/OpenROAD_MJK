@@ -14,6 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include "mdm/MultiDieManager.hh"
+
 #include <iostream>
 
 #include "utl/Logger.h"
@@ -45,6 +46,8 @@ void MultiDieManager::set3DIC(int number_of_die,
                               uint hybrid_bond_space_y,
                               float area_ratio)
 {
+  logger_->info(utl::MDM, 1, "Set number of die to {}", number_of_die_);
+
   // set the variables
   hybrid_bond_info_.setHybridBondInfo(
       hybrid_bond_x, hybrid_bond_y, hybrid_bond_space_x, hybrid_bond_space_y);
@@ -53,10 +56,6 @@ void MultiDieManager::set3DIC(int number_of_die,
 
   // Set up for multi dies
   setUp();
-
-  // replace_->set3DIC(number_of_die_);
-  // opendp_->set3DIC(number_of_die_);
-  logger_->info(utl::MDM, 1, "Set number of die to {}", number_of_die_);
 }
 void MultiDieManager::setUp()
 {
@@ -189,9 +188,12 @@ void MultiDieManager::partitionInstances()
         string partition_info_str = "Die" + to_string(partition_info_int);
         odb::dbIntProperty::create(inst, "which_die", partition_info_int);
 
-        auto group = odb::dbGroup::create(block, partition_info_str.c_str());
-        groups.push_back(group);
-        if (group == nullptr) {
+        auto region = odb::dbRegion::create(block, partition_info_str.c_str());
+        odb::dbGroup* group;
+        if (region != nullptr) {
+          group = odb::dbGroup::create(region, partition_info_str.c_str());
+          groups.push_back(group);
+        } else {
           group = groups.at(partition_info_int);
         }
         group->addInst(inst);
