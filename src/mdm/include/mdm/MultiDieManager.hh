@@ -110,6 +110,7 @@ class MultiDieManager
   // Hybrid Bond information --> This would be absorbed in odb later.
   std::vector<HybridBond> hybridbond_set_;
   HybridBondInfo hybrid_bond_info_;
+  odb::dbLib* findLibByPartitionInfo(int value);
 };
 }  // namespace mdm
 

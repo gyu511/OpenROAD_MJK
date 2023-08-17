@@ -175,8 +175,10 @@ void MultiDieManager::makeShrunkLef(const string& which_die,
 }
 void MultiDieManager::partitionInstances()
 {
-  // check the partition information exists and apply the information at the
-  // same time
+  // check whether the partition information exists and
+  // apply the information at the same time
+  vector<odb::dbGroup*> groups;
+
   for (auto chip : db_->getChips()) {
     auto block = chip->getBlock();
     for (auto inst : block->getInsts()) {
@@ -187,8 +189,9 @@ void MultiDieManager::partitionInstances()
         odb::dbIntProperty::create(inst, "which_die", partition_info_int);
 
         auto group = odb::dbGroup::create(block, partition_info_str.c_str());
+        groups.push_back(group);
         if (group == nullptr) {
-          group = odb::dbGroup::getGroup(block, partition_info_int);
+          group = groups.at(partition_info_int);
         }
         group->addInst(inst);
       } else {
@@ -199,13 +202,128 @@ void MultiDieManager::partitionInstances()
       }
     }
   }
-  logger_->info(utl::MDM, 3, "Partition information is applied to instances");
 }
+
 void MultiDieManager::switchMasters()
 {
+  for (auto chip : db_->getChips()) {
+    auto block = chip->getBlock();
+    for (auto inst : block->getInsts()) {
+      auto partition_info = odb::dbIntProperty::find(inst, "which_die");
+      assert(partition_info != nullptr);
+
+      odb::dbLib* lib = findLibByPartitionInfo(partition_info->getValue());
+      assert(lib);
+
+      auto master = lib->findMaster(inst->getMaster()->getName().c_str());
+      assert(master);
+
+      switchMaster(inst, master);
+    }
+  }
+  logger_->info(utl::MDM, 3, "Partition information is applied to instances");
 }
 void MultiDieManager::switchMaster(odb::dbInst* inst, odb::dbMaster* master)
 {
+  assert(inst->getMaster()->getName() == master->getName());
+  assert(inst->getMaster()->getMTermCount() == master->getMTermCount());
+
+  vector<pair<string, odb::dbNet*>> net_info_container;
+  string inst_name = inst->getName();
+  auto block = inst->getBlock();  // TODO: edit here after revised odb
+
+  // save connected net information
+  for (auto iTerm : inst->getITerms()) {
+    if (iTerm->getNet() == nullptr) {
+      continue;
+    }
+    string pin_name = iTerm->getMTerm()->getName();
+    net_info_container.emplace_back(pin_name, iTerm->getNet());
+  }
+
+  // save 4 kinds of properties
+  struct PropertyStorage
+  {
+    vector<int> int_properties;
+    vector<string> string_properties;
+    vector<double> double_properties;
+    vector<bool> bool_properties;
+    vector<string> name_of_int_properties;
+    vector<string> name_of_string_properties;
+    vector<string> name_of_double_properties;
+    vector<string> name_of_bool_properties;
+  };
+  PropertyStorage property_storage;
+  for (auto property : odb::dbProperty::getProperties(inst)) {
+    if (property->getType() == odb::dbProperty::Type::INT_PROP) {
+      property_storage.int_properties.push_back(
+          odb::dbIntProperty::find(inst, property->getName().c_str())
+              ->getValue());
+      property_storage.name_of_int_properties.push_back(property->getName());
+    } else if (property->getType() == odb::dbProperty::Type::STRING_PROP) {
+      property_storage.string_properties.push_back(
+          odb::dbStringProperty::find(inst, property->getName().c_str())
+              ->getValue());
+      property_storage.name_of_string_properties.push_back(property->getName());
+    } else if (property->getType() == odb::dbProperty::Type::DOUBLE_PROP) {
+      property_storage.double_properties.push_back(
+          odb::dbDoubleProperty::find(inst, property->getName().c_str())
+              ->getValue());
+      property_storage.name_of_double_properties.push_back(property->getName());
+    } else if (property->getType() == odb::dbProperty::Type::BOOL_PROP) {
+      property_storage.bool_properties.push_back(
+          odb::dbBoolProperty::find(inst, property->getName().c_str())
+              ->getValue());
+      property_storage.name_of_bool_properties.push_back(property->getName());
+    }
+  }
+  // destory the instance
+  odb::dbInst::destroy(inst);
+
+  // remake the instance with new master
+  inst = odb::dbInst::create(block, master, inst_name.c_str());
+  for (const auto& net_info : net_info_container) {
+    auto iterm = inst->findITerm(net_info.first.c_str());
+    assert(iterm);
+    iterm->connect(net_info.second);
+  }
+
+  // set 4 kinds of properties
+  for (int i = 0; i < property_storage.int_properties.size(); ++i) {
+    odb::dbIntProperty::create(
+        inst,
+        property_storage.name_of_int_properties.at(i).c_str(),
+        property_storage.int_properties.at(i));
+  }
+  for (int i = 0; i < property_storage.string_properties.size(); ++i) {
+    odb::dbStringProperty::create(
+        inst,
+        property_storage.name_of_string_properties.at(i).c_str(),
+        property_storage.string_properties.at(i).c_str());
+  }
+  for (int i = 0; i < property_storage.double_properties.size(); ++i) {
+    odb::dbDoubleProperty::create(
+        inst,
+        property_storage.name_of_double_properties.at(i).c_str(),
+        property_storage.double_properties.at(i));
+  }
+  for (int i = 0; i < property_storage.bool_properties.size(); ++i) {
+    odb::dbBoolProperty::create(
+        inst,
+        property_storage.name_of_bool_properties.at(i).c_str(),
+        property_storage.bool_properties.at(i));
+  }
+}
+odb::dbLib* MultiDieManager::findLibByPartitionInfo(int value)
+{
+  int iter = 0;
+  for (auto lib_iter : db_->getLibs()) {
+    if (iter == value) {
+      return lib_iter;
+    }
+    iter++;
+  }
+  return nullptr;  // or handle appropriately if lib is not found
 }
 
 }  // namespace mdm
