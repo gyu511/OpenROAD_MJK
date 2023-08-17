@@ -235,6 +235,13 @@ void MultiDieManager::switchMaster(odb::dbInst* inst, odb::dbMaster* master)
   string inst_name = inst->getName();
   auto block = inst->getBlock();  // TODO: edit here after revised odb
 
+  // save placement information
+  odb::dbPlacementStatus placement_status = inst->getPlacementStatus();
+  odb::Point location;
+  if (placement_status != odb::dbPlacementStatus::NONE) {
+    location = inst->getLocation();
+  }
+
   // save connected net information
   for (auto iTerm : inst->getITerms()) {
     if (iTerm->getNet() == nullptr) {
@@ -285,6 +292,14 @@ void MultiDieManager::switchMaster(odb::dbInst* inst, odb::dbMaster* master)
 
   // remake the instance with new master
   inst = odb::dbInst::create(block, master, inst_name.c_str());
+
+  // set placement information
+  inst->setPlacementStatus(placement_status);
+  if (placement_status) {
+    inst->setLocation(location.getX(), location.getY());
+  }
+
+  // set connected net information
   for (const auto& net_info : net_info_container) {
     auto iterm = inst->findITerm(net_info.first.c_str());
     assert(iterm);
