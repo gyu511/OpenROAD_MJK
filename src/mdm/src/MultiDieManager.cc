@@ -71,11 +71,11 @@ void MultiDieManager::makeShrunkLefs()
   float shrink_length_ratio = 1.0;
   for (int i = 0; i < number_of_die_; ++i) {
     shrink_length_ratios_.push_back(shrink_length_ratio);
-    shrink_length_ratio = std::sqrt(shrink_length_ratio);
     if (i == 0) {
       continue;
     }
     string die_name = "Die" + to_string(i);
+    shrink_length_ratio = std::sqrt(shrink_area_ratio) * shrink_length_ratio;
     makeShrunkLef(die_name, shrink_length_ratio);
   }
 }
@@ -289,6 +289,10 @@ void MultiDieManager::switchMaster(odb::dbInst* inst, odb::dbMaster* master)
       property_storage.name_of_bool_properties.push_back(property->getName());
     }
   }
+
+  // save the group information
+  odb::dbGroup* group = inst->getGroup();
+
   // destory the instance
   odb::dbInst::destroy(inst);
 
@@ -333,6 +337,9 @@ void MultiDieManager::switchMaster(odb::dbInst* inst, odb::dbMaster* master)
         property_storage.name_of_bool_properties.at(i).c_str(),
         property_storage.bool_properties.at(i));
   }
+
+  // set the group
+  group->addInst(inst);
 }
 odb::dbLib* MultiDieManager::findLibByPartitionInfo(int value)
 {
