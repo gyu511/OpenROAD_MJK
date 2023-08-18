@@ -97,6 +97,13 @@ class MultiDieManager
   odb::dbLib* findLibByPartitionInfo(int value);
 
 
+  /**
+   * Reading function for partitioning information in `par` is not work in proper way.
+   * So make this function as temporal solution.
+   * */
+  void readPartitionInfo(std::string file_name);
+
+
   odb::dbDatabase* db_{};
   utl::Logger* logger_{};
   par::PartitionMgr* partition_mgr_{};

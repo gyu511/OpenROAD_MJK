@@ -59,6 +59,8 @@ void MultiDieManager::set3DIC(int number_of_die,
 }
 void MultiDieManager::setUp()
 {
+  readPartitionInfo("partitionInfo/partitionInfo1.par");  // temporal function
+
   makeShrunkLefs();
   partitionInstances();
   switchMasters();
@@ -342,6 +344,31 @@ odb::dbLib* MultiDieManager::findLibByPartitionInfo(int value)
     iter++;
   }
   return nullptr;  // or handle appropriately if lib is not found
+}
+void MultiDieManager::readPartitionInfo(std::string file_name)
+{
+  // read partition file and apply it
+  ifstream partition_file(file_name);
+  if (!partition_file.is_open()) {
+    logger_->error(utl::MDM, 4, "Cannot open partition file");
+  }
+  string line;
+  while (getline(partition_file, line)) {
+    istringstream iss(line);
+    string inst_name;
+    int partition_id;
+    iss >> inst_name >> partition_id;
+    odb::dbInst* inst;
+    for (auto chip : db_->getChips()) {
+      inst = chip->getBlock()->findInst(inst_name.c_str());
+    }
+    if (inst == nullptr) {
+      logger_->error(
+          utl::MDM, 5, "Cannot find instance {} in the database", inst_name);
+    }
+    odb::dbIntProperty::create(inst, "partition_id", partition_id);
+  }
+  partition_file.close();
 }
 
 }  // namespace mdm
