@@ -42,6 +42,7 @@
 #include "gpl/Replace.h"
 #include "odb/db.h"
 #include "par/PartitionMgr.h"
+#include "dpl/Opendp.h"
 
 namespace mdm {
 class HybridBond;
@@ -64,7 +65,7 @@ class MultiDieManager
                uint hybrid_bond_space_x = 10,
                uint hybrid_bond_space_y = 10,
                float area_ratio = 0.5);
-
+  void twoDieDetailPlacement();
  private:
   void setUp();
 
@@ -104,6 +105,16 @@ class MultiDieManager
   void readPartitionInfo(std::string file_name);
 
 
+  enum WHICH_DIE{
+    TOP,
+    BOTTOM
+  };
+  void constructionDbForOneDie(WHICH_DIE which_die);
+  void detailPlacement();
+  void applyDetailPlacementResult();
+
+
+
   odb::dbDatabase* db_{};
   utl::Logger* logger_{};
   par::PartitionMgr* partition_mgr_{};
@@ -117,6 +128,9 @@ class MultiDieManager
   // Hybrid Bond information --> This would be absorbed in odb later.
   std::vector<HybridBond> hybridbond_set_;
   HybridBondInfo hybrid_bond_info_{};
+
+  // temporal variables
+  odb::dbDatabase* target_db_{};
 };
 }  // namespace mdm
 

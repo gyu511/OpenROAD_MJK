@@ -35,3 +35,7 @@ proc set_3D_IC { args } {
   mdm::set_3D_IC $die_number
 }
 
+proc mdm::two_die_detail_placement { } {
+  mdm::twoDieDetailPlace
+}
+

@@ -85,9 +85,11 @@ void Opendp::detailedPlacement()
   // y axis dummycell insertion
   groupInitPixels();
 
+/*
   if (!groups_.empty()) {
     placeGroups();
   }
+*/
   place();
 
   if (debug_observer_) {

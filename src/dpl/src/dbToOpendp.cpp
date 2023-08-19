@@ -68,7 +68,7 @@ void Opendp::importDb()
   checkOneSiteDbMaster();
   makeMacros();
   makeCells();
-  makeGroups();
+  // makeGroups();
 }
 
 void Opendp::importClear()
@@ -226,6 +226,9 @@ void Opendp::makeGroups()
   auto db_groups = block_->getGroups();
   int reserve_size = 0;
   for (auto db_group : db_groups) {
+    if (strstr(db_group->getName(), "Die")) {
+      continue;
+    }
     dbRegion* parent = db_group->getRegion();
     std::unordered_set<int> unique_heights;
     if (parent) {
@@ -239,6 +242,9 @@ void Opendp::makeGroups()
   groups_.reserve(reserve_size);
 
   for (auto db_group : db_groups) {
+    if (strstr(db_group->getName(), "Die")) {
+      continue;
+    }
     dbRegion* parent = db_group->getRegion();
     if (parent) {
       std::set<int> unique_heights;
