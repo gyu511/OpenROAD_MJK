@@ -61,9 +61,9 @@ void MultiDieManager::setUp()
 {
   readPartitionInfo("partitionInfo/partitionInfo1.par");  // temporal function
 
-  makeShrunkLefs();
+  // makeShrunkLefs();
   partitionInstances();
-  switchMasters();
+  // switchMasters();
 }
 
 void MultiDieManager::makeShrunkLefs()
@@ -98,15 +98,19 @@ void MultiDieManager::makeShrunkLef(const string& which_die,
     auto lib = odb::dbLib::create(
         db_, (lib_original->getName() + which_die).c_str(), tech);
     lib->setLefUnits(lib_original->getLefUnits());
-    for (auto site_original : lib_original->getSites()) {
-      auto site = odb::dbSite::create(
-          lib, (site_original->getName() + which_die).c_str());
-      // apply shrink factor on site
-      site->setWidth(static_cast<int>(
-          static_cast<float>(site_original->getWidth()) * shrunk_ratio));
-      site->setHeight(static_cast<int>(
-          static_cast<float>(site_original->getHeight()) * shrunk_ratio));
-    }
+    // create master when you can handle multi-die technology;
+    // after revised odb version
+    /*
+        for (auto site_original : lib_original->getSites()) {
+          auto site = odb::dbSite::create(
+              lib, (site_original->getName() + which_die).c_str());
+          // apply shrink factor on site
+          site->setWidth(static_cast<int>(
+              static_cast<float>(site_original->getWidth()) * shrunk_ratio));
+          site->setHeight(static_cast<int>(
+              static_cast<float>(site_original->getHeight()) * shrunk_ratio));
+        }
+    */
 
     for (auto master_original : lib_original->getMasters()) {
       odb::dbMaster* master
@@ -132,9 +136,7 @@ void MultiDieManager::makeShrunkLef(const string& which_die,
                                          * shrunk_ratio);
       master->setOrigin(master_origin_x, master_origin_y);
 
-      std::string site_name = master_original->getSite()->getName() + which_die;
-      auto site = lib->findSite(site_name.c_str());
-      master->setSite(site);
+      master->setSite(master_original->getSite());
 
       if (master_original->getSymmetryX())
         master->setSymmetryX();
