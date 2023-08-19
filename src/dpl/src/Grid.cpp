@@ -192,7 +192,7 @@ void Opendp::initGrid()
   }
 }
 
-void Opendp::deleteGrid()
+void Opendp::DieVars::deleteGrid()
 {
   grid_.clear();
 }

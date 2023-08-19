@@ -103,7 +103,35 @@ void Opendp::init(dbDatabase* db, Logger* logger)
 void Opendp::initBlock()
 {
   block_ = db_->getChip()->getBlock();
-  core_ = block_->getCoreArea();
+
+  // This should be changed
+  // after updated odb version (which can handle multi-die and multi-tech)
+  for (auto& die_vars : die_vars_set_) {
+    die_vars.core_ = block_->getCoreArea();
+  }
+}
+
+void Opendp::initDieVars()
+{
+  // After updated odb version (which can handle multi-die and multi-tech)
+  // it will distinguish the number of die by
+  // db_->getChips().size() or db_->getTechs().size()
+  // Currently, the die separation is implemented the dbGroup in MDM,
+  // so we will use the information from dbGroup.
+
+  if (db_->getChip()->getBlock()->getGroups().empty()) {
+    die_vars_set_.resize(0, DieVars(this, db_));
+  } else {
+    int die_cnt = 0;
+    // if there is any group which have the name of "which_die",
+    // then consider it as the die and count the number of die.
+    for (auto group : db_->getChip()->getBlock()->getGroups()) {
+      if (std::strcmp(group->getName(), "which_die") == 0) {
+        die_cnt++;
+      }
+    }
+    die_vars_set_.resize(die_cnt, DieVars(this, db_));
+  }
 }
 
 void Opendp::setPaddingGlobal(int left, int right)
@@ -138,50 +166,52 @@ void Opendp::detailedPlacement(int max_displacement_x,
                                const std::string& report_file_name,
                                bool disallow_one_site_gaps)
 {
-  importDb();
-
-  if (have_fillers_) {
-    logger_->warn(DPL, 37, "Use remove_fillers before detailed placement.");
-  }
-
-  if (max_displacement_x == 0 || max_displacement_y == 0) {
-    // defaults
-    max_displacement_x_ = 500;
-    max_displacement_y_ = 100;
-  } else {
-    max_displacement_x_ = max_displacement_x;
-    max_displacement_y_ = max_displacement_y;
-  }
-  disallow_one_site_gaps_ = disallow_one_site_gaps;
-  if (!have_one_site_cells_) {
-    // If 1-site fill cell is not detected && no disallow_one_site_gaps flag:
-    // warn the user then continue as normal
-    if (!disallow_one_site_gaps_) {
-      logger_->warn(DPL,
-                    38,
-                    "No 1-site fill cells detected.  To remove 1-site gaps use "
-                    "the -disallow_one_site_gaps flag.");
-    }
-  }
-  hpwl_before_ = hpwl();
-  detailedPlacement();
-  // Save displacement stats before updating instance DB locations.
-  findDisplacementStats();
-  updateDbInstLocations();
-  if (!placement_failures_.empty()) {
-    logger_->info(DPL,
-                  34,
-                  "Detailed placement failed on the following {} instances:",
-                  placement_failures_.size());
-    for (auto cell : placement_failures_) {
-      logger_->info(DPL, 35, " {}", cell->name());
+  initDieVars();
+  for (auto& die_vars : die_vars_set_) {
+    die_vars.importDb();
+    if (die_vars.have_fillers_) {
+      logger_->warn(DPL, 37, "Use remove_fillers before detailed placement.");
     }
 
-    if (!report_file_name.empty()) {
-      writeJsonReport(
-          report_file_name, {}, {}, {}, {}, {}, {}, placement_failures_);
+    if (max_displacement_x == 0 || max_displacement_y == 0) {
+      // defaults
+      die_vars.max_displacement_x_ = 500;
+      die_vars.max_displacement_y_ = 100;
+    } else {
+      die_vars.max_displacement_x_ = max_displacement_x;
+      die_vars.max_displacement_y_ = max_displacement_y;
     }
-    logger_->error(DPL, 36, "Detailed placement failed.");
+    die_vars.disallow_one_site_gaps_ = disallow_one_site_gaps;
+    if (!die_vars.have_one_site_cells_) {
+      // If 1-site fill cell is not detected && no disallow_one_site_gaps flag:
+      // warn the user then continue as normal
+      if (!die_vars.disallow_one_site_gaps_) {
+        logger_->warn(DPL,
+                      38,
+                      "No 1-site fill cells detected.  To remove 1-site gaps use "
+                      "the -disallow_one_site_gaps flag.");
+      }
+    }
+    die_vars.hpwl_before_ = hpwl();
+    die_vars.detailedPlacement();
+    // Save displacement stats before updating instance DB locations.
+    die_vars.findDisplacementStats();
+    die_vars.1();
+    if (!die_vars.placement_failures_.empty()) {
+      logger_->info(DPL,
+                    34,
+                    "Detailed placement failed on the following {} instances:",
+                    die_vars.placement_failures_.size());
+      for (auto cell : die_vars.placement_failures_) {
+        logger_->info(DPL, 35, " {}", cell->name());
+      }
+
+      if (!report_file_name.empty()) {
+        writeJsonReport(
+            report_file_name, {}, {}, {}, {}, {}, {}, die_vars.placement_failures_);
+      }
+      logger_->error(DPL, 36, "Detailed placement failed.");
+    }
   }
 }
 
@@ -207,25 +237,32 @@ void Opendp::updateDbInstLocations()
 
 void Opendp::reportLegalizationStats() const
 {
+  for(auto& die_vars : die_vars_set_) {
+    die_vars.reportLegalizationStats();
+  }
+}
+
+void Opendp::DieVars::reportLegalizationStats() const
+{
   logger_->report("Placement Analysis");
   logger_->report("---------------------------------");
   logger_->report("total displacement   {:10.1f} u",
-                  dbuToMicrons(displacement_sum_));
+                  parent_->dbuToMicrons(displacement_sum_));
   logger_->metric("design__instance__displacement__total",
-                  dbuToMicrons(displacement_sum_));
+                  parent_->dbuToMicrons(displacement_sum_));
   logger_->report("average displacement {:10.1f} u",
-                  dbuToMicrons(displacement_avg_));
+                  parent_->dbuToMicrons(displacement_avg_));
   logger_->metric("design__instance__displacement__mean",
-                  dbuToMicrons(displacement_avg_));
+                  parent_->dbuToMicrons(displacement_avg_));
   logger_->report("max displacement     {:10.1f} u",
-                  dbuToMicrons(displacement_max_));
+                  parent_->dbuToMicrons(displacement_max_));
   logger_->metric("design__instance__displacement__max",
-                  dbuToMicrons(displacement_max_));
+                  parent_->dbuToMicrons(displacement_max_));
   logger_->report("original HPWL        {:10.1f} u",
-                  dbuToMicrons(hpwl_before_));
-  double hpwl_legal = hpwl();
-  logger_->report("legalized HPWL       {:10.1f} u", dbuToMicrons(hpwl_legal));
-  logger_->metric("route__wirelength__estimated", dbuToMicrons(hpwl_legal));
+                  parent_->dbuToMicrons(hpwl_before_));
+  double hpwl_legal = parent_->hpwl();
+  logger_->report("legalized HPWL       {:10.1f} u", parent_->dbuToMicrons(hpwl_legal));
+  logger_->metric("route__wirelength__estimated", parent_->dbuToMicrons(hpwl_legal));
   int hpwl_delta
       = (hpwl_before_ == 0.0)
             ? 0.0
@@ -233,6 +270,7 @@ void Opendp::reportLegalizationStats() const
   logger_->report("delta HPWL           {:10} %", hpwl_delta);
   logger_->report("");
 }
+
 
 ////////////////////////////////////////////////////////////////
 

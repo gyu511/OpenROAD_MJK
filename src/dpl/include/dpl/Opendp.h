@@ -252,21 +252,13 @@ class Opendp
 
  private:
   friend class OpendpTest_IsPlaced_Test;
-  void importDb();
-  void importClear();
-  Rect getBbox(dbInst* inst);
-  void makeMacros();
-  void examineRows();
-  void makeCells();
+  void initDieVars();
   static bool isPlacedType(dbMasterType type);
-  void makeGroups();
   double dbuToMicrons(int64_t dbu) const;
   double dbuAreaToMicrons(int64_t dbu_area) const;
   bool isFixed(const Cell* cell) const;  // fixed cell or not
   bool isMultiRow(const Cell* cell) const;
   void updateDbInstLocations();
-
-  void makeMaster(Master* master, dbMaster* db_master);
 
   void initGrid();
   void initGridLayersMap();
@@ -391,7 +383,6 @@ class Opendp
                 int* y) const;
   int rectDist(const Cell* cell, const Rect* rect) const;
   bool havePadding() const;
-  void checkOneSiteDbMaster();
   void deleteGrid();
   Pixel* gridPixel(int grid_idx, int x, int y) const;
   // Cell initial location wrt core origin.
@@ -474,42 +465,75 @@ class Opendp
   InstPaddingMap inst_padding_map_;
   MasterPaddingMap master_padding_map_;
 
-  vector<Cell> cells_;
-  vector<Group> groups_;
+  class DieVars
+  {
+   private:
+    Opendp* parent_;
+    odb::dbDatabase* db_;
+    odb::dbBlock* block_;
+    utl::Logger* logger_;
 
-  map<const dbMaster*, Master> db_master_map_;
-  map<int, GridInfo> grid_info_map_;
-  std::vector<GridInfo*> grid_info_vector_;
-  map<dbInst*, Cell*> db_inst_map_;
+   public:
+    friend class Opendp;
 
-  Rect core_;
-  int row_height_ = 0;  // dbu
-  int site_width_ = 0;  // dbu
-  int row_count_ = 0;
-  int row_site_count_ = 0;
-  int have_multi_row_cells_ = 0;
-  int max_displacement_x_ = 0;  // sites
-  int max_displacement_y_ = 0;  // sites
-  bool disallow_one_site_gaps_ = false;
-  vector<Cell*> placement_failures_;
+    DieVars(Opendp* parent, odb::dbDatabase* db, Logger* logger)
+        : parent_(parent), db_(db), logger_(logger)
+    {
+    }
+    void importDb();
+    void importClear();
+    void makeMacros();
+    void examineRows();
+    void checkOneSiteDbMaster();
+    void makeCells();
+    void makeMaster(Master* master, dbMaster* db_master);
+    void makeGroups();
 
-  // 3D pixel grid
-  Grid grid_;
-  Cell dummy_cell_;
-  RtreeBox regions_rtree;
+    void deleteGrid();
+    Rect getBbox(dbInst* inst);
 
-  // Filler placement.
-  // gap (in sites) -> seq of masters
-  GapFillers gap_fillers_;
-  int filler_count_ = 0;
-  bool have_fillers_ = false;
-  bool have_one_site_cells_ = false;
 
-  // Results saved for optional reporting.
-  int64_t hpwl_before_ = 0;
-  int64_t displacement_avg_ = 0;
-  int64_t displacement_sum_ = 0;
-  int64_t displacement_max_ = 0;
+    void reportLegalizationStats() const;
+
+    // let them public before getting feedback from Matt
+    vector<Cell> cells_;
+    vector<Group> groups_;
+
+    map<const dbMaster*, Master> db_master_map_;
+    map<int, GridInfo> grid_info_map_;
+    std::vector<GridInfo*> grid_info_vector_;
+    map<dbInst*, Cell*> db_inst_map_;
+
+    Rect core_;
+    int row_height_ = 0;  // dbu
+    int site_width_ = 0;  // dbu
+    int row_count_ = 0;
+    int row_site_count_ = 0;
+    int have_multi_row_cells_ = 0;
+    int max_displacement_x_ = 0;  // sites
+    int max_displacement_y_ = 0;  // sites
+    bool disallow_one_site_gaps_ = false;
+    vector<Cell*> placement_failures_;
+
+    // 3D pixel grid
+    Grid grid_;
+    Cell dummy_cell_;
+    RtreeBox regions_rtree;
+
+    // Filler placement.
+    // gap (in sites) -> seq of masters
+    GapFillers gap_fillers_;
+    int filler_count_ = 0;
+    bool have_fillers_ = false;
+    bool have_one_site_cells_ = false;
+
+    // Results saved for optional reporting.
+    int64_t hpwl_before_ = 0;
+    int64_t displacement_avg_ = 0;
+    int64_t displacement_sum_ = 0;
+    int64_t displacement_max_ = 0;
+  };
+  vector<DieVars> die_vars_set_;
 
   // Optimiize mirroring.
   NetBoxMap net_box_map_;

@@ -56,7 +56,7 @@ using odb::Rect;
 
 static bool swapWidthHeight(const dbOrientType& orient);
 
-void Opendp::importDb()
+void Opendp::DieVars::importDb()
 {
   block_ = db_->getChip()->getBlock();
   core_ = block_->getCoreArea();
@@ -71,7 +71,7 @@ void Opendp::importDb()
   makeGroups();
 }
 
-void Opendp::importClear()
+void Opendp::DieVars::importClear()
 {
   db_master_map_.clear();
   cells_.clear();
@@ -81,7 +81,7 @@ void Opendp::importClear()
   have_multi_row_cells_ = false;
 }
 
-void Opendp::checkOneSiteDbMaster()
+void Opendp::DieVars::checkOneSiteDbMaster()
 {
   vector<dbMaster*> masters;
   auto db_libs = db_->getLibs();
@@ -91,7 +91,7 @@ void Opendp::checkOneSiteDbMaster()
     }
     auto masters = db_lib->getMasters();
     for (auto db_master : masters) {
-      if (isOneSiteCell(db_master)) {
+      if (parent_->isOneSiteCell(db_master)) {
         have_one_site_cells_ = true;
         break;
       }
@@ -99,7 +99,7 @@ void Opendp::checkOneSiteDbMaster()
   }
 }
 
-void Opendp::makeMacros()
+void Opendp::DieVars::makeMacros()
 {
   vector<dbMaster*> masters;
   block_->getMasters(masters);
@@ -109,14 +109,14 @@ void Opendp::makeMacros()
   }
 }
 
-void Opendp::makeMaster(Master* master, dbMaster* db_master)
+void Opendp::DieVars::makeMaster(Master* master, dbMaster* db_master)
 {
   const int master_height = db_master->getHeight();
   master->is_multi_row
       = (master_height != row_height_ && master_height % row_height_ == 0);
 }
 
-void Opendp::examineRows()
+void Opendp::DieVars::examineRows()
 {
   std::vector<dbRow*> rows;
   auto block_rows = block_->getRows();
@@ -147,7 +147,7 @@ void Opendp::examineRows()
   row_count_ = divFloor(core_.dy(), row_height_);
 }
 
-void Opendp::makeCells()
+void Opendp::DieVars::makeCells()
 {
   auto db_insts = block_->getInsts();
   cells_.reserve(db_insts.size());
@@ -166,7 +166,7 @@ void Opendp::makeCells()
       cell.y_ = bbox.yMin();
       cell.orient_ = db_inst->getOrient();
       // Cell is already placed if it is FIXED.
-      cell.is_placed_ = isFixed(&cell);
+      cell.is_placed_ = parent_->isFixed(&cell);
 
       Master& master = db_master_map_[db_master];
       // We only want to set this if we have multi-row cells to
@@ -175,13 +175,13 @@ void Opendp::makeCells()
         have_multi_row_cells_ = true;
       }
     }
-    if (isFiller(db_inst)) {
+    if (parent_->isFiller(db_inst)) {
       have_fillers_ = true;
     }
   }
 }
 
-Rect Opendp::getBbox(dbInst* inst)
+Rect Opendp::DieVars::getBbox(dbInst* inst)
 {
   dbMaster* master = inst->getMaster();
 
@@ -218,7 +218,7 @@ static bool swapWidthHeight(const dbOrientType& orient)
   return false;
 }
 
-void Opendp::makeGroups()
+void Opendp::DieVars::makeGroups()
 {
   regions_rtree.clear();
   // preallocate groups so it does not grow when push_back is called
