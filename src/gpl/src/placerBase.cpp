@@ -101,7 +101,7 @@ Instance::Instance(odb::dbInst* inst,
 
   if (inst->getMaster()->getType().isBlock()) {
     is_macro_ = true;
-  } else if (bbox->getDY() > 6 * site_height) {
+  } /*else if (bbox->getDY() > 6 * site_height) {
     is_macro_ = true;
     logger->warn(GPL,
                  134,
@@ -109,7 +109,7 @@ Instance::Instance(odb::dbInst* inst,
                  "than {} rows tall.  It will be treated as a macro.",
                  inst->getMaster()->getName(),
                  row_limit);
-  }
+  }*/
 }
 
 // for dummy instances
