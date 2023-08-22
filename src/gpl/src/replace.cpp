@@ -41,7 +41,7 @@
 #include "odb/db.h"
 #include "placerBase.h"
 #include "routeBase.h"
-#include "rsz/Resizer.hh"
+// #include "rsz/Resizer.hh"
 #include "timingBase.h"
 #include "utl/Logger.h"
 
@@ -112,8 +112,10 @@ void Replace::init(odb::dbDatabase* odb,
                    utl::Logger* logger)
 {
   db_ = odb;
+/*
   rs_ = resizer;
   fr_ = router;
+*/
   log_ = logger;
 }
 
@@ -345,6 +347,7 @@ bool Replace::initNesterovPlace()
     }
   }
 
+/*
   if (!rb_) {
     RouteBaseVars rbVars;
     rbVars.maxDensity = routabilityMaxDensity_;
@@ -366,6 +369,7 @@ bool Replace::initNesterovPlace()
     tb_->setTimingNetWeightOverflows(timingNetWeightOverflows_);
     tb_->setTimingNetWeightMax(timingNetWeightMax_);
   }
+*/
 
   if (!np_) {
     NesterovPlaceVars npVars;
@@ -403,8 +407,10 @@ int Replace::doNesterovPlace(int start_iter)
   if (!initNesterovPlace()) {
     return 0;
   }
+/*
   if (timingDrivenMode_)
     rs_->resizeSlackPreamble();
+*/
   return np_->doNesterovPlace(start_iter);
 }
 

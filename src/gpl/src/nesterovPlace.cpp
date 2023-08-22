@@ -39,7 +39,7 @@
 #include <iostream>
 #include <sstream>
 
-#include "graphics.h"
+// #include "graphics.h"
 #include "nesterovBase.h"
 #include "odb/db.h"
 #include "placerBase.h"
@@ -445,6 +445,7 @@ int NesterovPlace::doNesterovPlace(int start_iter)
     }
 */
 
+/*
     // timing driven feature
     // do reweight on timing-critical nets.
     if (npVars_.timingDrivenMode
@@ -465,6 +466,7 @@ int NesterovPlace::doNesterovPlace(int start_iter)
         npVars_.timingDrivenMode = false;
       }
     }
+*/
 
     // diverge detection on
     // large max_phi_cof value + large design
@@ -485,6 +487,7 @@ int NesterovPlace::doNesterovPlace(int start_iter)
 
       // revert back to the original rb solutions
       // one more opportunity
+/*
       if (!isDivergeTriedRevert && rb_->numCall() >= 1) {
         // get back to the working rc size
         rb_->revertGCellSizeToMinRc();
@@ -509,8 +512,10 @@ int NesterovPlace::doNesterovPlace(int start_iter)
         // no way to revert
         break;
       }
+*/
     }
 
+/*
     if (!isSnapshotSaved && npVars_.routabilityDrivenMode
         && 0.6 >= average_overflow_unscaled_) {
       snapshotWlCoefX = wireLengthCoefX_;
@@ -524,7 +529,9 @@ int NesterovPlace::doNesterovPlace(int start_iter)
 
       log_->report("[NesterovSolve] Snapshot saved at iter = {}", iter);
     }
+*/
 
+/*
     // check routability using GR
     if (npVars_.routabilityDrivenMode && isRoutabilityNeed_
         && npVars_.routabilityCheckOverflow >= average_overflow_unscaled_) {
@@ -552,6 +559,7 @@ int NesterovPlace::doNesterovPlace(int start_iter)
         log_->report("[NesterovSolve] Revert back to snapshot coordi");
       }
     }
+*/
 
     // check each for converge and if all are converged then stop
     int numConverge = 0;

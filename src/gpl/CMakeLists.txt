@@ -60,8 +60,8 @@ target_sources(gpl
     src/fftsg.cpp
     src/fftsg2d.cpp
     src/point.cpp
-    src/routeBase.cpp
-    src/timingBase.cpp
+    # src/routeBase.cpp
+    # src/timingBase.cpp
     # src/graphics.cpp
     src/solver.cpp
 )
@@ -80,8 +80,8 @@ target_link_libraries(gpl
     # gui
     odb
     OpenSTA
-    rsz
-    grt
+    # rsz
+    # grt
 )
 
 # Allow users to use GPU or not
@@ -132,11 +132,11 @@ if (Python3_FOUND AND BUILD_PYTHON)
     PUBLIC
       utl
       Eigen3::Eigen
-      gui
+      # gui
       odb
       OpenSTA
-      rsz
-      grt
+      # rsz
+      # grt
   )
 
 endif()

@@ -87,10 +87,12 @@ void InitialPlace::doBicgstabPlace()
   ResidualError error;
   bool run_cpu = true;
 
+/*
   std::unique_ptr<Graphics> graphics;
   if (ipVars_.debug && Graphics::guiActive()) {
     graphics = make_unique<Graphics>(log_, pbc_, pbVec_);
   }
+*/
 
   placeInstsCenter();
 
@@ -140,9 +142,11 @@ void InitialPlace::doBicgstabPlace()
                  pbc_->hpwl());
     updateCoordi();
 
+/*
     if (graphics) {
       graphics->cellPlot(true);
     }
+*/
 
     if (error_max <= 1e-5 && iter >= 5) {
       break;

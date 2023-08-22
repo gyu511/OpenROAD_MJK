@@ -42,7 +42,7 @@
 #ifdef ENABLE_GPU
 #include "gpuSolver.h"
 #endif
-#include "graphics.h"
+// #include "graphics.h"
 #include "odb/db.h"
 #include "placerBase.h"
 #include "utl/Logger.h"
