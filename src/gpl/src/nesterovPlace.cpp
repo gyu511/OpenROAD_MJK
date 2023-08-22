@@ -91,6 +91,7 @@ NesterovPlace::NesterovPlace(const NesterovPlaceVars& npVars,
   tb_ = tb;
   log_ = log;
 
+/*
   if (npVars.debug && Graphics::guiActive()) {
     graphics_ = make_unique<Graphics>(log_,
                                       this,
@@ -101,6 +102,7 @@ NesterovPlace::NesterovPlace(const NesterovPlaceVars& npVars,
                                       npVars_.debug_draw_bins,
                                       npVars.debug_inst);
   }
+*/
   init();
 }
 
@@ -326,10 +328,12 @@ int NesterovPlace::doNesterovPlace(int start_iter)
     return 0;
   }
 
+/*
   if (graphics_) {
     updateDb();
     graphics_->cellPlot(true);
   }
+*/
 
   // snapshot saving detection
   bool isSnapshotSaved = false;
@@ -428,6 +432,7 @@ int NesterovPlace::doNesterovPlace(int start_iter)
     // For JPEG Saving
     // debug
 
+/*
     if (graphics_) {
       bool update
           = (iter == 0 || (iter + 1) % npVars_.debug_update_iterations == 0);
@@ -438,6 +443,7 @@ int NesterovPlace::doNesterovPlace(int start_iter)
         graphics_->cellPlot(pause);
       }
     }
+*/
 
     // timing driven feature
     // do reweight on timing-critical nets.
@@ -566,10 +572,12 @@ int NesterovPlace::doNesterovPlace(int start_iter)
     log_->error(GPL, divergeCode_, divergeMsg_);
   }
 
+/*
   if (graphics_) {
     graphics_->status("End placement");
     graphics_->cellPlot(true);
   }
+*/
 
   return iter;
 }

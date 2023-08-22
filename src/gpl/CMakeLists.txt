@@ -62,7 +62,7 @@ target_sources(gpl
     src/point.cpp
     src/routeBase.cpp
     src/timingBase.cpp
-    src/graphics.cpp
+    # src/graphics.cpp
     src/solver.cpp
 )
 
@@ -77,7 +77,7 @@ target_link_libraries(gpl
   PRIVATE
     utl
     Eigen3::Eigen
-    gui
+    # gui
     odb
     OpenSTA
     rsz

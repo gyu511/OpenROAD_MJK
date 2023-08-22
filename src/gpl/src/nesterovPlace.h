@@ -55,7 +55,7 @@ class PlacerBaseCommon;
 class Instance;
 class RouteBase;
 class TimingBase;
-class Graphics;
+// class Graphics;
 
 class NesterovPlace
 {
@@ -99,7 +99,7 @@ class NesterovPlace
   std::shared_ptr<RouteBase> rb_;
   std::shared_ptr<TimingBase> tb_;
   NesterovPlaceVars npVars_;
-  std::unique_ptr<Graphics> graphics_;
+  // std::unique_ptr<Graphics> graphics_;
 
   float total_sum_overflow_;
   float total_sum_overflow_unscaled_;
