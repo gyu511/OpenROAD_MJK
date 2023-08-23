@@ -40,7 +40,7 @@ void
 replace_nesterov_place_cmd()
 {
   Replace* replace = getReplace();
-  replace->doNesterovPlace();
+  replace->doNesterovPlace(0, "");
 }
 
 void

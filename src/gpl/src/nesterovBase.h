@@ -39,6 +39,7 @@
 #include <vector>
 
 #include "point.h"
+#include "Drawer.h"
 
 namespace odb {
 class dbInst;

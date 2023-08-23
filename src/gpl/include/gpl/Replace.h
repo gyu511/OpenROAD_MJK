@@ -84,7 +84,7 @@ class Replace
   void doIncrementalPlace();
   void doInitialPlace();
 
-  int doNesterovPlace(int start_iter = 0);
+  int doNesterovPlace(int start_iter, const std::string &img_file_path);
 
   // Initial Place param settings
   void setInitialPlaceMaxIter(int iter);

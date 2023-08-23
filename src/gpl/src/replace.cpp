@@ -226,7 +226,7 @@ void Replace::doIncrementalPlace()
       pb->unlockAll();
     }
     // pbc_->unlockAll();
-    doNesterovPlace();
+    doNesterovPlace(0, "");
     return;
   }
 
@@ -243,7 +243,7 @@ void Replace::doIncrementalPlace()
   int previous_max_iter = nesterovPlaceMaxIter_;
   initNesterovPlace();
   setNesterovPlaceMaxIter(300);
-  int iter = doNesterovPlace();
+  int iter = doNesterovPlace(0, "");
   setNesterovPlaceMaxIter(previous_max_iter);
 
   // Finish the overflow resolution from the rough placement
@@ -254,7 +254,7 @@ void Replace::doIncrementalPlace()
 
   setTargetOverflow(previous_overflow);
   if (previous_overflow < rough_oveflow) {
-    doNesterovPlace(iter + 1);
+    doNesterovPlace(iter + 1, "");
   }
 }
 
@@ -402,11 +402,12 @@ bool Replace::initNesterovPlace()
   return true;
 }
 
-int Replace::doNesterovPlace(int start_iter)
+int Replace::doNesterovPlace(int start_iter, const std::string &img_file_path)
 {
   if (!initNesterovPlace()) {
     return 0;
   }
+  np_->setImageFilePath(img_file_path);
 /*
   if (timingDrivenMode_)
     rs_->resizeSlackPreamble();

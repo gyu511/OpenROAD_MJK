@@ -49,8 +49,6 @@
 
 namespace gpl {
 using namespace std;
-
-using namespace std;
 using utl::GPL;
 
 NesterovPlace::NesterovPlace()
@@ -68,20 +66,18 @@ NesterovPlace::NesterovPlace()
       isRoutabilityNeed_(true),
       divergeCode_(0),
       recursionCntWlCoef_(0),
-      recursionCntInitSLPCoef_(0)
-{
+      recursionCntInitSLPCoef_(0) {
 }
 
-NesterovPlace::NesterovPlace(const NesterovPlaceVars& npVars,
-                             const std::shared_ptr<PlacerBaseCommon>& pbc,
-                             const std::shared_ptr<NesterovBaseCommon>& nbc,
-                             std::vector<std::shared_ptr<PlacerBase>>& pbVec,
-                             std::vector<std::shared_ptr<NesterovBase>>& nbVec,
+NesterovPlace::NesterovPlace(const NesterovPlaceVars &npVars,
+                             const std::shared_ptr<PlacerBaseCommon> &pbc,
+                             const std::shared_ptr<NesterovBaseCommon> &nbc,
+                             std::vector<std::shared_ptr<PlacerBase>> &pbVec,
+                             std::vector<std::shared_ptr<NesterovBase>> &nbVec,
                              std::shared_ptr<RouteBase> rb,
                              std::shared_ptr<TimingBase> tb,
-                             utl::Logger* log)
-    : NesterovPlace()
-{
+                             utl::Logger *log)
+    : NesterovPlace() {
   npVars_ = npVars;
   pbc_ = pbc;
   nbc_ = nbc;
@@ -90,6 +86,7 @@ NesterovPlace::NesterovPlace(const NesterovPlaceVars& npVars,
   rb_ = rb;
   tb_ = tb;
   log_ = log;
+  image_file_path_ = "../output/images/GP/";
 
 /*
   if (npVars.debug && Graphics::guiActive()) {
@@ -106,13 +103,11 @@ NesterovPlace::NesterovPlace(const NesterovPlaceVars& npVars,
   init();
 }
 
-NesterovPlace::~NesterovPlace()
-{
+NesterovPlace::~NesterovPlace() {
   reset();
 }
 
-void NesterovPlace::updatePrevGradient(const std::shared_ptr<NesterovBase>& nb)
-{
+void NesterovPlace::updatePrevGradient(const std::shared_ptr<NesterovBase> &nb) {
   nb->updatePrevGradient(wireLengthCoefX_, wireLengthCoefY_);
   auto wireLengthGradSum_ = nb->getWireLengthGradSum();
   auto densityGradSum_ = nb->getDensityGradSum();
@@ -150,8 +145,7 @@ void NesterovPlace::updatePrevGradient(const std::shared_ptr<NesterovBase>& nb)
   }
 }
 
-void NesterovPlace::updateCurGradient(const std::shared_ptr<NesterovBase>& nb)
-{
+void NesterovPlace::updateCurGradient(const std::shared_ptr<NesterovBase> &nb) {
   nb->updateCurGradient(wireLengthCoefX_, wireLengthCoefY_);
   auto wireLengthGradSum_ = nb->getWireLengthGradSum();
   auto densityGradSum_ = nb->getDensityGradSum();
@@ -189,8 +183,7 @@ void NesterovPlace::updateCurGradient(const std::shared_ptr<NesterovBase>& nb)
   }
 }
 
-void NesterovPlace::updateNextGradient(const std::shared_ptr<NesterovBase>& nb)
-{
+void NesterovPlace::updateNextGradient(const std::shared_ptr<NesterovBase> &nb) {
   nb->updateNextGradient(wireLengthCoefX_, wireLengthCoefY_);
 
   auto wireLengthGradSum_ = nb->getWireLengthGradSum();
@@ -229,12 +222,11 @@ void NesterovPlace::updateNextGradient(const std::shared_ptr<NesterovBase>& nb)
   }
 }
 
-void NesterovPlace::init()
-{
+void NesterovPlace::init() {
   // foreach nesterovbase call init
   total_sum_overflow_ = 0;
   float totalBaseWireLengthCoeff = 0;
-  for (auto& nb : nbVec_) {
+  for (auto &nb : nbVec_) {
     nb->setNpVars(&npVars_);
     nb->initDensity1();
     total_sum_overflow_ += nb->getSumOverflow();
@@ -247,7 +239,7 @@ void NesterovPlace::init()
 
   nbc_->updateWireLengthForceWA(wireLengthCoefX_, wireLengthCoefY_);
 
-  for (auto& nb : nbVec_) {
+  for (auto &nb : nbVec_) {
     // fill in curSLPSumGrads_, curSLPWireLengthGrads_, curSLPDensityGrads_
     updateCurGradient(nb);
 
@@ -262,16 +254,16 @@ void NesterovPlace::init()
 
   nbc_->updateWireLengthForceWA(wireLengthCoefX_, wireLengthCoefY_);
 
-  for (auto& nb : nbVec_) {
+  for (auto &nb : nbVec_) {
     // update previSumGrads_, prevSLPWireLengthGrads_, prevSLPDensityGrads_
     updatePrevGradient(nb);
   }
 
-  for (auto& nb : nbVec_) {
+  for (auto &nb : nbVec_) {
     auto stepL = nb->initDensity2(wireLengthCoefX_, wireLengthCoefY_);
     if ((isnan(stepL) || isinf(stepL))
         && recursionCntInitSLPCoef_
-               < gpl::NesterovPlaceVars::maxRecursionInitSLPCoef) {
+            < gpl::NesterovPlaceVars::maxRecursionInitSLPCoef) {
       npVars_.initialPrevCoordiUpdateCoef *= 10;
       debugPrint(log_,
                  GPL,
@@ -297,8 +289,7 @@ void NesterovPlace::init()
 }
 
 // clear reset
-void NesterovPlace::reset()
-{
+void NesterovPlace::reset() {
   npVars_.reset();
   log_ = nullptr;
 
@@ -318,9 +309,12 @@ void NesterovPlace::reset()
   recursionCntWlCoef_ = 0;
   recursionCntInitSLPCoef_ = 0;
 }
-
-int NesterovPlace::doNesterovPlace(int start_iter)
-{
+std::string intToStringWithLeadingZeros(int number, int width = 4) {
+  std::ostringstream out;
+  out << std::setw(width) << std::setfill('0') << number;
+  return out.str();
+}
+int NesterovPlace::doNesterovPlace(int start_iter) {
   // if replace diverged in init() function,
   // replace must be skipped.
   if (isDiverged_) {
@@ -346,7 +340,7 @@ int NesterovPlace::doNesterovPlace(int start_iter)
   // backTracking variable.
   float curA = 1.0;
 
-  for (auto& nb : nbVec_) {
+  for (auto &nb : nbVec_) {
     nb->setIter(start_iter);
     nb->setMaxPhiCoefChanged(false);
     nb->resetMinSumOverflow();
@@ -355,13 +349,9 @@ int NesterovPlace::doNesterovPlace(int start_iter)
   // Core Nesterov Loop
   int iter = start_iter;
   for (; iter < npVars_.maxNesterovIter; iter++) {
-    if (iter % 30 == 1) {
+    if (iter % 5 == 1) {
       updateDb();
-      FILE *stream = std::fopen(("../output/dbFile/"+to_string(iter) + ".db").c_str(), "w");
-      if (stream) {
-        pbc_->db()->write(stream);
-        std::fclose(stream);
-      }
+      drawCircuit("iter" + intToStringWithLeadingZeros(iter));
     }
     float prevA = curA;
 
@@ -377,14 +367,14 @@ int NesterovPlace::doNesterovPlace(int start_iter)
     int numBackTrak = 0;
     for (numBackTrak = 0; numBackTrak < npVars_.maxBackTrack; numBackTrak++) {
       // fill in nextCoordinates with given stepLength_
-      for (auto& nb : nbVec_) {
+      for (auto &nb : nbVec_) {
         nb->nesterovUpdateCoordinates(coeff);
       }
 
       nbc_->updateWireLengthForceWA(wireLengthCoefX_, wireLengthCoefY_);
 
       int numDiverge = 0;
-      for (auto& nb : nbVec_) {
+      for (auto &nb : nbVec_) {
         updateNextGradient(nb);
         numDiverge += nb->isDiverged();
       }
@@ -399,7 +389,7 @@ int NesterovPlace::doNesterovPlace(int start_iter)
 
       int stepLengthLimitOK = 0;
       numDiverge = 0;
-      for (auto& nb : nbVec_) {
+      for (auto &nb : nbVec_) {
         stepLengthLimitOK += nb->nesterovUpdateStepLength();
         numDiverge += nb->isDiverged();
       }
@@ -419,7 +409,7 @@ int NesterovPlace::doNesterovPlace(int start_iter)
     debugPrint(log_, GPL, "np", 1, "NumBackTrak: {}", numBackTrak + 1);
 
     // Adjust Phi dynamically for larger designs
-    for (auto& nb : nbVec_) {
+    for (auto &nb : nbVec_) {
       nb->nesterovAdjustPhi();
     }
 
@@ -483,7 +473,7 @@ int NesterovPlace::doNesterovPlace(int start_iter)
     // 2) Hpwl is growing
 
     int numDiverge = 0;
-    for (auto& nb : nbVec_) {
+    for (auto &nb : nbVec_) {
       numDiverge += nb->checkDivergence();
     }
 
@@ -571,7 +561,7 @@ int NesterovPlace::doNesterovPlace(int start_iter)
 
     // check each for converge and if all are converged then stop
     int numConverge = 0;
-    for (auto& nb : nbVec_) {
+    for (auto &nb : nbVec_) {
       numConverge += nb->checkConvergence();
     }
 
@@ -598,8 +588,7 @@ int NesterovPlace::doNesterovPlace(int start_iter)
   return iter;
 }
 
-void NesterovPlace::updateWireLengthCoef(float overflow)
-{
+void NesterovPlace::updateWireLengthCoef(float overflow) {
   if (overflow > 1.0) {
     wireLengthCoefX_ = wireLengthCoefY_ = 0.1;
   } else if (overflow < 0.1) {
@@ -614,12 +603,11 @@ void NesterovPlace::updateWireLengthCoef(float overflow)
   debugPrint(log_, GPL, "np", 1, "NewWireLengthCoef: {:g}", wireLengthCoefX_);
 }
 
-void NesterovPlace::updateNextIter(const int iter)
-{
+void NesterovPlace::updateNextIter(const int iter) {
   total_sum_overflow_ = 0;
   total_sum_overflow_unscaled_ = 0;
 
-  for (auto& nb : nbVec_) {
+  for (auto &nb : nbVec_) {
     nb->updateNextIter(iter);
     total_sum_overflow_ += nb->getSumOverflow();
     total_sum_overflow_unscaled_ += nb->getSumOverflowUnscaled();
@@ -632,9 +620,232 @@ void NesterovPlace::updateNextIter(const int iter)
   updateWireLengthCoef(average_overflow_);
 }
 
-void NesterovPlace::updateDb()
-{
+void NesterovPlace::updateDb() {
   nbc_->updateDbGCells();
+}
+
+void NesterovPlace::drawCircuit(const string &img_name, bool high_resolution) {
+  drawTotalCircuit(img_name, high_resolution);
+  drawTopCircuit(img_name, high_resolution);
+  drawBottomCircuit(img_name, high_resolution);
+}
+
+void NesterovPlace::drawTotalCircuit(const string &img_name, bool high_resolution) {
+  // let the pixel of the die height be 500
+  int scale_factor;
+  int die_height_fix;
+  if (high_resolution) {
+    die_height_fix = 3000;
+  } else {
+    die_height_fix = 500;
+  }
+
+  scale_factor = static_cast<int>(pbc_->die().dieUy() / die_height_fix);
+  if (scale_factor == 0) {
+    scale_factor = 10;
+  }
+
+  // Let assume the top and bottom die have same size. (This is the case of ICCAD benchmark)
+  uint canvas_w = pbc_->die().dieUx() / scale_factor;
+  uint canvas_h = pbc_->die().dieUy() / scale_factor;
+  uint margin_x = static_cast<uint>(canvas_w * 0.05);
+  uint margin_y = static_cast<uint>(canvas_h * 0.05);
+
+  int instance_width = 0;
+  int instance_height = 0;
+  uint instance_number = pbc_->db()->getChip()->getBlock()->getInsts().size();
+  for (auto inst : pbc_->db()->getChip()->getBlock()->getInsts()) {
+    instance_width += inst->getBBox()->getDX();
+    instance_height += inst->getBBox()->getDY();
+  }
+  int average_instance_width = floor(instance_width / instance_number);
+  int average_instance_height = floor(instance_height / instance_number);
+
+  Drawer::Drawer canvas(canvas_w, canvas_h, margin_x, margin_y);
+  canvas.setFilePath(image_file_path_);
+  canvas.setAverageCellWidth(average_instance_width / scale_factor);
+  canvas.setAverageCellHeight(average_instance_height / scale_factor);
+
+  // Draw macro cells
+  canvas.setTopCellColor(Drawer::COLOR::DARK_RED);
+  canvas.setBottomCellColor(Drawer::COLOR::DARK_MINT);
+  for (auto inst : pbc_->db()->getChip()->getBlock()->getInsts()) {
+    if (inst->isBlock()) {
+      uint ll_x = inst->getLocation().x() / scale_factor;
+      uint ll_y = inst->getLocation().y() / scale_factor;
+      uint ur_x = ll_x + inst->getBBox()->getDX() / scale_factor;
+      uint ur_y = ll_y + inst->getBBox()->getDY() / scale_factor;
+      canvas.drawCell(ll_x, ll_y, ur_x, ur_y, inst->getGroup()->getName());
+    }
+  }
+
+  const unsigned char *TOP_CELL_COLOR = Drawer::COLOR::LIGHT_RED;
+  const unsigned char *BOTTOM_CELL_COLOR = Drawer::COLOR::LIGHT_MINT;
+
+  canvas.setTopCellColor(TOP_CELL_COLOR);
+  canvas.setBottomCellColor(BOTTOM_CELL_COLOR);
+
+  // Draw std cells
+  for (auto inst : pbc_->db()->getChip()->getBlock()->getInsts()) {
+    if (!inst->isBlock()) {
+      uint ll_x = inst->getLocation().x() / scale_factor;
+      uint ll_y = inst->getLocation().y() / scale_factor;
+      uint ur_x = ll_x + inst->getBBox()->getDX() / scale_factor;
+      uint ur_y = ll_y + inst->getBBox()->getDY() / scale_factor;
+      canvas.drawCell(ll_x, ll_y, ur_x, ur_y, inst->getGroup()->getName());
+    }
+  }
+  canvas.saveImg("topAndBottom/" + img_name);
+}
+void NesterovPlace::drawBottomCircuit(const string &img_name, bool high_resolution) {
+  // let the pixel of the die height be 500
+  int scale_factor;
+  int die_height_fix;
+  if (high_resolution) {
+    die_height_fix = 3000;
+  } else {
+    die_height_fix = 500;
+  }
+
+  scale_factor = static_cast<int>(this->pbc_->die().dieUy() / die_height_fix);
+  if (scale_factor == 0) {
+    scale_factor = 10;
+  }
+
+  // Let assume the top and bottom die have same size. (This is the case of ICCAD benchmark)
+  uint canvas_w = this->pbc_->die().dieUx() / scale_factor;
+  uint canvas_h = this->pbc_->die().dieUy() / scale_factor;
+  uint margin_x = static_cast<uint>(canvas_w * 0.05);
+  uint margin_y = static_cast<uint>(canvas_h * 0.05);
+
+  int instance_width = 0;
+  int instance_height = 0;
+  int num = 0;
+  for (auto inst : pbc_->db()->getChip()->getBlock()->getInsts()) {
+    if (std::string(inst->getGroup()->getName()) == "bottom_group") {
+      instance_width += inst->getBBox()->getDX();
+      instance_height += inst->getBBox()->getDY();
+      num += 1;
+    }
+  }
+  int average_instance_width = instance_width / num;
+  int average_instance_height = instance_height / num;
+
+  Drawer::Drawer canvas(canvas_w, canvas_h, margin_x, margin_y);
+  canvas.setFilePath(image_file_path_);
+  canvas.setAverageCellWidth(average_instance_width / scale_factor);
+  canvas.setAverageCellHeight(average_instance_height / scale_factor);
+
+  // Draw macro cells
+  canvas.setTopCellColor(Drawer::COLOR::DARK_RED);
+  canvas.setBottomCellColor(Drawer::COLOR::DARK_MINT);
+
+  // Draw cells
+  for (auto inst : pbc_->db()->getChip()->getBlock()->getInsts()) {
+    if (inst->isBlock()) {
+      int ll_x = inst->getLocation().x() / scale_factor;
+      int ll_y = inst->getLocation().y() / scale_factor;
+      int ur_x = ll_x + inst->getBBox()->getDX() / scale_factor;
+      int ur_y = ll_y + inst->getBBox()->getDY() / scale_factor;
+      if (std::string(inst->getGroup()->getName()) == "bottom_group") {
+        canvas.drawCell(ll_x, ll_y, ur_x, ur_y, inst->getGroup()->getName());
+      }
+    }
+  }
+
+  const unsigned char *TOP_CELL_COLOR = Drawer::COLOR::LIGHT_RED;
+  const unsigned char *BOTTOM_CELL_COLOR = Drawer::COLOR::LIGHT_MINT;
+  canvas.setTopCellColor(TOP_CELL_COLOR);
+  canvas.setBottomCellColor(BOTTOM_CELL_COLOR);
+
+  // Draw std cells
+  for (auto inst : pbc_->db()->getChip()->getBlock()->getInsts()) {
+    int ll_x = inst->getLocation().x() / scale_factor;
+    int ll_y = inst->getLocation().y() / scale_factor;
+    int ur_x = ll_x + inst->getBBox()->getDX() / scale_factor;
+    int ur_y = ll_y + inst->getBBox()->getDY() / scale_factor;
+    if (std::string(inst->getGroup()->getName()) == "bottom_group") {
+      canvas.drawCell(ll_x, ll_y, ur_x, ur_y, inst->getGroup()->getName());
+    }
+  }
+  canvas.saveImg("bottom/" + img_name);
+}
+void NesterovPlace::drawTopCircuit(const string &img_name, bool high_resolution) {
+  // let the pixel of the die height be 500
+  int scale_factor;
+  int die_height_fix;
+  if (high_resolution) {
+    die_height_fix = 3000;
+  } else {
+    die_height_fix = 500;
+  }
+
+  scale_factor = static_cast<int>(this->pbc_->die().dieUy() / die_height_fix);
+  if (scale_factor == 0) {
+    scale_factor = 10;
+  }
+
+  // Let assume the top and bottom die have same size. (This is the case of ICCAD benchmark)
+  uint canvas_w = this->pbc_->die().dieUx() / scale_factor;
+  uint canvas_h = this->pbc_->die().dieUy() / scale_factor;
+  uint margin_x = static_cast<uint>(canvas_w * 0.05);
+  uint margin_y = static_cast<uint>(canvas_h * 0.05);
+
+  uint instance_width = 0;
+  uint instance_height = 0;
+  int num = 0;
+  for (auto inst : pbc_->db()->getChip()->getBlock()->getInsts()) {
+    if (std::string(inst->getGroup()->getName()) == "top_group") {
+      instance_width += inst->getBBox()->getDX();
+      instance_height += inst->getBBox()->getDY();
+      num += 1;
+    }
+  }
+  uint average_instance_width = instance_width / num;
+  uint average_instance_height = instance_height / num;
+
+  Drawer::Drawer canvas(canvas_w, canvas_h, margin_x, margin_y);
+  canvas.setFilePath(image_file_path_);
+  canvas.setAverageCellWidth(average_instance_width / scale_factor);
+  canvas.setAverageCellHeight(average_instance_height / scale_factor);
+
+  const unsigned char *TOP_CELL_COLOR = Drawer::COLOR::LIGHT_RED;
+  const unsigned char *BOTTOM_CELL_COLOR = Drawer::COLOR::LIGHT_MINT;
+
+  // Draw macro cells
+  canvas.setTopCellColor(Drawer::COLOR::DARK_RED);
+  canvas.setBottomCellColor(Drawer::COLOR::DARK_MINT);
+
+  for (auto inst : pbc_->db()->getChip()->getBlock()->getInsts()) {
+    if (inst->isBlock()) {
+      uint ll_x = inst->getLocation().x() / scale_factor;
+      uint ll_y = inst->getLocation().y() / scale_factor;
+      uint ur_x = ll_x + inst->getBBox()->getDX() / scale_factor;
+      uint ur_y = ll_y + inst->getBBox()->getDY() / scale_factor;
+      if (std::string(inst->getGroup()->getName()) == "top_group") {
+        canvas.drawCell(ll_x, ll_y, ur_x, ur_y, inst->getGroup()->getName());
+      }
+    }
+  }
+
+  // Draw std cells
+  canvas.setTopCellColor(TOP_CELL_COLOR);
+  canvas.setBottomCellColor(BOTTOM_CELL_COLOR);
+  for (auto inst : pbc_->db()->getChip()->getBlock()->getInsts()) {
+    if (!inst->isBlock()) {
+      uint ll_x = inst->getLocation().x() / scale_factor;
+      uint ll_y = inst->getLocation().y() / scale_factor;
+      uint ur_x = ll_x + inst->getBBox()->getDX() / scale_factor;
+      uint ur_y = ll_y + inst->getBBox()->getDY() / scale_factor;
+      if (std::string(inst->getGroup()->getName()) == "top_group") {
+        canvas.drawCell(ll_x, ll_y, ur_x, ur_y, inst->getGroup()->getName());
+      }
+    }
+  }
+  canvas.saveImg("top/" + img_name);
+}
+void NesterovPlace::setImageFilePath(const std::string &image_file_path) {
+  image_file_path_ = image_file_path;
 }
 
 }  // namespace gpl

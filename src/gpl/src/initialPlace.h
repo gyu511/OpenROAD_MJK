@@ -36,7 +36,6 @@
 #include <Eigen/SparseCore>
 #include <memory>
 
-#include "nesterovPlace.h"
 #include "odb/db.h"
 
 namespace utl {
