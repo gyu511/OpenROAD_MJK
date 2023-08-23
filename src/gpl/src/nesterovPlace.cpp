@@ -355,6 +355,14 @@ int NesterovPlace::doNesterovPlace(int start_iter)
   // Core Nesterov Loop
   int iter = start_iter;
   for (; iter < npVars_.maxNesterovIter; iter++) {
+    if (iter % 30 == 1) {
+      updateDb();
+      FILE *stream = std::fopen(("../output/dbFile/"+to_string(iter) + ".db").c_str(), "w");
+      if (stream) {
+        pbc_->db()->write(stream);
+        std::fclose(stream);
+      }
+    }
     float prevA = curA;
 
     // here, prevA is a_(k), curA is a_(k+1)
