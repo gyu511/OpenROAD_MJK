@@ -35,6 +35,8 @@
 #ifndef OPENROAD_SRC_MDM_INCLUDE_MDM_MULTIDIEMANAGER_H_
 #define OPENROAD_SRC_MDM_INCLUDE_MDM_MULTIDIEMANAGER_H_
 #include <tcl.h>
+
+#include <string>
 #include <vector>
 
 #include "HybridBond.h"
@@ -80,15 +82,27 @@ class MultiDieManager
    * not supported completely in odb.
    * */
   void makeShrunkLefs();
-  void makeShrunkLef(const std::string& die_name, double shrunk_ratio);
+  odb::dbTech* makeNewTech(const std::string& tech_name);
+  void makeShrunkLib(const std::string& which_die,
+                     double shrunk_ratio,
+                     odb::dbTech* tech__);
 
   /**
    * \brief
    * Partition instances into different die.
    * This will consider the size of technologies and the utilization of each
    * die.
-   * \todo
-   * change the function name as applyPartitionInfo after merge branch
+   *
+   * 1. Read partition information from file.
+   * 2. Make sub-blocks as much as partition IDs.
+   * 3. Put the instances into the sub-blocks.
+   * */
+  void splitInstances();
+
+
+  /**
+   * Make sub-blocks as much as partition IDs.
+   * The instances will be put into the sub-blocks.
    * */
   void partitionInstances();
 

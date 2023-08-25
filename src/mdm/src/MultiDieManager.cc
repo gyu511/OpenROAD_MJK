@@ -76,18 +76,32 @@ void MultiDieManager::makeShrunkLefs()
     }
     string die_name = "Die" + to_string(i);
     shrink_length_ratio = std::sqrt(shrink_area_ratio) * shrink_length_ratio;
-    makeShrunkLef(die_name, shrink_length_ratio);
+    auto tech = makeNewTech(die_name);
+    makeShrunkLib(die_name, shrink_length_ratio, tech);
   }
 }
 
-void MultiDieManager::makeShrunkLef(const string& which_die,
-                                    double shrunk_ratio)
+odb::dbTech* MultiDieManager::makeNewTech(const std::string& tech_name)
+{
+  auto tech = odb::dbTech::create(db_, (tech_name + "_tech").c_str());
+  auto tech_original = (*db_->getTechs().begin());
+  tech->setLefUnits(tech_original->getLefUnits());
+  tech->setManufacturingGrid(tech_original->getManufacturingGrid());
+  tech->setLefVersion(tech_original->getLefVersion());
+  tech->setDbUnitsPerMicron(tech_original->getDbUnitsPerMicron());
+  for (auto layer_original : tech_original->getLayers()) {
+    odb::dbTechLayer::create(tech,
+                             (layer_original->getName() + tech_name).c_str(),
+                             layer_original->getType());
+  }
+  return tech;
+}
+
+void MultiDieManager::makeShrunkLib(const string& which_die,
+                                    double shrunk_ratio,
+                                    odb::dbTech* tech)
 {
   auto libs_original = db_->getLibs();
-  auto tech = db_->getTech();
-
-  // TODO:
-  // Making multiple Technology should be implemented after the updated odb
 
   uint lib_number = libs_original.size();
   uint lib_idx = 0;
@@ -101,17 +115,15 @@ void MultiDieManager::makeShrunkLef(const string& which_die,
     lib->setLefUnits(lib_original->getLefUnits());
     // create master when you can handle multi-die technology;
     // after revised odb version
-    /*
-        for (auto site_original : lib_original->getSites()) {
-          auto site = odb::dbSite::create(
-              lib, (site_original->getName() + which_die).c_str());
-          // apply shrink factor on site
-          site->setWidth(static_cast<int>(
-              static_cast<float>(site_original->getWidth()) * shrunk_ratio));
-          site->setHeight(static_cast<int>(
-              static_cast<float>(site_original->getHeight()) * shrunk_ratio));
-        }
-    */
+    for (auto site_original : lib_original->getSites()) {
+      auto site = odb::dbSite::create(
+          lib, (site_original->getName() + which_die).c_str());
+      // apply shrink factor on site
+      site->setWidth(static_cast<int>(
+          static_cast<float>(site_original->getWidth()) * shrunk_ratio));
+      site->setHeight(static_cast<int>(
+          static_cast<float>(site_original->getHeight()) * shrunk_ratio));
+    }
 
     for (auto master_original : lib_original->getMasters()) {
       odb::dbMaster* master
@@ -137,7 +149,12 @@ void MultiDieManager::makeShrunkLef(const string& which_die,
                                          * shrunk_ratio);
       master->setOrigin(master_origin_x, master_origin_y);
 
-      master->setSite(master_original->getSite());
+      if (master_original->getSite() != nullptr) {
+        auto site = lib->findSite(
+            (master_original->getSite()->getName() + which_die).c_str());
+        assert(site != nullptr);
+        master->setSite(site);
+      }
 
       if (master_original->getSymmetryX())
         master->setSymmetryX();
@@ -383,6 +400,9 @@ void MultiDieManager::readPartitionInfo(std::string file_name)
   }
   partition_file.close();
 }
+
+
+// ===================== below is for detail placement ===================== //
 
 void MultiDieManager::twoDieDetailPlacement()
 {
