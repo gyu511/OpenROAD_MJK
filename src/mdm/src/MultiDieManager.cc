@@ -392,15 +392,12 @@ void MultiDieManager::readPartitionInfo(std::string file_name)
     for (auto chip : db_->getChips()) {
       inst = chip->getBlock()->findInst(inst_name.c_str());
     }
-    if (inst == nullptr) {
-      logger_->error(
-          utl::MDM, 5, "Cannot find instance {} in the database", inst_name);
+    if (inst != nullptr) {
+      odb::dbIntProperty::create(inst, "partition_id", partition_id);
     }
-    odb::dbIntProperty::create(inst, "partition_id", partition_id);
   }
   partition_file.close();
 }
-
 
 // ===================== below is for detail placement ===================== //
 
