@@ -104,8 +104,12 @@ class MultiDieManager
    * Make sub-blocks as much as partition IDs.
    * The instances will be put into the sub-blocks.
    * */
-  void partitionInstances();
+  void makeSubBlocks();
 
+  /**
+   * Write partition information into instances.
+   * */
+  void writePartitionInformation();
 
   void switchMasters();
   void switchMaster(odb::dbInst* inst, odb::dbMaster* master);
@@ -148,6 +152,7 @@ class MultiDieManager
 
   // temporal variables
   odb::dbDatabase* target_db_{};
+  void assignAllInstancesToBottomBlock();
 };
 }  // namespace mdm
 

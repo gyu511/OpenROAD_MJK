@@ -59,11 +59,12 @@ void MultiDieManager::set3DIC(int number_of_die,
 }
 void MultiDieManager::setUp()
 {
-  readPartitionInfo("partitionInfo/partitionInfo1.par");  // temporal function
-
   makeShrunkLefs();
-  partitionInstances();
-  switchMasters();
+
+  makeSubBlocks();
+  assignAllInstancesToBottomBlock();
+
+  splitInstances();
 }
 
 void MultiDieManager::makeShrunkLefs()
@@ -195,8 +196,29 @@ void MultiDieManager::makeShrunkLib(const string& which_die,
     }
   }
 }
-void MultiDieManager::partitionInstances()
+
+void MultiDieManager::makeSubBlocks()
 {
+  auto top_block = db_->getChip()->getBlock();
+  assert(number_of_die_ == db_->getTechs().size());
+
+  int die_idx = 0;
+  for (auto tech : db_->getTechs()) {
+    string die_name = "Die" + to_string(die_idx++);
+    odb::dbBlock::create(top_block, die_name.c_str(), tech);
+  }
+}
+
+void MultiDieManager::splitInstances()
+{
+  writePartitionInformation();
+  switchMasters();
+}
+
+void MultiDieManager::writePartitionInformation()
+{
+  readPartitionInfo("partitionInfo/partitionInfo1.par");  // temporal function
+
   // check whether the partition information exists and
   // apply the information at the same time
   vector<odb::dbGroup*> groups;
@@ -321,10 +343,10 @@ void MultiDieManager::switchMaster(odb::dbInst* inst, odb::dbMaster* master)
   inst = odb::dbInst::create(block, master, inst_name.c_str());
 
   // set placement information
-  inst->setPlacementStatus(placement_status);
   if (placement_status) {
     inst->setLocation(location.getX(), location.getY());
   }
+  inst->setPlacementStatus(placement_status);
 
   // set connected net information
   for (const auto& net_info : net_info_container) {
