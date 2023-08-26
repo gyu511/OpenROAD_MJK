@@ -197,6 +197,118 @@ void MultiDieManager::makeShrunkLib(const string& which_die,
   }
 }
 
+void MultiDieManager::assignAllInstancesToBottomBlock()
+{
+  // create all instances in the first target_block
+  // and delete all instances in the top target_block.
+  // top target_block ⊃ first target_block, top target_block ⊃ second
+  // target_block, etc.
+
+  auto target_block = (*db_->getChip()->getBlock()->getChildren().begin());
+  assert(target_block);
+
+  // make instances first without connection
+  for (auto inst_original : db_->getChip()->getBlock()->getInsts()) {
+    auto inst = odb::dbInst::create(target_block,
+                                    inst_original->getMaster(),
+                                    inst_original->getName().c_str());
+
+    auto placement_state = inst_original->getPlacementStatus();
+    if (placement_state != odb::dbPlacementStatus::NONE) {
+      inst->setLocation(inst_original->getLocation().getX(),
+                        inst_original->getLocation().getY());
+    }
+    inst->setPlacementStatus(placement_state);
+
+    // transfer 4 kinds of properties
+    for (auto property : odb::dbProperty::getProperties(inst_original)) {
+      if (property->getType() == odb::dbProperty::INT_PROP) {
+        auto intProperty = odb::dbIntProperty::find(
+            inst_original, property->getName().c_str());
+        odb::dbIntProperty::create(
+            inst, property->getName().c_str(), intProperty->getValue());
+      } else if (property->getType() == odb::dbProperty::STRING_PROP) {
+        auto stringProperty = odb::dbStringProperty::find(
+            inst_original, property->getName().c_str());
+        odb::dbStringProperty::create(inst,
+                                      property->getName().c_str(),
+                                      stringProperty->getValue().c_str());
+      } else if (property->getType() == odb::dbProperty::DOUBLE_PROP) {
+        auto doubleProperty = odb::dbDoubleProperty::find(
+            inst_original, property->getName().c_str());
+        odb::dbDoubleProperty::create(
+            inst, property->getName().c_str(), doubleProperty->getValue());
+      } else if (property->getType() == odb::dbProperty::BOOL_PROP) {
+        auto boolProperty = odb::dbBoolProperty::find(
+            inst_original, property->getName().c_str());
+        odb::dbBoolProperty::create(
+            inst, property->getName().c_str(), boolProperty->getValue());
+      }
+    }
+  }
+
+  // and make the connections
+  // [1. handle net - instance pin]
+  // [2. handle net - block pin]
+
+  // 1. handle net - instance pin
+  // (net name, (instance name, mterm_order_id))
+  struct ConnectInfo
+  {
+    string net_name;
+    string instance_name;
+    string mTerm_name;
+    int mTerm_order_id;
+  };
+  vector<ConnectInfo> connection_info_container;
+  // make simple above structure.
+
+  // collect the information
+  for (auto net : db_->getChip()->getBlock()->getNets()) {
+    string net_name = net->getName();
+    for (auto iterm : net->getITerms()) {
+      string instance_name = iterm->getInst()->getName();
+      string mTerm_name = iterm->getMTerm()->getName();
+      int mTerm_order_id = iterm->getMTerm()->getIndex();
+      connection_info_container.push_back(
+          ConnectInfo{net_name, instance_name, mTerm_name, mTerm_order_id});
+    }
+  }
+
+  // 2. handle net - block pkn
+  for(auto bterm: db_->getChip()->getBlock()->getBTerms()){
+    // I need your help! @Matt
+  }
+
+  // make the nets and connections with above information
+  for (const auto& connection_info : connection_info_container) {
+    auto net
+        = odb::dbNet::create(target_block, connection_info.net_name.c_str());
+    if (net == nullptr){
+      net = target_block->findNet(connection_info.net_name.c_str());
+      assert(net);
+    }
+    auto inst = target_block->findInst(connection_info.instance_name.c_str());
+    auto mTerm
+        = inst->getMaster()->findMTerm(connection_info.mTerm_name.c_str());
+    auto mTerm_order = connection_info.mTerm_order_id;
+    assert(mTerm);
+    assert(mTerm->getIndex() == mTerm_order);
+    auto iTerm = inst->getITerm(mTerm_order);
+    assert(iTerm);
+    iTerm->connect(net);
+  }
+
+  // destroy all instances and nets in the top block
+  for (auto inst : db_->getChip()->getBlock()->getInsts()) {
+    odb::dbInst::destroy(inst);
+  }
+  for (auto net : db_->getChip()->getBlock()->getNets()) {
+    odb::dbNet::destroy(net);
+  }
+
+}
+
 void MultiDieManager::makeSubBlocks()
 {
   auto top_block = db_->getChip()->getBlock();
