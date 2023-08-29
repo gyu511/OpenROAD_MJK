@@ -85,6 +85,7 @@ class Replace
   void doInitialPlace();
 
   int doNesterovPlace(int start_iter, const std::string &img_file_path);
+  std::pair<int, int> getGridForNesterov();
 
   // Initial Place param settings
   void setInitialPlaceMaxIter(int iter);

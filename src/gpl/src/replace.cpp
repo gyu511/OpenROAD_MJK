@@ -415,6 +415,14 @@ int Replace::doNesterovPlace(int start_iter, const std::string &img_file_path)
   return np_->doNesterovPlace(start_iter);
 }
 
+pair<int, int> Replace::getGridForNesterov()
+{
+  initNesterovPlace();
+  // return first nbVec_'s grid
+  auto grid = nbVec_.at(0)->getBinGrid();
+  return make_pair(grid.binCntX(), grid.binCntY());
+}
+
 void Replace::setInitialPlaceMaxIter(int iter)
 {
   initialPlaceMaxIter_ = iter;
