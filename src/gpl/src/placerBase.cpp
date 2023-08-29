@@ -1124,7 +1124,7 @@ void PlacerBase::init()
     insts_.push_back(&inst);
   }
 
-  printInfo();
+  // printInfo();
 }
 
 // Use dummy instance to fill unusable sites.  Sites are unusable
