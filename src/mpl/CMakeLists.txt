@@ -46,7 +46,7 @@ target_sources(mpl
     src/Partition.cpp
     src/MacroPlacer.cpp
     src/MakeMacroPlacer.cpp
-    src/graphics.cpp
+#     src/graphics.cpp
 )
 
 target_include_directories(mpl
@@ -61,7 +61,7 @@ target_link_libraries(mpl
     OpenSTA
     odb
     utl
-    gui
+#    gui
 )
 
 messages(

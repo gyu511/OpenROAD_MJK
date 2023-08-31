@@ -37,7 +37,7 @@
 
 #include "db_sta/dbNetwork.hh"
 #include "db_sta/dbSta.hh"
-#include "graphics.h"
+// #include "graphics.h"
 #include "sta/Bfs.hh"
 #include "sta/Corner.hh"
 #include "sta/FuncExpr.hh"
@@ -403,10 +403,14 @@ void MacroPlacer::placeMacrosCornerMaxWl()
   }
   logger_->info(MPL, 70, "Using {} partition sets.", allSets.size() - 1);
 
+/*
   std::unique_ptr<Graphics> graphics;
+*/
+/*
   if (gui_debug_ && Graphics::guiActive()) {
     graphics = std::make_unique<Graphics>(db_);
   }
+*/
 
   solution_count_ = 0;
   bool found_best = false;
@@ -418,10 +422,12 @@ void MacroPlacer::placeMacrosCornerMaxWl()
       continue;
     }
 
+/*
     if (gui_debug_) {
       graphics->status("Pre-anneal");
       graphics->set_partitions(partition_set, true);
     }
+*/
 
     // For each of the 4 partitions
     bool isFailed = false;
@@ -468,6 +474,7 @@ void MacroPlacer::placeMacrosCornerMaxWl()
     }
     solution_count_++;
 
+/*
     if (gui_debug_) {
       auto msg("Post-anneal WL: " + std::to_string(curWwl));
       if (is_best) {
@@ -476,6 +483,7 @@ void MacroPlacer::placeMacrosCornerMaxWl()
       graphics->status(msg);
       graphics->set_partitions(partition_set, false);
     }
+*/
   }
 
   if (found_best) {

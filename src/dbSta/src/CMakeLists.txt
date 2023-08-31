@@ -86,9 +86,9 @@ swig_lib(NAME          dbSta
 
 target_sources(dbSta
   PRIVATE
-    MakeDbSta.cc
-    heatMap.cpp
-    PathRenderer.cc
+#    MakeDbSta.cc
+#    heatMap.cpp
+#    PathRenderer.cc
 )
 
 target_include_directories(dbSta
@@ -106,7 +106,7 @@ target_link_libraries(dbSta
   PRIVATE
     OpenSTA
     odb
-    gui
+    # gui
     utl
     dbSta_lib
 )
