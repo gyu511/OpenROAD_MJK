@@ -5,7 +5,7 @@ project(DEF_PARSER
 
 # BISON and ZLIB are required to compile DEF/LEF Parsers.
 find_package(BISON REQUIRED)
-find_package(ZLIB)
+#find_package(ZLIB)
 
 bison_target(def_parser
              ${CMAKE_CURRENT_SOURCE_DIR}/def/def.y
@@ -74,6 +74,13 @@ target_include_directories(defzlib
     defzlib
 )
 target_link_libraries(defzlib
+        PUBLIC
+        ${ZLIB_LIBRARY_PATH}
+)
+
+#[[
+target_link_libraries(defzlib
     PUBLIC
         ZLIB::ZLIB
 )
+]]

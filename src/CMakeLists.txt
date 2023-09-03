@@ -36,10 +36,10 @@
 # The location used by etc/DependencyInstaller.sh
 # lib64 is used for CentOS and openSUSE
 # lib is used for Ubuntu and MacOS
-list(APPEND CMAKE_INSTALL_RPATH
-  "/opt/or-tools/lib64"
-  "/opt/or-tools/lib"
-)
+#list(APPEND CMAKE_INSTALL_RPATH
+#  "/opt/or-tools/lib64"
+#  "/opt/or-tools/lib"
+#)
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${PROJECT_SOURCE_DIR}/src/cmake")
 
@@ -219,6 +219,7 @@ target_link_libraries(openroad_swig
 ################################################################
 
 # Zlib
+#[[
 include(FindZLIB)
 # Translate cmake bool to StaConfig.h ifdef bool
 if (ZLIB_FOUND)
@@ -226,6 +227,7 @@ if (ZLIB_FOUND)
 else()
   set(ZLIB 0)
 endif()
+]]
 
 find_package(spdlog REQUIRED)
 message(STATUS "spdlog: ${spdlog_VERSION}")
@@ -338,14 +340,6 @@ target_link_libraries(openroad
   ${CMAKE_THREAD_LIBS_INIT}
 )
 
-if (NOT ${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
-  # mpl2 aborts with link error on darwin and par causes abseil link error at startup on apple silicon so do not link it.
-  target_link_libraries(openroad mpl2 par)
-  target_compile_definitions(openroad PRIVATE ENABLE_MPL2)
-  target_compile_definitions(openroad PRIVATE ENABLE_PAR)
-else()
-  message(STATUS "Removing MPL2 and PAR to avoid run time fatal error.")
-endif()
 
 # tclReadline
 if (TCL_READLINE_LIBRARY AND TCL_READLINE_H)
@@ -416,12 +410,6 @@ if (Python3_FOUND AND BUILD_PYTHON)
     dft_py
   )
 
-  if (NOT ${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
-    # par_py causes abseil link error at startup on apple silicon so do not link it.
-    target_link_libraries(openroad par_py)
-  else()
-    message(STATUS "Removing PAR_PY to avoid run time fatal error.")
-  endif()
 else()
   message(STATUS "Python3 disabled")
 endif()

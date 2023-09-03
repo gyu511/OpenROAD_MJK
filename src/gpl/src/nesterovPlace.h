@@ -90,7 +90,7 @@ class NesterovPlace
   void updateCurGradient(const std::shared_ptr<NesterovBase>& nb);
   void updateNextGradient(const std::shared_ptr<NesterovBase>& nb);
 
-  void setImageFilePath(const std::string &image_file_path);
+//  void setImageFilePath(const std::string &image_file_path);
 
  private:
   std::shared_ptr<PlacerBaseCommon> pbc_;
@@ -132,9 +132,9 @@ class NesterovPlace
 
   // Author: minjae(ApeachM) & dgkim
   void drawCircuit(const std::string &img_name, bool high_resolution = false);
-  void drawTotalCircuit(const std::string &img_name, bool high_resolution = false);
-  void drawBottomCircuit(const std::string &img_name, bool high_resolution = false);
-  void drawTopCircuit(const std::string &img_name, bool high_resolution = false);
+//  void drawTotalCircuit(const std::string &img_name, bool high_resolution = false);
+//  void drawBottomCircuit(const std::string &img_name, bool high_resolution = false);
+//  void drawTopCircuit(const std::string &img_name, bool high_resolution = false);
   std::string image_file_path_;
 
   void cutFillerCoordinates();

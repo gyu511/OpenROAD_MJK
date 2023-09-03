@@ -18,7 +18,7 @@ target_link_libraries(odb_py
     PUBLIC
         odb
         utl
-        ${TCL_LIBRARY}
+#        ${TCL_LIBRARY}
         cdl
         odb_swig_common
         Boost::boost

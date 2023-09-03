@@ -407,7 +407,7 @@ int Replace::doNesterovPlace(int start_iter, const std::string &img_file_path)
   if (!initNesterovPlace()) {
     return 0;
   }
-  np_->setImageFilePath(img_file_path);
+//  np_->setImageFilePath(img_file_path);
 /*
   if (timingDrivenMode_)
     rs_->resizeSlackPreamble();

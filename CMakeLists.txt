@@ -143,6 +143,7 @@ configure_file(
 set(CMAKE_EXPORT_COMPILE_COMMANDS 1)
 
 
+set(CMAKE_POSITION_INDEPENDENT_CODE TRUE)
 
 add_subdirectory(third-party)
 

@@ -133,7 +133,7 @@ add_library(db
 target_include_directories(db
     PUBLIC
         ${PROJECT_SOURCE_DIR}/include
-        ${TCL_INCLUDE_PATH}
+#        ${TCL_INCLUDE_PATH}
 )
 
 set_target_properties(db
@@ -149,7 +149,7 @@ target_link_libraries(db
         tm
         zutil
         utl_lib
-        ${TCL_LIBRARY}
+#        ${TCL_LIBRARY}
 )
 
 messages(

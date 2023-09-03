@@ -13,7 +13,7 @@ target_link_libraries(zutil
 target_include_directories(zutil
   PUBLIC
     ${PROJECT_SOURCE_DIR}/include/odb
-    ${TCL_INCLUDE_PATH}
+#    ${TCL_INCLUDE_PATH}
 )
 
 set_target_properties(zutil

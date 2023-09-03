@@ -1,6 +1,6 @@
 # BISON and ZLIB are required to compile LEF/LEF Parsers.
 find_package(BISON REQUIRED)
-find_package(ZLIB)
+#find_package(ZLIB)
 
 bison_target(lef_parser
              ${CMAKE_CURRENT_SOURCE_DIR}/lef/lef.y
@@ -61,9 +61,16 @@ target_include_directories(lefzlib
     lefzlib
 )
 target_link_libraries(lefzlib
+        PUBLIC
+        ${ZLIB_LIBRARY_PATH}
+)
+
+#[[
+target_link_libraries(lefzlib
     PUBLIC
         ZLIB::ZLIB
 )
+]]
 
 target_compile_options(lef
   PRIVATE

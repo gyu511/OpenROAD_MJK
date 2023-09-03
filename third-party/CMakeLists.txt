@@ -33,6 +33,7 @@
 ##
 ###############################################################################
 
+add_subdirectory(or-tools EXCLUDE_FROM_ALL)
 
 if(ENABLE_TESTS)
   add_subdirectory(gtest EXCLUDE_FROM_ALL)

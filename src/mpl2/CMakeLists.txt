@@ -39,7 +39,7 @@ list(APPEND CMAKE_PREFIX_PATH
   "/opt/or-tools/lib/cmake"
 )
 
-find_package(ortools REQUIRED)
+#find_package(ortools REQUIRED)
 
 add_library(mpl2_lib
   src/rtl_mp.cpp

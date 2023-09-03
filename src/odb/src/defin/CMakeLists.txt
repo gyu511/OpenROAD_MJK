@@ -24,7 +24,7 @@ add_library(defin
 target_include_directories(defin
   PUBLIC
     ${PROJECT_SOURCE_DIR}/include
-    ${TCL_INCLUDE_PATH}
+#    ${TCL_INCLUDE_PATH}
 )
 
 target_link_libraries(defin

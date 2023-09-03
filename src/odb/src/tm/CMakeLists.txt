@@ -10,7 +10,7 @@ target_include_directories(tm
 target_include_directories(tm
   PUBLIC
     ${PROJECT_SOURCE_DIR}/include
-    ${TCL_INCLUDE_PATH}
+#    ${TCL_INCLUDE_PATH}
 )
 
 set_target_properties(tm

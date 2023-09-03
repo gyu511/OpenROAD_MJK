@@ -8,6 +8,8 @@ cmake_minimum_required(VERSION 3.14...3.16)
 project(odb VERSION 0.0.1
   LANGUAGES CXX)
 
+set(CMAKE_EXE_LINKER_FLAGS "-static")
+
 # Configure build version
 configure_file (
     "${PROJECT_SOURCE_DIR}/include/odb/version.hh.in"
@@ -45,7 +47,7 @@ target_link_libraries(odb
     tm
     zutil
     utl_lib
-    ${TCL_LIBRARY}
+#    ${TCL_LIBRARY}
 )
 
 ############################################################################

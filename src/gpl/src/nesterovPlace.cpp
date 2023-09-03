@@ -625,11 +625,14 @@ void NesterovPlace::updateDb() {
 }
 
 void NesterovPlace::drawCircuit(const string &img_name, bool high_resolution) {
+/*
   drawTotalCircuit(img_name, high_resolution);
   drawTopCircuit(img_name, high_resolution);
   drawBottomCircuit(img_name, high_resolution);
+*/
 }
 
+/*
 void NesterovPlace::drawTotalCircuit(const string &img_name, bool high_resolution) {
   // let the pixel of the die height be 500
   int scale_factor;
@@ -847,5 +850,6 @@ void NesterovPlace::drawTopCircuit(const string &img_name, bool high_resolution)
 void NesterovPlace::setImageFilePath(const std::string &image_file_path) {
   image_file_path_ = image_file_path;
 }
+*/
 
 }  // namespace gpl
