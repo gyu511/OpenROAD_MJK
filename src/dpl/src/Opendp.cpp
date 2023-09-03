@@ -131,7 +131,7 @@ void Opendp::setDebug(std::unique_ptr<DplObserver>& observer)
   debug_observer_ = std::move(observer);
 }
 
-void Opendp::detailedPlacement(int max_displacement_x,
+vector<dbInst*> Opendp::detailedPlacement(int max_displacement_x,
                                int max_displacement_y,
                                bool disallow_one_site_gaps)
 {
@@ -173,8 +173,9 @@ void Opendp::detailedPlacement(int max_displacement_x,
     for (auto inst : placement_failures_) {
       logger_->info(DPL, 35, " {}", inst->getName());
     }
-    logger_->error(DPL, 36, "Detailed placement failed.");
+    logger_->warn(DPL, 36, "Detailed placement failed.");
   }
+  return placement_failures_;
 }
 
 void Opendp::updateDbInstLocations()

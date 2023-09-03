@@ -205,7 +205,7 @@ class Opendp
   void initBlock();
   // legalize/report
   // max_displacment is in sites. use zero for defaults.
-  void detailedPlacement(int max_displacement_x,
+  vector<dbInst*> detailedPlacement(int max_displacement_x,
                          int max_displacement_y,
                          bool disallow_one_site_gaps = false);
   void reportLegalizationStats() const;
