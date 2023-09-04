@@ -448,46 +448,6 @@ void TritonPart::PartitionDesign(unsigned int num_parts_arg,
       odb::dbIntProperty::create(inst, "partition_id", partition_id);
     }
   }
-
-  // Format 2: write the explicit solution
-  // each line :  instance_name  partition_id
-  if (!solution_file.empty()) {
-    std::string solution_file_name = solution_file;
-    if (fence_flag_ == true) {
-      // if the fence_flag_ is set to true, we need to update the solution file
-      // to reflect the fence
-      std::stringstream str_ss;
-      str_ss.setf(std::ios::fixed);
-      str_ss.precision(3);
-      str_ss << ".lx_" << fence_.lx / dbu;
-      str_ss << ".ly_" << fence_.ly / dbu;
-      str_ss << ".ux_" << fence_.ux / dbu;
-      str_ss << ".uy_" << fence_.uy / dbu;
-      solution_file_name = solution_file_name + str_ss.str();
-    }
-    logger_->info(
-        PAR, 110, "Updated solution file name = {}", solution_file_name);
-    std::ofstream file_output;
-    file_output.open(solution_file_name);
-
-    for (auto term : block_->getBTerms()) {
-      if (auto property = odb::dbIntProperty::find(term, "partition_id")) {
-        file_output << term->getName() << "  ";
-        file_output << property->getValue() << "  ";
-        file_output << std::endl;
-      }
-    }
-
-    for (auto inst : block_->getInsts()) {
-      if (auto property = odb::dbIntProperty::find(inst, "partition_id")) {
-        file_output << inst->getName() << "  ";
-        file_output << property->getValue() << "  ";
-        file_output << std::endl;
-      }
-    }
-    file_output.close();
-  }
-
   logger_->report("===============================================");
   logger_->report("Exiting TritonPart");
 }
