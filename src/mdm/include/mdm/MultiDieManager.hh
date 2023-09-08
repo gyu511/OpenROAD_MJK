@@ -67,10 +67,6 @@ class MultiDieManager
                uint hybrid_bond_space_x = 10,
                uint hybrid_bond_space_y = 10,
                float area_ratio = 0.5);
-  void twoDieDetailPlacement();
- private:
-  void setUp();
-
   /**
    * \brief
    * Make shrunk lef files.
@@ -82,6 +78,12 @@ class MultiDieManager
    * not supported completely in odb.
    * */
   void makeShrunkLefs();
+
+  void twoDieDetailPlacement();
+
+ private:
+  void setUp();
+
   odb::dbTech* makeNewTech(const std::string& tech_name);
   void makeShrunkLib(const std::string& which_die,
                      double shrunk_ratio,
@@ -134,8 +136,6 @@ class MultiDieManager
   void detailPlacement();
   void applyDetailPlacementResult();
 
-
-
   odb::dbDatabase* db_{};
   utl::Logger* logger_{};
   par::PartitionMgr* partition_mgr_{};
@@ -152,7 +152,6 @@ class MultiDieManager
 
   // temporal variables
   odb::dbDatabase* target_db_{};
-  void assignAllInstancesToBottomBlock();
 };
 }  // namespace mdm
 

@@ -38,6 +38,12 @@ set_3D_IC(int number_of_die)
 }
 
 void
+makeShrunkLef()
+{
+  getMultiDieManager()->makeShrunkLefs();
+}
+
+void
 twoDieDetailPlace()
 {
   getMultiDieManager()->twoDieDetailPlacement();

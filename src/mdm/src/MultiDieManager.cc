@@ -44,25 +44,22 @@ void MultiDieManager::set3DIC(int number_of_die,
                               uint hybrid_bond_space_y,
                               float area_ratio)
 {
-  logger_->info(utl::MDM, 1, "Set number of die to {}", number_of_die_);
-
   // set the variables
   hybrid_bond_info_.setHybridBondInfo(
       hybrid_bond_x, hybrid_bond_y, hybrid_bond_space_x, hybrid_bond_space_y);
   number_of_die_ = number_of_die;
   shrink_area_ratio = area_ratio;
 
+  logger_->info(utl::MDM, 1, "Set number of die to {}", number_of_die_);
   // Set up for multi dies
   setUp();
 }
 void MultiDieManager::setUp()
 {
-  makeShrunkLefs();
-
+/*
   makeSubBlocks();
-  assignAllInstancesToBottomBlock();
-
   splitInstances();
+*/
 }
 
 void MultiDieManager::makeShrunkLefs()
