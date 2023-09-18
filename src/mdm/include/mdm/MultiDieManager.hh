@@ -114,7 +114,11 @@ class MultiDieManager
   void writePartitionInformation();
 
   void switchMasters();
-  void switchMaster(odb::dbInst* inst, odb::dbMaster* master);
+  void switchMaster(odb::dbInst* inst, odb::dbMaster* master, int lib_order);
+
+  /**
+   * Return the n_th lib
+   * */
   odb::dbLib* findLibByPartitionInfo(int value);
 
 

@@ -56,10 +56,7 @@ void MultiDieManager::set3DIC(int number_of_die,
 }
 void MultiDieManager::setUp()
 {
-/*
-  makeSubBlocks();
   splitInstances();
-*/
 }
 
 void MultiDieManager::makeShrunkLefs()
@@ -192,58 +189,11 @@ void MultiDieManager::makeShrunkLib(const string& which_die,
   }
 }
 
-void MultiDieManager::makeSubBlocks()
-{
-  auto top_block = db_->getChip()->getBlock();
-  assert(number_of_die_ == db_->getTechs().size());
-
-  int die_idx = 0;
-  for (auto tech : db_->getTechs()) {
-    string die_name = "Die" + to_string(die_idx++);
-    odb::dbBlock::create(top_block, die_name.c_str(), tech);
-  }
-}
-
 void MultiDieManager::splitInstances()
 {
-  writePartitionInformation();
+  // move the instances from top heir block to sub-block
+  readPartitionInfo("partitionInfo/ispd18_test1.par"); // TODO: we need to this part make be in the tcl command
   switchMasters();
-}
-
-void MultiDieManager::writePartitionInformation()
-{
-  readPartitionInfo("partitionInfo/partitionInfo1.par");  // temporal function
-
-  // check whether the partition information exists and
-  // apply the information at the same time
-  vector<odb::dbGroup*> groups;
-
-  for (auto chip : db_->getChips()) {
-    auto block = chip->getBlock();
-    for (auto inst : block->getInsts()) {
-      auto partition_info = odb::dbIntProperty::find(inst, "partition_id");
-      if (partition_info) {
-        int partition_info_int = partition_info->getValue();
-        string partition_info_str = "Die" + to_string(partition_info_int);
-        odb::dbIntProperty::create(inst, "which_die", partition_info_int);
-
-        auto region = odb::dbRegion::create(block, partition_info_str.c_str());
-        odb::dbGroup* group;
-        if (region != nullptr) {
-          group = odb::dbGroup::create(region, partition_info_str.c_str());
-          groups.push_back(group);
-        } else {
-          group = groups.at(partition_info_int);
-        }
-        group->addInst(inst);
-      } else {
-        logger_->error(utl::MDM,
-                       2,
-                       "Do partition first. There are some instances that "
-                       "don't have a partition info");
-      }
-    }
-  }
 }
 
 void MultiDieManager::switchMasters()
@@ -251,29 +201,36 @@ void MultiDieManager::switchMasters()
   for (auto chip : db_->getChips()) {
     auto block = chip->getBlock();
     for (auto inst : block->getInsts()) {
-      auto partition_info = odb::dbIntProperty::find(inst, "which_die");
+      auto partition_info = odb::dbIntProperty::find(inst, "partition_id");
       assert(partition_info != nullptr);
 
-      odb::dbLib* lib = findLibByPartitionInfo(partition_info->getValue());
+      int lib_order = partition_info->getValue();
+      odb::dbLib* lib = findLibByPartitionInfo(lib_order); // return the n_th lib
       assert(lib);
 
       auto master = lib->findMaster(inst->getMaster()->getName().c_str());
       assert(master);
 
-      switchMaster(inst, master);
+      switchMaster(inst, master, lib_order);
     }
   }
   logger_->info(utl::MDM, 3, "Partition information is applied to instances");
 }
 
-void MultiDieManager::switchMaster(odb::dbInst* inst, odb::dbMaster* master)
+void MultiDieManager::switchMaster(odb::dbInst* inst,
+                                   odb::dbMaster* master,
+                                   int lib_order)
 {
   assert(inst->getMaster()->getName() == master->getName());
   assert(inst->getMaster()->getMTermCount() == master->getMTermCount());
 
   vector<pair<string, odb::dbNet*>> net_info_container;
   string inst_name = inst->getName();
-  auto block = inst->getBlock();  // TODO: edit here after revised odb
+
+  // TODO: Question. How can I find the block correspond to the lib that I want,
+  //  from lib? ( e.g. master->getLib()->...->getBlock() )
+  auto block = db_->getChip()->getBlock()->findChild(("Die"+ to_string(lib_order)).c_str());
+  assert(block);
 
   // save placement information
   odb::dbPlacementStatus placement_status = inst->getPlacementStatus();
@@ -380,6 +337,8 @@ void MultiDieManager::switchMaster(odb::dbInst* inst, odb::dbMaster* master)
   group->addInst(inst);
 }
 
+
+// return the n_th lib
 odb::dbLib* MultiDieManager::findLibByPartitionInfo(int value)
 {
   int iter = 0;
