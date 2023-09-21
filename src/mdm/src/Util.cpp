@@ -175,6 +175,14 @@ void MultiDieManager::readPartitionInfo(std::string file_name)
     odb::dbInst* inst;
     for (auto chip : db_->getChips()) {
       inst = chip->getBlock()->findInst(inst_name.c_str());
+      if (!inst) {
+        for (auto block : chip->getBlock()->getChildren()) {
+          inst = block->findInst(inst_name.c_str());
+          if (inst) {
+            continue;
+          }
+        }
+      }
     }
     if (inst != nullptr) {
       odb::dbIntProperty::create(inst, "partition_id", partition_id);
