@@ -49,6 +49,7 @@ target_sources(mdm
         src/MultiDieManager.cc
         src/HybridBond.cpp
         src/DetailPlacementMgr.cpp
+        src/Util.cpp
 )
 
 target_include_directories(mdm
