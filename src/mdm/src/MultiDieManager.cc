@@ -74,20 +74,31 @@ void MultiDieManager::makeSubBlocks()
   auto top_block = db_->getChip()->getBlock();
   // +1 for the top heir block
   assert(number_of_die_ + 1 == db_->getTechs().size());
+  assert(db_->getTechs().size() >= 2);
 
   int die_idx = 0;
   for (auto tech : db_->getTechs()) {
-    // exclude the first tech which is the top heir,
-    // and also the second which is parsed at the tcl level
-    // e.g. read_def -child -tech top ispd18_test1.input.def
-    if (die_idx < 2) {
-      die_idx++;
+    if (tech == *db_->getTechs().begin()) {
+      // exclude the first tech which is the top heir,
       continue;
     }
-    string die_name = "Die" + to_string(die_idx++);
-    auto child_block = odb::dbBlock::create(top_block, die_name.c_str(), tech);
+    string die_name = "Die" + to_string(die_idx);
+    odb::dbBlock* child_block = nullptr;
+    if (die_idx != 0) {
+      // the second which is parsed at the tcl level
+      // e.g. read_def -child -tech top ispd18_test1.input.def
+      child_block = odb::dbBlock::create(top_block, die_name.c_str(), tech);
+    } else {
+      child_block = (*db_->getChip()->getBlock()->getChildren().begin());
+      // TODO: @Matt ,
+      //  this is minor, but I want to change the `child_block` name,
+      //  which is parsed by the tcl level. Is this possible?
+      //  Currently, the name of
+      //  child_block_0 = ispd18~, child_block1 = Die1, child_block2 = Die2...
+    }
     // make the inst that can represent the child die
     odb::dbInst::create(top_block, child_block, die_name.c_str());
+    die_idx++;
   }
 }
 void MultiDieManager::switchInstanceToAssignedDie(odb::dbInst* originalInst)
