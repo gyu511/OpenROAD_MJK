@@ -52,161 +52,63 @@ void MultiDieManager::set3DIC(int number_of_die,
 
   logger_->info(utl::MDM, 1, "Set number of die to {}", number_of_die_);
   // Set up for multi dies
-  setUp();
-}
-void MultiDieManager::setUp()
-{
   splitInstances();
 }
 
 void MultiDieManager::splitInstances()
 {
-  // move the instances from top heir block to sub-block
-  readPartitionInfo("partitionInfo/ispd18_test1.par"); // TODO: we need to this part make be in the tcl command
-  switchMasters();
-}
+  // TODO: We need to make the partitioning part be in the TCL command.
+  readPartitionInfo("partitionInfo/ispd18_test1.par");
+  makeSubBlocks();
 
-void MultiDieManager::switchMasters()
-{
-  for (auto chip : db_->getChips()) {
-    auto block = chip->getBlock();
-    for (auto inst : block->getInsts()) {
-      auto partition_info = odb::dbIntProperty::find(inst, "partition_id");
-      assert(partition_info != nullptr);
-
-      int lib_order = partition_info->getValue();
-      odb::dbLib* lib = findLibByPartitionInfo(lib_order); // return the n_th lib
-      assert(lib);
-
-      auto master = lib->findMaster(inst->getMaster()->getName().c_str());
-      assert(master);
-
-      switchMaster(inst, master, lib_order);
-    }
+  // for the most bottom die, the instances is already assigned in the tcl
+  // level. e.g. read_def -child -tech bottom
+  // So we need switch instances from bottom to other dies
+  auto most_bottom_die = *db_->getChip()->getBlock()->getChildren().begin();
+  for (auto inst : most_bottom_die->getInsts()) {
+    switchInstanceToAssignedDie(inst);
   }
-  logger_->info(utl::MDM, 3, "Partition information is applied to instances");
 }
-
-void MultiDieManager::switchMaster(odb::dbInst* inst,
-                                   odb::dbMaster* master,
-                                   int lib_order)
+void MultiDieManager::makeSubBlocks()
 {
-  assert(inst->getMaster()->getName() == master->getName());
-  assert(inst->getMaster()->getMTermCount() == master->getMTermCount());
+  auto top_block = db_->getChip()->getBlock();
+  // +1 for the top heir block
+  assert(number_of_die_ + 1 == db_->getTechs().size());
 
-  vector<pair<string, odb::dbNet*>> net_info_container;
-  string inst_name = inst->getName();
-
-  // TODO: Question. How can I find the block correspond to the lib that I want,
-  //  from lib? ( e.g. master->getLib()->...->getBlock() )
-  auto block = db_->getChip()->getBlock()->findChild(("Die"+ to_string(lib_order)).c_str());
-  assert(block);
-
-  // save placement information
-  odb::dbPlacementStatus placement_status = inst->getPlacementStatus();
-  odb::Point location;
-  if (placement_status != odb::dbPlacementStatus::NONE) {
-    location = inst->getLocation();
-  }
-
-  // save connected net information
-  for (auto iTerm : inst->getITerms()) {
-    if (iTerm->getNet() == nullptr) {
+  int die_idx = 0;
+  for (auto tech : db_->getTechs()) {
+    // exclude the first tech which is the top heir,
+    // and also the second which is parsed at the tcl level
+    // e.g. read_def -child -tech top ispd18_test1.input.def
+    if (die_idx < 2) {
+      die_idx++;
       continue;
     }
-    string pin_name = iTerm->getMTerm()->getName();
-    net_info_container.emplace_back(pin_name, iTerm->getNet());
+    string die_name = "Die" + to_string(die_idx++);
+    auto child_block = odb::dbBlock::create(top_block, die_name.c_str(), tech);
+    // make the inst that can represent the child die
+    odb::dbInst::create(top_block, child_block, die_name.c_str());
   }
-
-  // save 4 kinds of properties
-  struct PropertyStorage
-  {
-    vector<int> int_properties;
-    vector<string> string_properties;
-    vector<double> double_properties;
-    vector<bool> bool_properties;
-    vector<string> name_of_int_properties;
-    vector<string> name_of_string_properties;
-    vector<string> name_of_double_properties;
-    vector<string> name_of_bool_properties;
-  };
-  PropertyStorage property_storage;
-  for (auto property : odb::dbProperty::getProperties(inst)) {
-    if (property->getType() == odb::dbProperty::Type::INT_PROP) {
-      property_storage.int_properties.push_back(
-          odb::dbIntProperty::find(inst, property->getName().c_str())
-              ->getValue());
-      property_storage.name_of_int_properties.push_back(property->getName());
-    } else if (property->getType() == odb::dbProperty::Type::STRING_PROP) {
-      property_storage.string_properties.push_back(
-          odb::dbStringProperty::find(inst, property->getName().c_str())
-              ->getValue());
-      property_storage.name_of_string_properties.push_back(property->getName());
-    } else if (property->getType() == odb::dbProperty::Type::DOUBLE_PROP) {
-      property_storage.double_properties.push_back(
-          odb::dbDoubleProperty::find(inst, property->getName().c_str())
-              ->getValue());
-      property_storage.name_of_double_properties.push_back(property->getName());
-    } else if (property->getType() == odb::dbProperty::Type::BOOL_PROP) {
-      property_storage.bool_properties.push_back(
-          odb::dbBoolProperty::find(inst, property->getName().c_str())
-              ->getValue());
-      property_storage.name_of_bool_properties.push_back(property->getName());
-    }
-  }
-
-  // save the group information
-  odb::dbGroup* group = inst->getGroup();
-
-  // destory the instance
-  odb::dbInst::destroy(inst);
-
-  // remake the instance with new master
-  inst = odb::dbInst::create(block, master, inst_name.c_str());
-
-  // set placement information
-  if (placement_status) {
-    inst->setLocation(location.getX(), location.getY());
-  }
-  inst->setPlacementStatus(placement_status);
-
-  // set connected net information
-  for (const auto& net_info : net_info_container) {
-    auto iterm = inst->findITerm(net_info.first.c_str());
-    assert(iterm);
-    iterm->connect(net_info.second);
-  }
-
-  // set 4 kinds of properties
-  for (int i = 0; i < property_storage.int_properties.size(); ++i) {
-    odb::dbIntProperty::create(
-        inst,
-        property_storage.name_of_int_properties.at(i).c_str(),
-        property_storage.int_properties.at(i));
-  }
-  for (int i = 0; i < property_storage.string_properties.size(); ++i) {
-    odb::dbStringProperty::create(
-        inst,
-        property_storage.name_of_string_properties.at(i).c_str(),
-        property_storage.string_properties.at(i).c_str());
-  }
-  for (int i = 0; i < property_storage.double_properties.size(); ++i) {
-    odb::dbDoubleProperty::create(
-        inst,
-        property_storage.name_of_double_properties.at(i).c_str(),
-        property_storage.double_properties.at(i));
-  }
-  for (int i = 0; i < property_storage.bool_properties.size(); ++i) {
-    odb::dbBoolProperty::create(
-        inst,
-        property_storage.name_of_bool_properties.at(i).c_str(),
-        property_storage.bool_properties.at(i));
-  }
-
-  // set the group
-  group->addInst(inst);
 }
+void MultiDieManager::switchInstanceToAssignedDie(odb::dbInst* originalInst)
+{
+  auto targetBlockID = SwitchInstanceHelper::findAssignedDieId(originalInst);
+  if (targetBlockID == 0) {
+    return;  // No need to switch if it is on the first die
+  }
+  auto [targetBlock, targetLib]
+      = SwitchInstanceHelper::findTargetDieAndLib(this, targetBlockID);
+  auto targetMaster
+      = targetLib->findMaster(originalInst->getMaster()->getName().c_str());
 
+  auto newInst = odb::dbInst::create(
+      targetBlock, targetMaster, originalInst->getName().c_str());
+  SwitchInstanceHelper::inheritPlacementInfo(originalInst, newInst);
+  SwitchInstanceHelper::inheritNetInfo(originalInst, newInst);
+  SwitchInstanceHelper::inheritProperties(originalInst, newInst);
+  SwitchInstanceHelper::inheritGroupInfo(originalInst, newInst);
 
+  odb::dbInst::destroy(originalInst);
+}
 
 }  // namespace mdm
