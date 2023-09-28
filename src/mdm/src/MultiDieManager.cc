@@ -66,7 +66,18 @@ void MultiDieManager::splitInstances()
   // So we need switch instances from bottom to other dies
   auto most_bottom_die = *db_->getChip()->getBlock()->getChildren().begin();
   for (auto inst : most_bottom_die->getInsts()) {
+    // TODO: check the iterator is fine even though the destroy of the insets
     switchInstanceToAssignedDie(inst);
+  }
+
+  // make the interconnections between (m) and (m+1)th blocks
+  auto blocks = db_->getChip()->getBlock()->getChildren();
+  auto iter = blocks.begin();
+  odb::dbBlock* lowerBlock = *iter;
+  for (++iter; iter != blocks.end(); ++iter) {
+    odb::dbBlock* upperBlock = *iter;
+    makeInterconnections(lowerBlock, upperBlock);
+    lowerBlock = upperBlock;
   }
 }
 void MultiDieManager::makeSubBlocks()
@@ -120,6 +131,53 @@ void MultiDieManager::switchInstanceToAssignedDie(odb::dbInst* originalInst)
   SwitchInstanceHelper::inheritGroupInfo(originalInst, newInst);
 
   odb::dbInst::destroy(originalInst);
+}
+
+void MultiDieManager::makeInterconnections(odb::dbBlock* lowerBlock,
+                                           odb::dbBlock* upperBlock)
+{
+  // interconnection should be implemented through
+  // lowerBlock - top heir block - upperBlock
+
+  // traverse the nets
+  for (auto lowerBlockNet : lowerBlock->getNets()) {
+    auto netName = lowerBlockNet->getName();
+    auto upperBlockNet = upperBlock->findNet(netName.c_str());
+    if (upperBlockNet) {
+      // access or make the interconnected net at top heir block
+      auto topHeirBlock = db_->getChip()->getBlock();
+      auto topHeirNet = topHeirBlock->findNet(netName.c_str());
+      if (!topHeirNet) {
+        topHeirNet = odb::dbNet::create(topHeirBlock, netName.c_str());
+      }
+      // connect between topHeir - lowerBlock, and between topHeir - upperBlock
+      auto interconnectName = netName + "_interconnect";
+      auto lowerBlockTerm
+          = odb::dbBTerm::create(lowerBlockNet, interconnectName.c_str());
+      auto upperBlockTerm
+          = odb::dbBTerm::create(upperBlockNet, interconnectName.c_str());
+
+      // REMINDER
+      // Current State (only for the lower die):
+      // 1. block terminal in lower block (`lowerBlockTerm`)
+      // is connected with `instForLowerBlock`
+      // 2. Let the `instForLowerBlock` be
+      // the instance which is in the top heir block and is for lower block
+      // Then iterm of `lowerInst` is not connected to any net
+
+      auto instForLowerBlock = lowerBlock->getParentInst();
+      auto instForUpperBlock = upperBlock->getParentInst();
+
+      instForLowerBlock->findITerm(interconnectName.c_str())
+          ->connect(topHeirNet);
+      instForUpperBlock->findITerm(interconnectName.c_str())
+          ->connect(topHeirNet);
+
+      // @Matt, I have a question. What is the different  between
+      // lowerBlock->getITerms() and instForLowerBlock->getITerms()?
+      // This is different, right?
+    }
+  }
 }
 
 }  // namespace mdm
