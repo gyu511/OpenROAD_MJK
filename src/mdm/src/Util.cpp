@@ -1,144 +1,162 @@
-// Copyright (c) 2021, The Regents of the University of California
+///////////////////////////////////////////////////////////////////////////////
+// BSD 3-Clause License
+//
+// Copyright (c) 2018-2020, The Regents of the University of California
 // All rights reserved.
 //
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
+// Redistribution and use in source and binary forms, with or without
+// modification, are permitted provided that the following conditions are met:
 //
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License for more details.
+// * Redistributions of source code must retain the above copyright notice, this
+//   list of conditions and the following disclaimer.
 //
-// You should have received a copy of the GNU General Public License
-// along with this program.  If not, see <https://www.gnu.org/licenses/>.
+// * Redistributions in binary form must reproduce the above copyright notice,
+//   this list of conditions and the following disclaimer in the documentation
+//   and/or other materials provided with the distribution.
+//
+// * Neither the name of the copyright holder nor the names of its
+//   contributors may be used to endorse or promote products derived from
+//   this software without specific prior written permission.
+//
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+// AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+// IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+// ARE
+// DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+// FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+// DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+// SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+// CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+// OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+// OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+///////////////////////////////////////////////////////////////////////////////
+
 #include "mdm/MultiDieManager.hh"
 #include "utl/Logger.h"
 namespace mdm {
 using namespace std;
 void MultiDieManager::makeShrunkLefs()
 {
-  float shrink_length_ratio = 1.0;
-  for (int i = 0; i < number_of_die_; ++i) {
-    shrink_length_ratios_.push_back(shrink_length_ratio);
+  float shrinkLengthRatio = 1.0;
+  for (int i = 0; i < numberOfDie_; ++i) {
+    shrinkLengthRatios_.push_back(shrinkLengthRatio);
     if (i == 0) {
       continue;
     }
-    string die_name = "Die" + to_string(i);
-    shrink_length_ratio = std::sqrt(shrink_area_ratio) * shrink_length_ratio;
-    auto tech = makeNewTech(die_name);
-    makeShrunkLib(die_name, shrink_length_ratio, tech);
+    string dieName = "Die" + to_string(i);
+    shrinkLengthRatio = std::sqrt(shrinkAreaRatio_) * shrinkLengthRatio;
+    auto tech = makeNewTech(dieName);
+    makeShrunkLib(dieName, shrinkLengthRatio, tech);
   }
 }
 
-odb::dbTech* MultiDieManager::makeNewTech(const std::string& tech_name)
+odb::dbTech* MultiDieManager::makeNewTech(const std::string& techName)
 {
-  auto tech = odb::dbTech::create(db_, (tech_name + "_tech").c_str());
-  auto tech_original = (*db_->getTechs().begin());
-  tech->setLefUnits(tech_original->getLefUnits());
-  tech->setManufacturingGrid(tech_original->getManufacturingGrid());
-  tech->setLefVersion(tech_original->getLefVersion());
-  tech->setDbUnitsPerMicron(tech_original->getDbUnitsPerMicron());
-  for (auto layer_original : tech_original->getLayers()) {
+  auto tech = odb::dbTech::create(db_, (techName + "_tech").c_str());
+  auto originalTech = (*db_->getTechs().begin());
+  tech->setLefUnits(originalTech->getLefUnits());
+  tech->setManufacturingGrid(originalTech->getManufacturingGrid());
+  tech->setLefVersion(originalTech->getLefVersion());
+  tech->setDbUnitsPerMicron(originalTech->getDbUnitsPerMicron());
+  for (auto originalLayer : originalTech->getLayers()) {
     odb::dbTechLayer::create(tech,
-                             (layer_original->getName() + tech_name).c_str(),
-                             layer_original->getType());
+                             (originalLayer->getName() + techName).c_str(),
+                             originalLayer->getType());
   }
   return tech;
 }
 
-void MultiDieManager::makeShrunkLib(const string& which_die,
-                                    double shrunk_ratio,
+void MultiDieManager::makeShrunkLib(const string& whichDie,
+                                    double shrunkRatio,
                                     odb::dbTech* tech)
 {
-  auto libs_original = db_->getLibs();
+  auto originalLibs = db_->getLibs();
 
-  uint lib_number = libs_original.size();
-  uint lib_idx = 0;
-  for (auto lib_original : libs_original) {
-    lib_idx++;
-    if (lib_idx > lib_number)  // NOLINT(*-braces-around-statements)
+  uint libNumber = originalLibs.size();
+  uint libIdx = 0;
+  for (auto originalLib : originalLibs) {
+    libIdx++;
+    if (libIdx > libNumber)  // NOLINT(*-braces-around-statements)
       break;
 
     auto lib = odb::dbLib::create(
-        db_, (lib_original->getName() + which_die).c_str(), tech);
-    lib->setLefUnits(lib_original->getLefUnits());
+        db_, (originalLib->getName() + whichDie).c_str(), tech);
+    lib->setLefUnits(originalLib->getLefUnits());
     // create master when you can handle multi-die technology;
     // after revised odb version
-    for (auto site_original : lib_original->getSites()) {
+    for (auto originalSite : originalLib->getSites()) {
       auto site = odb::dbSite::create(
-          lib, (site_original->getName() + which_die).c_str());
+          lib, (originalSite->getName() + whichDie).c_str());
       // apply shrink factor on site
       site->setWidth(static_cast<int>(
-          static_cast<float>(site_original->getWidth()) * shrunk_ratio));
+          static_cast<float>(originalSite->getWidth()) * shrunkRatio));
       site->setHeight(static_cast<int>(
-          static_cast<float>(site_original->getHeight()) * shrunk_ratio));
+          static_cast<float>(originalSite->getHeight()) * shrunkRatio));
     }
 
-    for (auto master_original : lib_original->getMasters()) {
+    for (auto originalMaster : originalLib->getMasters()) {
       odb::dbMaster* master
-          = odb::dbMaster::create(lib, (master_original->getName()).c_str());
+          = odb::dbMaster::create(lib, (originalMaster->getName()).c_str());
 
-      master->setType(master_original->getType());
-      if (master_original->getEEQ())
-        master->setEEQ(master_original->getEEQ());
-      if (master_original->getLEQ())
-        master->setLEQ(master_original->getLEQ());
+      master->setType(originalMaster->getType());
+      if (originalMaster->getEEQ())
+        master->setEEQ(originalMaster->getEEQ());
+      if (originalMaster->getLEQ())
+        master->setLEQ(originalMaster->getLEQ());
       int width = static_cast<int>(
-          static_cast<float>(master_original->getWidth()) * shrunk_ratio);
+          static_cast<float>(originalMaster->getWidth()) * shrunkRatio);
       int height = static_cast<int>(
-          static_cast<float>(master_original->getHeight()) * shrunk_ratio);
+          static_cast<float>(originalMaster->getHeight()) * shrunkRatio);
       master->setWidth(width);
       master->setHeight(height);
 
-      int master_origin_x, master_origin_y;
-      master_original->getOrigin(master_origin_x, master_origin_y);
-      master_origin_x = static_cast<int>(static_cast<float>(master_origin_x)
-                                         * shrunk_ratio);
-      master_origin_y = static_cast<int>(static_cast<float>(master_origin_y)
-                                         * shrunk_ratio);
-      master->setOrigin(master_origin_x, master_origin_y);
+      int masterOriginX, masterOriginY;
+      originalMaster->getOrigin(masterOriginX, masterOriginY);
+      masterOriginX
+          = static_cast<int>(static_cast<float>(masterOriginX) * shrunkRatio);
+      masterOriginY
+          = static_cast<int>(static_cast<float>(masterOriginY) * shrunkRatio);
+      master->setOrigin(masterOriginX, masterOriginY);
 
-      if (master_original->getSite() != nullptr) {
+      if (originalMaster->getSite() != nullptr) {
         auto site = lib->findSite(
-            (master_original->getSite()->getName() + which_die).c_str());
+            (originalMaster->getSite()->getName() + whichDie).c_str());
         assert(site != nullptr);
         master->setSite(site);
       }
 
-      if (master_original->getSymmetryX())
+      if (originalMaster->getSymmetryX())
         master->setSymmetryX();
-      if (master_original->getSymmetryY())
+      if (originalMaster->getSymmetryY())
         master->setSymmetryY();
-      if (master_original->getSymmetryR90())
+      if (originalMaster->getSymmetryR90())
         master->setSymmetryR90();
 
-      master->setMark(master_original->isMarked());
-      master->setSequential(master_original->isSequential());
-      master->setSpecialPower(master_original->isSpecialPower());
+      master->setMark(originalMaster->isMarked());
+      master->setSequential(originalMaster->isSequential());
+      master->setSpecialPower(originalMaster->isSpecialPower());
 
-      for (auto m_term_original : master_original->getMTerms()) {
-        auto db_m_term = odb::dbMTerm::create(master,
-                                              m_term_original->getConstName(),
-                                              m_term_original->getIoType(),
-                                              m_term_original->getSigType(),
-                                              m_term_original->getShape());
+      for (auto originalMTerm : originalMaster->getMTerms()) {
+        auto dbMTerm = odb::dbMTerm::create(master,
+                                            originalMTerm->getConstName(),
+                                            originalMTerm->getIoType(),
+                                            originalMTerm->getSigType(),
+                                            originalMTerm->getShape());
 
-        for (auto pin_original : m_term_original->getMPins()) {
-          auto db_m_pin = odb::dbMPin::create(db_m_term);
+        for (auto pin_original : originalMTerm->getMPins()) {
+          auto dbMPin = odb::dbMPin::create(dbMTerm);
           for (auto geometry : pin_original->getGeometry()) {
             int x1, y1, x2, y2;
             x1 = static_cast<int>(static_cast<float>(geometry->xMin())
-                                  * shrunk_ratio);
+                                  * shrunkRatio);
             y1 = static_cast<int>(static_cast<float>(geometry->yMin())
-                                  * shrunk_ratio);
+                                  * shrunkRatio);
             x2 = static_cast<int>(static_cast<float>(geometry->xMax())
-                                  * shrunk_ratio);
+                                  * shrunkRatio);
             y2 = static_cast<int>(static_cast<float>(geometry->yMax())
-                                  * shrunk_ratio);
+                                  * shrunkRatio);
             odb::dbBox::create(
-                db_m_pin, geometry->getTechLayer(), x1, y1, x2, y2);
+                dbMPin, geometry->getTechLayer(), x1, y1, x2, y2);
           }
         }
       }
@@ -150,34 +168,34 @@ void MultiDieManager::makeShrunkLib(const string& which_die,
 odb::dbLib* MultiDieManager::findLibByPartitionInfo(int value)
 {
   int iter = 0;
-  for (auto lib_iter : db_->getLibs()) {
+  for (auto libIter : db_->getLibs()) {
     if (iter == value) {
-      return lib_iter;
+      return libIter;
     }
     iter++;
   }
   return nullptr;  // or handle appropriately if lib is not found
 }
 
-void MultiDieManager::readPartitionInfo(std::string file_name)
+void MultiDieManager::readPartitionInfo(const std::string& fileName)
 {
   // read partition file and apply it
-  ifstream partition_file(file_name);
-  if (!partition_file.is_open()) {
+  ifstream partitionFile(fileName);
+  if (!partitionFile.is_open()) {
     logger_->error(utl::MDM, 4, "Cannot open partition file");
   }
   string line;
-  while (getline(partition_file, line)) {
+  while (getline(partitionFile, line)) {
     istringstream iss(line);
-    string inst_name;
-    int partition_id;
-    iss >> inst_name >> partition_id;
+    string instName;
+    int partitionId;
+    iss >> instName >> partitionId;
     odb::dbInst* inst;
     for (auto chip : db_->getChips()) {
-      inst = chip->getBlock()->findInst(inst_name.c_str());
+      inst = chip->getBlock()->findInst(instName.c_str());
       if (!inst) {
         for (auto block : chip->getBlock()->getChildren()) {
-          inst = block->findInst(inst_name.c_str());
+          inst = block->findInst(instName.c_str());
           if (inst) {
             continue;
           }
@@ -185,10 +203,10 @@ void MultiDieManager::readPartitionInfo(std::string file_name)
       }
     }
     if (inst != nullptr) {
-      odb::dbIntProperty::create(inst, "partition_id", partition_id);
+      odb::dbIntProperty::create(inst, "partition_id", partitionId);
     }
   }
-  partition_file.close();
+  partitionFile.close();
 }
 
 }  // namespace mdm

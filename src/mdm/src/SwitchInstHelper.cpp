@@ -1,18 +1,35 @@
-// Copyright (c) 2021, The Regents of the University of California
+///////////////////////////////////////////////////////////////////////////////
+// BSD 3-Clause License
+//
+// Copyright (c) 2018-2020, The Regents of the University of California
 // All rights reserved.
 //
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
+// Redistribution and use in source and binary forms, with or without
+// modification, are permitted provided that the following conditions are met:
 //
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License for more details.
+// * Redistributions of source code must retain the above copyright notice, this
+//   list of conditions and the following disclaimer.
 //
-// You should have received a copy of the GNU General Public License
-// along with this program.  If not, see <https://www.gnu.org/licenses/>.
+// * Redistributions in binary form must reproduce the above copyright notice,
+//   this list of conditions and the following disclaimer in the documentation
+//   and/or other materials provided with the distribution.
+//
+// * Neither the name of the copyright holder nor the names of its
+//   contributors may be used to endorse or promote products derived from
+//   this software without specific prior written permission.
+//
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+// AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+// IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+// ARE
+// DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+// FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+// DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+// SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+// CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+// OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+// OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+///////////////////////////////////////////////////////////////////////////////
 
 #include "mdm/MultiDieManager.hh"
 namespace mdm {
@@ -32,9 +49,9 @@ std::pair<odb::dbBlock*, odb::dbLib*> SwitchInstanceHelper::findTargetDieAndLib(
   odb::dbLib* targetLib = nullptr;
 
   int dieIdx = 0;
-  for (auto child_die : manager->db_->getChip()->getBlock()->getChildren()) {
+  for (auto childDie : manager->db_->getChip()->getBlock()->getChildren()) {
     if (dieIdx == dieID) {
-      targetBlock = child_die;
+      targetBlock = childDie;
       break;
     }
     dieIdx++;
@@ -93,62 +110,62 @@ void SwitchInstanceHelper::inheritProperties(odb::dbInst* originalInst,
 {
   struct PropertyStorage
   {
-    vector<int> int_properties;
-    vector<string> string_properties;
-    vector<double> double_properties;
-    vector<bool> bool_properties;
-    vector<string> name_of_int_properties;
-    vector<string> name_of_string_properties;
-    vector<string> name_of_double_properties;
-    vector<string> name_of_bool_properties;
+    vector<int> intProperties;
+    vector<string> stringProperties;
+    vector<double> doubleProperties;
+    vector<bool> boolProperties;
+    vector<string> nameOfIntProperties;
+    vector<string> nameOfStringProperties;
+    vector<string> nameOfDoubleProperties;
+    vector<string> nameOfBoolProperties;
   };
-  PropertyStorage property_storage;
+  PropertyStorage propertyStorage;
   for (auto property : odb::dbProperty::getProperties(originalInst)) {
     if (property->getType() == odb::dbProperty::INT_PROP) {
-      property_storage.int_properties.push_back(
+      propertyStorage.intProperties.push_back(
           odb::dbIntProperty::find(originalInst, property->getName().c_str())
               ->getValue());
-      property_storage.name_of_int_properties.push_back(property->getName());
+      propertyStorage.nameOfIntProperties.push_back(property->getName());
     } else if (property->getType() == odb::dbProperty::STRING_PROP) {
-      property_storage.string_properties.push_back(
+      propertyStorage.stringProperties.push_back(
           odb::dbStringProperty::find(originalInst, property->getName().c_str())
               ->getValue());
-      property_storage.name_of_string_properties.push_back(property->getName());
+      propertyStorage.nameOfStringProperties.push_back(property->getName());
     } else if (property->getType() == odb::dbProperty::DOUBLE_PROP) {
-      property_storage.double_properties.push_back(
+      propertyStorage.doubleProperties.push_back(
           odb::dbDoubleProperty::find(originalInst, property->getName().c_str())
               ->getValue());
-      property_storage.name_of_double_properties.push_back(property->getName());
+      propertyStorage.nameOfDoubleProperties.push_back(property->getName());
     } else if (property->getType() == odb::dbProperty::BOOL_PROP) {
-      property_storage.bool_properties.push_back(
+      propertyStorage.boolProperties.push_back(
           odb::dbBoolProperty::find(originalInst, property->getName().c_str())
               ->getValue());
-      property_storage.name_of_bool_properties.push_back(property->getName());
+      propertyStorage.nameOfBoolProperties.push_back(property->getName());
     }
   }
-  for (int i = 0; i < property_storage.int_properties.size(); ++i) {
+  for (int i = 0; i < propertyStorage.intProperties.size(); ++i) {
     odb::dbIntProperty::create(
         newInst,
-        property_storage.name_of_int_properties.at(i).c_str(),
-        property_storage.int_properties.at(i));
+        propertyStorage.nameOfIntProperties.at(i).c_str(),
+        propertyStorage.intProperties.at(i));
   }
-  for (int i = 0; i < property_storage.string_properties.size(); ++i) {
+  for (int i = 0; i < propertyStorage.stringProperties.size(); ++i) {
     odb::dbStringProperty::create(
         newInst,
-        property_storage.name_of_string_properties.at(i).c_str(),
-        property_storage.string_properties.at(i).c_str());
+        propertyStorage.nameOfStringProperties.at(i).c_str(),
+        propertyStorage.stringProperties.at(i).c_str());
   }
-  for (int i = 0; i < property_storage.double_properties.size(); ++i) {
+  for (int i = 0; i < propertyStorage.doubleProperties.size(); ++i) {
     odb::dbDoubleProperty::create(
         newInst,
-        property_storage.name_of_double_properties.at(i).c_str(),
-        property_storage.double_properties.at(i));
+        propertyStorage.nameOfDoubleProperties.at(i).c_str(),
+        propertyStorage.doubleProperties.at(i));
   }
-  for (int i = 0; i < property_storage.bool_properties.size(); ++i) {
+  for (int i = 0; i < propertyStorage.boolProperties.size(); ++i) {
     odb::dbBoolProperty::create(
         newInst,
-        property_storage.name_of_bool_properties.at(i).c_str(),
-        property_storage.bool_properties.at(i));
+        propertyStorage.nameOfBoolProperties.at(i).c_str(),
+        propertyStorage.boolProperties.at(i));
   }
 }
 void SwitchInstanceHelper::inheritGroupInfo(odb::dbInst* originalInst,

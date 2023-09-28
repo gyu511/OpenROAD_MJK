@@ -76,16 +76,16 @@ class MultiDieManager
 
   void init(odb::dbDatabase* db,
             utl::Logger* logger,
-            par::PartitionMgr* partition_mgr,
+            par::PartitionMgr* partitionMgr,
             gpl::Replace* replace,
             dpl::Opendp* opendp);
 
-  void set3DIC(int number_of_die,
-               uint hybrid_bond_x = 10,
-               uint hybrid_bond_y = 10,
-               uint hybrid_bond_space_x = 10,
-               uint hybrid_bond_space_y = 10,
-               float area_ratio = 0.5);
+  void set3DIC(int numberOfDie,
+               uint hybridBondX = 10,
+               uint hybridBondY = 10,
+               uint hybridBondSpaceX = 10,
+               uint hybridBondSpaceY = 10,
+               float areaRatio = 0.5);
   /**
    * \brief
    * Make shrunk lef files.
@@ -101,9 +101,9 @@ class MultiDieManager
   void twoDieDetailPlacement();
 
  private:
-  odb::dbTech* makeNewTech(const std::string& tech_name);
-  void makeShrunkLib(const std::string& which_die,
-                     double shrunk_ratio,
+  odb::dbTech* makeNewTech(const std::string& techName);
+  void makeShrunkLib(const std::string& whichDie,
+                     double shrunkRatio,
                      odb::dbTech* tech__);
 
   /**
@@ -135,7 +135,7 @@ class MultiDieManager
    * Reading function for partitioning information in `par` is not work in
    * proper way. So make this function as temporal solution.
    * */
-  void readPartitionInfo(std::string file_name);
+  void readPartitionInfo(const std::string& fileName);
 
   /**
    * Below functions are for detail placement.
@@ -145,7 +145,7 @@ class MultiDieManager
     TOP,
     BOTTOM
   };
-  void constructionDbForOneDie(WHICH_DIE which_die);
+  void constructionDbForOneDie(WHICH_DIE whichDie);
   void detailPlacement();
   void applyDetailPlacementResult();
   void switchInstanceToAssignedDie(odb::dbInst* originalInst);
@@ -153,20 +153,20 @@ class MultiDieManager
 
   odb::dbDatabase* db_{};
   utl::Logger* logger_{};
-  par::PartitionMgr* partition_mgr_{};
+  par::PartitionMgr* partitionMgr_{};
   gpl::Replace* replace_{};
   dpl::Opendp* opendp_{};
 
-  int number_of_die_{};
-  float shrink_area_ratio{};
-  std::vector<float> shrink_length_ratios_;
+  int numberOfDie_{};
+  float shrinkAreaRatio_{};
+  std::vector<float> shrinkLengthRatios_;
 
   // Hybrid Bond information --> This would be absorbed in odb later.
   std::vector<HybridBond> hybridbond_set_;
-  HybridBondInfo hybrid_bond_info_{};
+  HybridBondInfo hybridBondInfo_{};
 
   // temporal variables
-  odb::dbDatabase* target_db_{};
+  odb::dbDatabase* targetDb_{};
 };
 
 }  // namespace mdm

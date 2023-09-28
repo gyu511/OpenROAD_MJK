@@ -1,18 +1,36 @@
-// Copyright (c) 2021, The Regents of the University of California
+///////////////////////////////////////////////////////////////////////////////
+// BSD 3-Clause License
+//
+// Copyright (c) 2018-2020, The Regents of the University of California
 // All rights reserved.
 //
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
+// Redistribution and use in source and binary forms, with or without
+// modification, are permitted provided that the following conditions are met:
 //
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License for more details.
+// * Redistributions of source code must retain the above copyright notice, this
+//   list of conditions and the following disclaimer.
 //
-// You should have received a copy of the GNU General Public License
-// along with this program.  If not, see <https://www.gnu.org/licenses/>.
+// * Redistributions in binary form must reproduce the above copyright notice,
+//   this list of conditions and the following disclaimer in the documentation
+//   and/or other materials provided with the distribution.
+//
+// * Neither the name of the copyright holder nor the names of its
+//   contributors may be used to endorse or promote products derived from
+//   this software without specific prior written permission.
+//
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+// AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+// IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+// ARE
+// DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+// FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+// DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+// SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+// CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+// OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+// OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+///////////////////////////////////////////////////////////////////////////////
+
 #include "mdm/MultiDieManager.hh"
 
 #include "utl/Logger.h"
@@ -26,31 +44,31 @@ MultiDieManager::~MultiDieManager() = default;
 
 void MultiDieManager::init(odb::dbDatabase* db,
                            utl::Logger* logger,
-                           par::PartitionMgr* partition_mgr,
+                           par::PartitionMgr* partitionMgr,
                            gpl::Replace* replace,
                            dpl::Opendp* opendp)
 {
   db_ = db;
   logger_ = logger;
-  partition_mgr_ = partition_mgr;
+  partitionMgr_ = partitionMgr;
   replace_ = replace;
   opendp_ = opendp;
 }
 
-void MultiDieManager::set3DIC(int number_of_die,
-                              uint hybrid_bond_x,
-                              uint hybrid_bond_y,
-                              uint hybrid_bond_space_x,
-                              uint hybrid_bond_space_y,
-                              float area_ratio)
+void MultiDieManager::set3DIC(int numberOfDie,
+                              uint hybridBondX,
+                              uint hybridBondY,
+                              uint hybridBondSpaceX,
+                              uint hybridBondSpaceY,
+                              float areaRatio)
 {
   // set the variables
-  hybrid_bond_info_.setHybridBondInfo(
-      hybrid_bond_x, hybrid_bond_y, hybrid_bond_space_x, hybrid_bond_space_y);
-  number_of_die_ = number_of_die;
-  shrink_area_ratio = area_ratio;
+  hybridBondInfo_.setHybridBondInfo(
+      hybridBondX, hybridBondY, hybridBondSpaceX, hybridBondSpaceY);
+  numberOfDie_ = numberOfDie;
+  shrinkAreaRatio_ = areaRatio;
 
-  logger_->info(utl::MDM, 1, "Set number of die to {}", number_of_die_);
+  logger_->info(utl::MDM, 1, "Set number of die to {}", numberOfDie_);
   // Set up for multi dies
   splitInstances();
 }
@@ -64,8 +82,8 @@ void MultiDieManager::splitInstances()
   // for the most bottom die, the instances is already assigned in the tcl
   // level. e.g. read_def -child -tech bottom
   // So we need switch instances from bottom to other dies
-  auto most_bottom_die = *db_->getChip()->getBlock()->getChildren().begin();
-  for (auto inst : most_bottom_die->getInsts()) {
+  auto mostBottomDie = *db_->getChip()->getBlock()->getChildren().begin();
+  for (auto inst : mostBottomDie->getInsts()) {
     // TODO: check the iterator is fine even though the destroy of the insets
     switchInstanceToAssignedDie(inst);
   }
@@ -82,34 +100,34 @@ void MultiDieManager::splitInstances()
 }
 void MultiDieManager::makeSubBlocks()
 {
-  auto top_block = db_->getChip()->getBlock();
+  auto topHeirBlock = db_->getChip()->getBlock();
   // +1 for the top heir block
-  assert(number_of_die_ + 1 == db_->getTechs().size());
+  assert(numberOfDie_ + 1 == db_->getTechs().size());
   assert(db_->getTechs().size() >= 2);
 
-  int die_idx = 0;
+  int dieIdx = 0;
   for (auto tech : db_->getTechs()) {
     if (tech == *db_->getTechs().begin()) {
       // exclude the first tech which is the top heir,
       continue;
     }
-    string die_name = "Die" + to_string(die_idx);
-    odb::dbBlock* child_block = nullptr;
-    if (die_idx != 0) {
+    string dieName = "Die" + to_string(dieIdx);
+    odb::dbBlock* childBlock = nullptr;
+    if (dieIdx != 0) {
       // the second which is parsed at the tcl level
       // e.g. read_def -child -tech top ispd18_test1.input.def
-      child_block = odb::dbBlock::create(top_block, die_name.c_str(), tech);
+      childBlock = odb::dbBlock::create(topHeirBlock, dieName.c_str(), tech);
     } else {
-      child_block = (*db_->getChip()->getBlock()->getChildren().begin());
+      childBlock = (*db_->getChip()->getBlock()->getChildren().begin());
       // TODO: @Matt ,
-      //  this is minor, but I want to change the `child_block` name,
+      //  this is minor, but I want to change the `childBlock` name,
       //  which is parsed by the tcl level. Is this possible?
       //  Currently, the name of
       //  child_block_0 = ispd18~, child_block1 = Die1, child_block2 = Die2...
     }
     // make the inst that can represent the child die
-    odb::dbInst::create(top_block, child_block, die_name.c_str());
-    die_idx++;
+    odb::dbInst::create(topHeirBlock, childBlock, dieName.c_str());
+    dieIdx++;
   }
 }
 void MultiDieManager::switchInstanceToAssignedDie(odb::dbInst* originalInst)
