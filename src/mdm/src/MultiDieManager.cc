@@ -1,21 +1,37 @@
-// Copyright (c) 2021, The Regents of the University of California
+///////////////////////////////////////////////////////////////////////////////
+// BSD 3-Clause License
+//
+// Copyright (c) 2018-2020, The Regents of the University of California
 // All rights reserved.
 //
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
+// Redistribution and use in source and binary forms, with or without
+// modification, are permitted provided that the following conditions are met:
 //
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License for more details.
+// * Redistributions of source code must retain the above copyright notice, this
+//   list of conditions and the following disclaimer.
 //
-// You should have received a copy of the GNU General Public License
-// along with this program.  If not, see <https://www.gnu.org/licenses/>.
-#include "mdm/MultiDieManager.hh"
+// * Redistributions in binary form must reproduce the above copyright notice,
+//   this list of conditions and the following disclaimer in the documentation
+//   and/or other materials provided with the distribution.
+//
+// * Neither the name of the copyright holder nor the names of its
+//   contributors may be used to endorse or promote products derived from
+//   this software without specific prior written permission.
+//
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+// AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+// IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+// ARE
+// DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+// FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+// DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+// SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+// CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+// OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+// OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+///////////////////////////////////////////////////////////////////////////////
 
-#include <iostream>
+#include "mdm/MultiDieManager.hh"
 
 #include "utl/Logger.h"
 
@@ -28,432 +44,163 @@ MultiDieManager::~MultiDieManager() = default;
 
 void MultiDieManager::init(odb::dbDatabase* db,
                            utl::Logger* logger,
-                           par::PartitionMgr* partition_mgr,
+                           par::PartitionMgr* partitionMgr,
                            gpl::Replace* replace,
                            dpl::Opendp* opendp)
 {
   db_ = db;
   logger_ = logger;
-  partition_mgr_ = partition_mgr;
+  partitionMgr_ = partitionMgr;
   replace_ = replace;
   opendp_ = opendp;
 }
 
-void MultiDieManager::set3DIC(int number_of_die,
-                              uint hybrid_bond_x,
-                              uint hybrid_bond_y,
-                              uint hybrid_bond_space_x,
-                              uint hybrid_bond_space_y,
-                              float area_ratio)
+void MultiDieManager::set3DIC(int numberOfDie,
+                              uint hybridBondX,
+                              uint hybridBondY,
+                              uint hybridBondSpaceX,
+                              uint hybridBondSpaceY,
+                              float areaRatio)
 {
-  logger_->info(utl::MDM, 1, "Set number of die to {}", number_of_die_);
-
   // set the variables
-  hybrid_bond_info_.setHybridBondInfo(
-      hybrid_bond_x, hybrid_bond_y, hybrid_bond_space_x, hybrid_bond_space_y);
-  number_of_die_ = number_of_die;
-  shrink_area_ratio = area_ratio;
+  hybridBondInfo_.setHybridBondInfo(
+      hybridBondX, hybridBondY, hybridBondSpaceX, hybridBondSpaceY);
+  numberOfDie_ = numberOfDie;
+  shrinkAreaRatio_ = areaRatio;
 
+  logger_->info(utl::MDM, 1, "Set number of die to {}", numberOfDie_);
   // Set up for multi dies
-  setUp();
-}
-void MultiDieManager::setUp()
-{
-  readPartitionInfo("partitionInfo/partitionInfo1.par");  // temporal function
-
-  makeShrunkLefs();
-  partitionInstances();
-  switchMasters();
+  splitInstances();
 }
 
-void MultiDieManager::makeShrunkLefs()
+void MultiDieManager::splitInstances()
 {
-  float shrink_length_ratio = 1.0;
-  for (int i = 0; i < number_of_die_; ++i) {
-    shrink_length_ratios_.push_back(shrink_length_ratio);
-    if (i == 0) {
+  // TODO: We need to make the partitioning part be in the TCL command.
+  readPartitionInfo("partitionInfo/ispd18_test1.par");
+  makeSubBlocks();
+
+  switchInstancesToAssignedDie();
+
+  // make the interconnections between (m) and (m+1)th blocks
+  auto blocks = db_->getChip()->getBlock()->getChildren();
+  auto iter = blocks.begin();
+  odb::dbBlock* lowerBlock = *iter;
+  for (++iter; iter != blocks.end(); ++iter) {
+    odb::dbBlock* upperBlock = *iter;
+    makeInterconnections(lowerBlock, upperBlock);
+    lowerBlock = upperBlock;
+  }
+}
+void MultiDieManager::makeSubBlocks()
+{
+  auto topHeirBlock = db_->getChip()->getBlock();
+  // +1 for the top heir block
+  assert(numberOfDie_ + 1 == db_->getTechs().size());
+  assert(db_->getTechs().size() >= 2);
+
+  int dieIdx = 0;
+  for (auto tech : db_->getTechs()) {
+    if (tech == *db_->getTechs().begin()) {
+      // exclude the first tech which is the top heir,
       continue;
     }
-    string die_name = "Die" + to_string(i);
-    shrink_length_ratio = std::sqrt(shrink_area_ratio) * shrink_length_ratio;
-    makeShrunkLef(die_name, shrink_length_ratio);
+    string dieName = "Die" + to_string(dieIdx);
+    odb::dbBlock* childBlock = nullptr;
+    if (dieIdx != 0) {
+      // the second which is parsed at the tcl level
+      // e.g. read_def -child -tech top ispd18_test1.input.def
+      childBlock = odb::dbBlock::create(topHeirBlock, dieName.c_str(), tech);
+    } else {
+      childBlock = (*db_->getChip()->getBlock()->getChildren().begin());
+      // TODO: @Matt ,
+      //  this is minor, but I want to change the `childBlock` name,
+      //  which is parsed by the tcl level. Is this possible?
+      //  Currently, the name of
+      //  child_block_0 = ispd18~, child_block1 = Die1, child_block2 = Die2...
+    }
+    // make the inst that can represent the child die
+    odb::dbInst::create(topHeirBlock, childBlock, dieName.c_str());
+    dieIdx++;
+  }
+}
+void MultiDieManager::switchInstancesToAssignedDie()
+{
+  // for the most bottom die, the instances is already assigned in the tcl
+  // level. e.g. read_def -child -tech bottom
+  // So we need switch instances from bottom to other dies
+  auto mostBottomDie = *db_->getChip()->getBlock()->getChildren().begin();
+
+  // Because in the instances are destroyed in `switchInstanceToAssignedDie`,
+  // we need to make the copy of the pointer of the instances.
+  vector<odb::dbInst*> instPointerContainer;
+  for (auto inst : mostBottomDie->getInsts()) {
+    instPointerContainer.push_back(inst);
+  }
+
+  // switch the instances one by one
+  for (auto inst : instPointerContainer) {
+    SwitchInstanceHelper::switchInstanceToAssignedDie(this, inst);
+  }
+
+  // remove the redundant nets (floating nets)
+  for (auto net : mostBottomDie->getNets()) {
+    if (net->getBTermCount() == 0 && net->getITermCount() == 0) {
+      odb::dbNet::destroy(net);
+    }
   }
 }
 
-void MultiDieManager::makeShrunkLef(const string& which_die,
-                                    double shrunk_ratio)
+void MultiDieManager::makeInterconnections(odb::dbBlock* lowerBlock,
+                                           odb::dbBlock* upperBlock)
 {
-  auto libs_original = db_->getLibs();
-  auto tech = db_->getTech();
+  // interconnection should be implemented through
+  // lowerBlock - top heir block - upperBlock
 
-  // TODO:
-  // Making multiple Technology should be implemented after the updated odb
-
-  uint lib_number = libs_original.size();
-  uint lib_idx = 0;
-  for (auto lib_original : libs_original) {
-    lib_idx++;
-    if (lib_idx > lib_number)  // NOLINT(*-braces-around-statements)
-      break;
-
-    auto lib = odb::dbLib::create(
-        db_, (lib_original->getName() + which_die).c_str(), tech);
-    lib->setLefUnits(lib_original->getLefUnits());
-    // create master when you can handle multi-die technology;
-    // after revised odb version
-    /*
-        for (auto site_original : lib_original->getSites()) {
-          auto site = odb::dbSite::create(
-              lib, (site_original->getName() + which_die).c_str());
-          // apply shrink factor on site
-          site->setWidth(static_cast<int>(
-              static_cast<float>(site_original->getWidth()) * shrunk_ratio));
-          site->setHeight(static_cast<int>(
-              static_cast<float>(site_original->getHeight()) * shrunk_ratio));
-        }
-    */
-
-    for (auto master_original : lib_original->getMasters()) {
-      odb::dbMaster* master
-          = odb::dbMaster::create(lib, (master_original->getName()).c_str());
-
-      master->setType(master_original->getType());
-      if (master_original->getEEQ())
-        master->setEEQ(master_original->getEEQ());
-      if (master_original->getLEQ())
-        master->setLEQ(master_original->getLEQ());
-      int width = static_cast<int>(
-          static_cast<float>(master_original->getWidth()) * shrunk_ratio);
-      int height = static_cast<int>(
-          static_cast<float>(master_original->getHeight()) * shrunk_ratio);
-      master->setWidth(width);
-      master->setHeight(height);
-
-      int master_origin_x, master_origin_y;
-      master_original->getOrigin(master_origin_x, master_origin_y);
-      master_origin_x = static_cast<int>(static_cast<float>(master_origin_x)
-                                         * shrunk_ratio);
-      master_origin_y = static_cast<int>(static_cast<float>(master_origin_y)
-                                         * shrunk_ratio);
-      master->setOrigin(master_origin_x, master_origin_y);
-
-      master->setSite(master_original->getSite());
-
-      if (master_original->getSymmetryX())
-        master->setSymmetryX();
-      if (master_original->getSymmetryY())
-        master->setSymmetryY();
-      if (master_original->getSymmetryR90())
-        master->setSymmetryR90();
-
-      master->setMark(master_original->isMarked());
-      master->setSequential(master_original->isSequential());
-      master->setSpecialPower(master_original->isSpecialPower());
-
-      for (auto m_term_original : master_original->getMTerms()) {
-        auto db_m_term = odb::dbMTerm::create(master,
-                                              m_term_original->getConstName(),
-                                              m_term_original->getIoType(),
-                                              m_term_original->getSigType(),
-                                              m_term_original->getShape());
-
-        for (auto pin_original : m_term_original->getMPins()) {
-          auto db_m_pin = odb::dbMPin::create(db_m_term);
-          for (auto geometry : pin_original->getGeometry()) {
-            int x1, y1, x2, y2;
-            x1 = static_cast<int>(static_cast<float>(geometry->xMin())
-                                  * shrunk_ratio);
-            y1 = static_cast<int>(static_cast<float>(geometry->yMin())
-                                  * shrunk_ratio);
-            x2 = static_cast<int>(static_cast<float>(geometry->xMax())
-                                  * shrunk_ratio);
-            y2 = static_cast<int>(static_cast<float>(geometry->yMax())
-                                  * shrunk_ratio);
-            odb::dbBox::create(
-                db_m_pin, geometry->getTechLayer(), x1, y1, x2, y2);
-          }
-        }
+  // traverse the nets
+  for (auto lowerBlockNet : lowerBlock->getNets()) {
+    auto netName = lowerBlockNet->getName();
+    auto upperBlockNet = upperBlock->findNet(netName.c_str());
+    if (upperBlockNet) {
+      // access or make the interconnected net at top heir block
+      auto topHeirBlock = db_->getChip()->getBlock();
+      auto topHeirNet = topHeirBlock->findNet(netName.c_str());
+      if (!topHeirNet) {
+        topHeirNet = odb::dbNet::create(topHeirBlock, netName.c_str());
       }
-      master->setFrozen();
+      // connect between topHeir - lowerBlock, and between topHeir - upperBlock
+      auto interconnectName = netName + "_interconnect";
+      auto lowerBlockTerm
+          = odb::dbBTerm::create(lowerBlockNet, interconnectName.c_str());
+      auto upperBlockTerm
+          = odb::dbBTerm::create(upperBlockNet, interconnectName.c_str());
+
+      // REMINDER
+      // Current State, specifically for the lower die:
+      // Let `instForLowerBlock` as the instance in the top heir block
+      // and exist for representing the lower block.
+      // e.g.
+      // auto instForLowerBlock = lowerBlock->getParentInst();
+      // auto instForUpperBlock = upperBlock->getParentInst();
+      //
+      // [1] About `lowerBlockTerm`
+      // 1.1. This is in the `lowerBlock`,
+      // 1.2. This is connected to `lowerBlockNet`.
+      //
+      // [2] About The new iTerm of `instForLowerBlock`
+      // 2.1. This is in the top heir block, not in `lowerBlock`.
+      // 2.2. This is mapped to the `lowerBlockTerm`, which is in `lowerBlock`.
+      // 2.3. This is accessed by using
+      // `instForLowerBlock->findITerm(interconnectName.c_str())`.
+      // 2.4. This is accessed by using`lowerBlockTerm->getITerm()`.
+      // 2.5. This is not connected to any net.
+
+      lowerBlockTerm->getITerm()->connect(topHeirNet);
+      upperBlockTerm->getITerm()->connect(topHeirNet);
+
+      // @Matt, I have a question. What is the different  between
+      // lowerBlock->getITerms() and instForLowerBlock->getITerms()?
+      // This is different, right?
     }
-  }
-}
-void MultiDieManager::partitionInstances()
-{
-  // check whether the partition information exists and
-  // apply the information at the same time
-  vector<odb::dbGroup*> groups;
-
-  for (auto chip : db_->getChips()) {
-    auto block = chip->getBlock();
-    for (auto inst : block->getInsts()) {
-      auto partition_info = odb::dbIntProperty::find(inst, "partition_id");
-      if (partition_info) {
-        int partition_info_int = partition_info->getValue();
-        string partition_info_str = "Die" + to_string(partition_info_int);
-        odb::dbIntProperty::create(inst, "which_die", partition_info_int);
-
-        auto region = odb::dbRegion::create(block, partition_info_str.c_str());
-        odb::dbGroup* group;
-        if (region != nullptr) {
-          group = odb::dbGroup::create(region, partition_info_str.c_str());
-          groups.push_back(group);
-        } else {
-          group = groups.at(partition_info_int);
-        }
-        group->addInst(inst);
-      } else {
-        logger_->error(utl::MDM,
-                       2,
-                       "Do partition first. There are some instances that "
-                       "don't have a partition info");
-      }
-    }
-  }
-}
-
-void MultiDieManager::switchMasters()
-{
-  for (auto chip : db_->getChips()) {
-    auto block = chip->getBlock();
-    for (auto inst : block->getInsts()) {
-      auto partition_info = odb::dbIntProperty::find(inst, "which_die");
-      assert(partition_info != nullptr);
-
-      odb::dbLib* lib = findLibByPartitionInfo(partition_info->getValue());
-      assert(lib);
-
-      auto master = lib->findMaster(inst->getMaster()->getName().c_str());
-      assert(master);
-
-      switchMaster(inst, master);
-    }
-  }
-  logger_->info(utl::MDM, 3, "Partition information is applied to instances");
-}
-
-void MultiDieManager::switchMaster(odb::dbInst* inst, odb::dbMaster* master)
-{
-  assert(inst->getMaster()->getName() == master->getName());
-  assert(inst->getMaster()->getMTermCount() == master->getMTermCount());
-
-  vector<pair<string, odb::dbNet*>> net_info_container;
-  string inst_name = inst->getName();
-  auto block = inst->getBlock();  // TODO: edit here after revised odb
-
-  // save placement information
-  odb::dbPlacementStatus placement_status = inst->getPlacementStatus();
-  odb::Point location;
-  if (placement_status != odb::dbPlacementStatus::NONE) {
-    location = inst->getLocation();
-  }
-
-  // save connected net information
-  for (auto iTerm : inst->getITerms()) {
-    if (iTerm->getNet() == nullptr) {
-      continue;
-    }
-    string pin_name = iTerm->getMTerm()->getName();
-    net_info_container.emplace_back(pin_name, iTerm->getNet());
-  }
-
-  // save 4 kinds of properties
-  struct PropertyStorage
-  {
-    vector<int> int_properties;
-    vector<string> string_properties;
-    vector<double> double_properties;
-    vector<bool> bool_properties;
-    vector<string> name_of_int_properties;
-    vector<string> name_of_string_properties;
-    vector<string> name_of_double_properties;
-    vector<string> name_of_bool_properties;
-  };
-  PropertyStorage property_storage;
-  for (auto property : odb::dbProperty::getProperties(inst)) {
-    if (property->getType() == odb::dbProperty::Type::INT_PROP) {
-      property_storage.int_properties.push_back(
-          odb::dbIntProperty::find(inst, property->getName().c_str())
-              ->getValue());
-      property_storage.name_of_int_properties.push_back(property->getName());
-    } else if (property->getType() == odb::dbProperty::Type::STRING_PROP) {
-      property_storage.string_properties.push_back(
-          odb::dbStringProperty::find(inst, property->getName().c_str())
-              ->getValue());
-      property_storage.name_of_string_properties.push_back(property->getName());
-    } else if (property->getType() == odb::dbProperty::Type::DOUBLE_PROP) {
-      property_storage.double_properties.push_back(
-          odb::dbDoubleProperty::find(inst, property->getName().c_str())
-              ->getValue());
-      property_storage.name_of_double_properties.push_back(property->getName());
-    } else if (property->getType() == odb::dbProperty::Type::BOOL_PROP) {
-      property_storage.bool_properties.push_back(
-          odb::dbBoolProperty::find(inst, property->getName().c_str())
-              ->getValue());
-      property_storage.name_of_bool_properties.push_back(property->getName());
-    }
-  }
-
-  // save the group information
-  odb::dbGroup* group = inst->getGroup();
-
-  // destory the instance
-  odb::dbInst::destroy(inst);
-
-  // remake the instance with new master
-  inst = odb::dbInst::create(block, master, inst_name.c_str());
-
-  // set placement information
-  inst->setPlacementStatus(placement_status);
-  if (placement_status) {
-    inst->setLocation(location.getX(), location.getY());
-  }
-
-  // set connected net information
-  for (const auto& net_info : net_info_container) {
-    auto iterm = inst->findITerm(net_info.first.c_str());
-    assert(iterm);
-    iterm->connect(net_info.second);
-  }
-
-  // set 4 kinds of properties
-  for (int i = 0; i < property_storage.int_properties.size(); ++i) {
-    odb::dbIntProperty::create(
-        inst,
-        property_storage.name_of_int_properties.at(i).c_str(),
-        property_storage.int_properties.at(i));
-  }
-  for (int i = 0; i < property_storage.string_properties.size(); ++i) {
-    odb::dbStringProperty::create(
-        inst,
-        property_storage.name_of_string_properties.at(i).c_str(),
-        property_storage.string_properties.at(i).c_str());
-  }
-  for (int i = 0; i < property_storage.double_properties.size(); ++i) {
-    odb::dbDoubleProperty::create(
-        inst,
-        property_storage.name_of_double_properties.at(i).c_str(),
-        property_storage.double_properties.at(i));
-  }
-  for (int i = 0; i < property_storage.bool_properties.size(); ++i) {
-    odb::dbBoolProperty::create(
-        inst,
-        property_storage.name_of_bool_properties.at(i).c_str(),
-        property_storage.bool_properties.at(i));
-  }
-
-  // set the group
-  group->addInst(inst);
-}
-
-odb::dbLib* MultiDieManager::findLibByPartitionInfo(int value)
-{
-  int iter = 0;
-  for (auto lib_iter : db_->getLibs()) {
-    if (iter == value) {
-      return lib_iter;
-    }
-    iter++;
-  }
-  return nullptr;  // or handle appropriately if lib is not found
-}
-
-void MultiDieManager::readPartitionInfo(std::string file_name)
-{
-  // read partition file and apply it
-  ifstream partition_file(file_name);
-  if (!partition_file.is_open()) {
-    logger_->error(utl::MDM, 4, "Cannot open partition file");
-  }
-  string line;
-  while (getline(partition_file, line)) {
-    istringstream iss(line);
-    string inst_name;
-    int partition_id;
-    iss >> inst_name >> partition_id;
-    odb::dbInst* inst;
-    for (auto chip : db_->getChips()) {
-      inst = chip->getBlock()->findInst(inst_name.c_str());
-    }
-    if (inst == nullptr) {
-      logger_->error(
-          utl::MDM, 5, "Cannot find instance {} in the database", inst_name);
-    }
-    odb::dbIntProperty::create(inst, "partition_id", partition_id);
-  }
-  partition_file.close();
-}
-
-void MultiDieManager::twoDieDetailPlacement()
-{
-  vector<odb::dbDatabase*> target_db_set;
-  for (int i = 0; i < 2; ++i) {
-    if (i == 0) {
-      constructionDbForOneDie(TOP);
-      detailPlacement();
-      applyDetailPlacementResult();
-      odb::dbDatabase::destroy(target_db_);
-      target_db_ = nullptr;
-    } else if (i == 1) {
-      constructionDbForOneDie(BOTTOM);
-      detailPlacement();
-      applyDetailPlacementResult();
-      target_db_set.push_back(target_db_);
-      target_db_ = nullptr;
-    }
-  }
-
-  /*
-    for(auto target_db: target_db_set){
-      odb::dbDatabase::destroy(target_db);
-    }
-  */
-  // why isn't it possible???
-}
-
-void MultiDieManager::constructionDbForOneDie(WHICH_DIE which_die)
-{
-  int die_id = 0;
-  if (which_die == TOP) {
-    die_id = 0;
-  } else if (which_die == BOTTOM) {
-    die_id = 1;
-  }
-
-  vector<odb::dbInst*> inst_set_exclusive;
-  for (auto chip : db_->getChips()) {
-    auto block = chip->getBlock();
-    for (auto inst : block->getInsts()) {
-      auto partition_info = odb::dbIntProperty::find(inst, "which_die");
-      if (partition_info->getValue() != die_id) {
-        inst_set_exclusive.push_back(inst);
-      }
-    }
-  }
-  target_db_ = odb::dbDatabase::duplicate(db_);
-
-  for (auto exclusive_inst : inst_set_exclusive) {
-    auto inst = target_db_->getChip()->getBlock()->findInst(
-        exclusive_inst->getName().c_str());
-    odb::dbInst::destroy(inst);
-  }
-}
-
-void MultiDieManager::detailPlacement()
-{
-  auto* odp = new dpl::Opendp();
-  odp->init(target_db_, logger_);
-  odp->detailedPlacement(0, 0);
-}
-
-void MultiDieManager::applyDetailPlacementResult()
-{
-  for (auto inst : target_db_->getChip()->getBlock()->getInsts()) {
-    auto original_inst
-        = db_->getChip()->getBlock()->findInst(inst->getName().c_str());
-    auto original_location = inst->getLocation();
-    original_inst->setLocation(original_location.getX(),
-                               original_location.getY());
   }
 }
 

@@ -39,3 +39,7 @@ proc mdm::two_die_detail_placement { } {
   mdm::twoDieDetailPlace
 }
 
+proc mdm::make_shrunkLef { } {
+  mdm::makeShrunkLef
+}
+

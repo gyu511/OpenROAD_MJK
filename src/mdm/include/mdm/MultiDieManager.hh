@@ -35,6 +35,9 @@
 #ifndef OPENROAD_SRC_MDM_INCLUDE_MDM_MULTIDIEMANAGER_H_
 #define OPENROAD_SRC_MDM_INCLUDE_MDM_MULTIDIEMANAGER_H_
 #include <tcl.h>
+
+#include <iostream>
+#include <string>
 #include <vector>
 
 #include "HybridBond.h"
@@ -42,33 +45,51 @@
 #include "gpl/Replace.h"
 #include "odb/db.h"
 #include "par/PartitionMgr.h"
-#include "dpl/Opendp.h"
 
 namespace mdm {
+class MultiDieManager;
 class HybridBond;
 class HybridBondInfo;
+
+class SwitchInstanceHelper
+{
+ public:
+  static void switchInstanceToAssignedDie(MultiDieManager* manager,
+                                          odb::dbInst* originalInst);
+
+ private:
+  static int findAssignedDieId(odb::dbInst* inst);
+  static std::pair<odb::dbBlock*, odb::dbLib*> findTargetDieAndLib(
+      MultiDieManager* manager,
+      int dieID);
+  static void inheritPlacementInfo(odb::dbInst* originalInst,
+                                   odb::dbInst* newInst);
+  static void inheritNetInfo(odb::dbInst* originalInst, odb::dbInst* newInst);
+  static void inheritProperties(odb::dbInst* originalInst,
+                                odb::dbInst* newInst);
+  static void inheritGroupInfo(odb::dbInst* originalInst, odb::dbInst* newInst);
+};
+
 class MultiDieManager
 {
+  friend class SwitchInstanceHelper;
+
  public:
   MultiDieManager();
   ~MultiDieManager();
 
   void init(odb::dbDatabase* db,
             utl::Logger* logger,
-            par::PartitionMgr* partition_mgr,
+            par::PartitionMgr* partitionMgr,
             gpl::Replace* replace,
             dpl::Opendp* opendp);
 
-  void set3DIC(int number_of_die,
-               uint hybrid_bond_x = 10,
-               uint hybrid_bond_y = 10,
-               uint hybrid_bond_space_x = 10,
-               uint hybrid_bond_space_y = 10,
-               float area_ratio = 0.5);
-  void twoDieDetailPlacement();
- private:
-  void setUp();
-
+  void set3DIC(int numberOfDie,
+               uint hybridBondX = 10,
+               uint hybridBondY = 10,
+               uint hybridBondSpaceX = 10,
+               uint hybridBondSpaceY = 10,
+               float areaRatio = 0.5);
   /**
    * \brief
    * Make shrunk lef files.
@@ -80,61 +101,78 @@ class MultiDieManager
    * not supported completely in odb.
    * */
   void makeShrunkLefs();
-  void makeShrunkLef(const std::string& die_name, double shrunk_ratio);
+
+  void twoDieDetailPlacement();
+
+ private:
+  odb::dbTech* makeNewTech(const std::string& techName);
+  void makeShrunkLib(const std::string& whichDie,
+                     double shrunkRatio,
+                     odb::dbTech* tech__);
 
   /**
    * \brief
    * Partition instances into different die.
    * This will consider the size of technologies and the utilization of each
    * die.
-   * \todo
-   * change the function name as applyPartitionInfo after merge branch
+   *
+   * 1. Read partition information from file.
+   * 2. Make sub-blocks as much as partition IDs.
+   * 3. Put the instances into the sub-blocks.
    * */
-  void partitionInstances();
-
-
-  void switchMasters();
-  void switchMaster(odb::dbInst* inst, odb::dbMaster* master);
-  odb::dbLib* findLibByPartitionInfo(int value);
-
+  void splitInstances();
 
   /**
-   * Reading function for partitioning information in `par` is not work in proper way.
-   * So make this function as temporal solution.
-   * */
-  void readPartitionInfo(std::string file_name);
+   * This function is responsible for creating sub blocks (or dies) in a
+   * multi-die design. For each technology in the design database, a new die is
+   * created with a unique name. The first technology, which is the one parsed
+   * at the TCL level, is skipped.
+   */
+  void makeSubBlocks();
 
+  /**
+   * Return the n_th lib
+   * */
+  odb::dbLib* findLibByPartitionInfo(int value);
+
+  /**
+   * Reading function for partitioning information in `par` is not work in
+   * proper way. So make this function as temporal solution.
+   * */
+  void readPartitionInfo(const std::string& fileName);
 
   /**
    * Below functions are for detail placement.
    * */
-  enum WHICH_DIE{
+  enum WHICH_DIE
+  {
     TOP,
     BOTTOM
   };
-  void constructionDbForOneDie(WHICH_DIE which_die);
+  void constructionDbForOneDie(WHICH_DIE whichDie);
   void detailPlacement();
   void applyDetailPlacementResult();
-
-
+  void switchInstancesToAssignedDie();
+  void makeInterconnections(odb::dbBlock* lowerBlock, odb::dbBlock* upperBlock);
 
   odb::dbDatabase* db_{};
   utl::Logger* logger_{};
-  par::PartitionMgr* partition_mgr_{};
+  par::PartitionMgr* partitionMgr_{};
   gpl::Replace* replace_{};
   dpl::Opendp* opendp_{};
 
-  int number_of_die_{};
-  float shrink_area_ratio{};
-  std::vector<float> shrink_length_ratios_;
+  int numberOfDie_{};
+  float shrinkAreaRatio_{};
+  std::vector<float> shrinkLengthRatios_;
 
   // Hybrid Bond information --> This would be absorbed in odb later.
   std::vector<HybridBond> hybridbond_set_;
-  HybridBondInfo hybrid_bond_info_{};
+  HybridBondInfo hybridBondInfo_{};
 
   // temporal variables
-  odb::dbDatabase* target_db_{};
+  odb::dbDatabase* targetDb_{};
 };
+
 }  // namespace mdm
 
 #endif  // OPENROAD_SRC_MDM_INCLUDE_MDM_MULTIDIEMANAGER_H_

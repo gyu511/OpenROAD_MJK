@@ -31,39 +31,74 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ///////////////////////////////////////////////////////////////////////////////
 
-%module mdm
-
-%{
-
 #include "mdm/MultiDieManager.hh"
-#include "ord/OpenRoad.hh"
-
-mdm::MultiDieManager *
-getMultiDieManager()
+namespace mdm {
+using namespace std;
+void MultiDieManager::twoDieDetailPlacement()
 {
-  return ord::OpenRoad::openRoad()->getMultiDieManager();
+  vector<odb::dbDatabase*> targetDbSet;
+  for (int i = 0; i < 2; ++i) {
+    if (i == 0) {
+      constructionDbForOneDie(TOP);
+      detailPlacement();
+      applyDetailPlacementResult();
+      targetDb_ = nullptr;
+    } else if (i == 1) {
+      constructionDbForOneDie(BOTTOM);
+      detailPlacement();
+      applyDetailPlacementResult();
+      targetDbSet.push_back(targetDb_);
+      targetDb_ = nullptr;
+    }
+  }
+
+  for (auto targetDb : targetDbSet) {
+    odb::dbDatabase::destroy(targetDb);
+  }
 }
 
-%}
-
-%inline %{
-
-void
-set_3D_IC(int number_of_die)
+void MultiDieManager::constructionDbForOneDie(WHICH_DIE whichDie)
 {
-  getMultiDieManager()->set3DIC(number_of_die);
+  int dieId = 0;
+  if (whichDie == TOP) {
+    dieId = 0;
+  } else if (whichDie == BOTTOM) {
+    dieId = 1;
+  }
+
+  vector<odb::dbInst*> instSetExclusive;
+  for (auto chip : db_->getChips()) {
+    auto block = chip->getBlock();
+    for (auto inst : block->getInsts()) {
+      auto partitionInfo = odb::dbIntProperty::find(inst, "whichDie");
+      if (partitionInfo->getValue() != dieId) {
+        instSetExclusive.push_back(inst);
+      }
+    }
+  }
+  targetDb_ = odb::dbDatabase::duplicate(db_);
+
+  for (auto exclusiveInst : instSetExclusive) {
+    auto inst = targetDb_->getChip()->getBlock()->findInst(
+        exclusiveInst->getName().c_str());
+    odb::dbInst::destroy(inst);
+  }
 }
 
-void
-makeShrunkLef()
+void MultiDieManager::detailPlacement()
 {
-  getMultiDieManager()->makeShrunkLefs();
+  auto* odp = new dpl::Opendp();
+  odp->init(targetDb_, logger_);
+  odp->detailedPlacement(0, 0);
 }
 
-void
-twoDieDetailPlace()
+void MultiDieManager::applyDetailPlacementResult()
 {
-  getMultiDieManager()->twoDieDetailPlacement();
+  for (auto inst : targetDb_->getChip()->getBlock()->getInsts()) {
+    auto originalInst
+        = db_->getChip()->getBlock()->findInst(inst->getName().c_str());
+    auto originalLocation = inst->getLocation();
+    originalInst->setLocation(originalLocation.getX(), originalLocation.getY());
+  }
 }
-
-%} // inline
+}  // namespace mdm
