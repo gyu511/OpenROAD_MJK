@@ -79,14 +79,7 @@ void MultiDieManager::splitInstances()
   readPartitionInfo("partitionInfo/ispd18_test1.par");
   makeSubBlocks();
 
-  // for the most bottom die, the instances is already assigned in the tcl
-  // level. e.g. read_def -child -tech bottom
-  // So we need switch instances from bottom to other dies
-  auto mostBottomDie = *db_->getChip()->getBlock()->getChildren().begin();
-  for (auto inst : mostBottomDie->getInsts()) {
-    // TODO: check the iterator is fine even though the destroy of the insets
-    switchInstanceToAssignedDie(inst);
-  }
+  switchInstancesToAssignedDie();
 
   // make the interconnections between (m) and (m+1)th blocks
   auto blocks = db_->getChip()->getBlock()->getChildren();
@@ -130,25 +123,31 @@ void MultiDieManager::makeSubBlocks()
     dieIdx++;
   }
 }
-void MultiDieManager::switchInstanceToAssignedDie(odb::dbInst* originalInst)
+void MultiDieManager::switchInstancesToAssignedDie()
 {
-  auto targetBlockID = SwitchInstanceHelper::findAssignedDieId(originalInst);
-  if (targetBlockID == 0) {
-    return;  // No need to switch if it is on the first die
+  // for the most bottom die, the instances is already assigned in the tcl
+  // level. e.g. read_def -child -tech bottom
+  // So we need switch instances from bottom to other dies
+  auto mostBottomDie = *db_->getChip()->getBlock()->getChildren().begin();
+
+  // Because in the instances are destroyed in `switchInstanceToAssignedDie`,
+  // we need to make the copy of the pointer of the instances.
+  vector<odb::dbInst*> instPointerContainer;
+  for (auto inst : mostBottomDie->getInsts()) {
+    instPointerContainer.push_back(inst);
   }
-  auto [targetBlock, targetLib]
-      = SwitchInstanceHelper::findTargetDieAndLib(this, targetBlockID);
-  auto targetMaster
-      = targetLib->findMaster(originalInst->getMaster()->getName().c_str());
 
-  auto newInst = odb::dbInst::create(
-      targetBlock, targetMaster, originalInst->getName().c_str());
-  SwitchInstanceHelper::inheritPlacementInfo(originalInst, newInst);
-  SwitchInstanceHelper::inheritNetInfo(originalInst, newInst);
-  SwitchInstanceHelper::inheritProperties(originalInst, newInst);
-  SwitchInstanceHelper::inheritGroupInfo(originalInst, newInst);
+  // switch the instances one by one
+  for (auto inst : instPointerContainer) {
+    SwitchInstanceHelper::switchInstanceToAssignedDie(this, inst);
+  }
 
-  odb::dbInst::destroy(originalInst);
+  // remove the redundant nets (floating nets)
+  for (auto net : mostBottomDie->getNets()) {
+    if (net->getBTermCount() == 0 && net->getITermCount() == 0) {
+      odb::dbNet::destroy(net);
+    }
+  }
 }
 
 void MultiDieManager::makeInterconnections(odb::dbBlock* lowerBlock,
@@ -175,13 +174,13 @@ void MultiDieManager::makeInterconnections(odb::dbBlock* lowerBlock,
       auto upperBlockTerm
           = odb::dbBTerm::create(upperBlockNet, interconnectName.c_str());
 
-      auto instForLowerBlock = lowerBlock->getParentInst();
-      auto instForUpperBlock = upperBlock->getParentInst();
-
       // REMINDER
       // Current State, specifically for the lower die:
       // Let `instForLowerBlock` as the instance in the top heir block
       // and exist for representing the lower block.
+      // e.g.
+      // auto instForLowerBlock = lowerBlock->getParentInst();
+      // auto instForUpperBlock = upperBlock->getParentInst();
       //
       // [1] About `lowerBlockTerm`
       // 1.1. This is in the `lowerBlock`,

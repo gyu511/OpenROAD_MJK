@@ -54,6 +54,10 @@ class HybridBondInfo;
 class SwitchInstanceHelper
 {
  public:
+  static void switchInstanceToAssignedDie(MultiDieManager* manager,
+                                          odb::dbInst* originalInst);
+
+ private:
   static int findAssignedDieId(odb::dbInst* inst);
   static std::pair<odb::dbBlock*, odb::dbLib*> findTargetDieAndLib(
       MultiDieManager* manager,
@@ -148,7 +152,7 @@ class MultiDieManager
   void constructionDbForOneDie(WHICH_DIE whichDie);
   void detailPlacement();
   void applyDetailPlacementResult();
-  void switchInstanceToAssignedDie(odb::dbInst* originalInst);
+  void switchInstancesToAssignedDie();
   void makeInterconnections(odb::dbBlock* lowerBlock, odb::dbBlock* upperBlock);
 
   odb::dbDatabase* db_{};

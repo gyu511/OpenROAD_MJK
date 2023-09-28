@@ -34,6 +34,28 @@
 #include "mdm/MultiDieManager.hh"
 namespace mdm {
 using namespace std;
+void SwitchInstanceHelper::switchInstanceToAssignedDie(
+    MultiDieManager* manager,
+    odb::dbInst* originalInst)
+{
+  auto targetBlockID = findAssignedDieId(originalInst);
+  if (targetBlockID == 0) {
+    return;  // No need to switch if it is on the first die
+  }
+  auto [targetBlock, targetLib] = findTargetDieAndLib(manager, targetBlockID);
+  auto targetMaster
+      = targetLib->findMaster(originalInst->getMaster()->getName().c_str());
+
+  auto newInst = odb::dbInst::create(
+      targetBlock, targetMaster, originalInst->getName().c_str());
+  inheritPlacementInfo(originalInst, newInst);
+  inheritNetInfo(originalInst, newInst);
+  inheritProperties(originalInst, newInst);
+  inheritGroupInfo(originalInst, newInst);
+
+  odb::dbInst::destroy(originalInst);
+}
+
 int SwitchInstanceHelper::findAssignedDieId(odb::dbInst* inst)
 {
   auto partitionInfo = odb::dbIntProperty::find(inst, "partition_id");
