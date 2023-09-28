@@ -175,21 +175,28 @@ void MultiDieManager::makeInterconnections(odb::dbBlock* lowerBlock,
       auto upperBlockTerm
           = odb::dbBTerm::create(upperBlockNet, interconnectName.c_str());
 
-      // REMINDER
-      // Current State (only for the lower die):
-      // 1. block terminal in lower block (`lowerBlockTerm`)
-      // is connected with `instForLowerBlock`
-      // 2. Let the `instForLowerBlock` be
-      // the instance which is in the top heir block and is for lower block
-      // Then iterm of `lowerInst` is not connected to any net
-
       auto instForLowerBlock = lowerBlock->getParentInst();
       auto instForUpperBlock = upperBlock->getParentInst();
 
-      instForLowerBlock->findITerm(interconnectName.c_str())
-          ->connect(topHeirNet);
-      instForUpperBlock->findITerm(interconnectName.c_str())
-          ->connect(topHeirNet);
+      // REMINDER
+      // Current State, specifically for the lower die:
+      // Let `instForLowerBlock` as the instance in the top heir block
+      // and exist for representing the lower block.
+      //
+      // [1] About `lowerBlockTerm`
+      // 1.1. This is in the `lowerBlock`,
+      // 1.2. This is connected to `lowerBlockNet`.
+      //
+      // [2] About The new iTerm of `instForLowerBlock`
+      // 2.1. This is in the top heir block, not in `lowerBlock`.
+      // 2.2. This is mapped to the `lowerBlockTerm`, which is in `lowerBlock`.
+      // 2.3. This is accessed by using
+      // `instForLowerBlock->findITerm(interconnectName.c_str())`.
+      // 2.4. This is accessed by using`lowerBlockTerm->getITerm()`.
+      // 2.5. This is not connected to any net.
+
+      lowerBlockTerm->getITerm()->connect(topHeirNet);
+      upperBlockTerm->getITerm()->connect(topHeirNet);
 
       // @Matt, I have a question. What is the different  between
       // lowerBlock->getITerms() and instForLowerBlock->getITerms()?
