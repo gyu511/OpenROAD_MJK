@@ -856,12 +856,26 @@ void PlacerBaseCommon::init()
   log_->info(GPL, 4, "CoreAreaLxLy: {} {}", die_.coreLx(), die_.coreLy());
   log_->info(GPL, 5, "CoreAreaUxUy: {} {}", die_.coreUx(), die_.coreUy());
 
-  // Comment by minjae
-  // TODO: now block are more than one, so we need to search all blocks
   // insts fill with real instances
-  dbSet<dbInst> insts = block->getInsts();
-  instStor_.reserve(insts.size());
-  insts_.reserve(instStor_.size());
+  uint instCnt = 0;
+  instCnt += block->getInsts().size();
+  for (auto childBlock : block->getChildren()) {
+    // for multi-die case
+    instCnt += childBlock->getInsts().size();
+  }
+
+  vector<dbInst*> insts;
+  insts.reserve(instCnt);
+  for (auto inst : block->getInsts()) {
+    insts.push_back(inst);
+  }
+  for (auto childBlock : block->getChildren()) {
+    for (auto inst : childBlock->getInsts()) {
+      insts.push_back(inst);
+    }
+  }
+
+  instStor_.reserve(instCnt);
   for (dbInst* inst : insts) {
     auto type = inst->getMaster()->getType();
     if (!type.isCore() && !type.isBlock()) {
@@ -899,6 +913,7 @@ void PlacerBaseCommon::init()
           GPL, 120, "instance {} width is larger than core.", inst->getName());
   }
 
+  insts_.reserve(instStor_.size());
   for (auto& inst : instStor_) {
     instMap_[inst.dbInst()] = &inst;
     insts_.push_back(&inst);
@@ -909,8 +924,24 @@ void PlacerBaseCommon::init()
   }
 
   // nets fill
-  dbSet<dbNet> nets = block->getNets();
-  netStor_.reserve(nets.size());
+  uint netCnt = 0;
+  netCnt += block->getNets().size();
+  for (auto childBlock : block->getChildren()) {
+    netCnt += childBlock->getNets().size();
+  }
+
+  vector<dbNet*> nets;
+  nets.reserve(netCnt);
+  for (auto net : block->getNets()) {
+    nets.push_back(net);
+  }
+  for (auto childBlock : block->getChildren()) {
+    for (auto net : childBlock->getNets()) {
+      nets.push_back(net);
+    }
+  }
+
+  netStor_.reserve(netCnt);
   for (dbNet* net : nets) {
     dbSigType netType = net->getSigType();
 
@@ -968,8 +999,6 @@ void PlacerBaseCommon::init()
     }
   }
 
-  // Comment by minjae
-  // TODO: one net should bind the other pins that are not in the same block
   // nets' pin update
   nets_.reserve(netStor_.size());
   for (auto& net : netStor_) {
