@@ -818,16 +818,6 @@ void PlacerBaseCommon::init()
   dbBlock* block = db_->getChip()->getBlock();
 
   // die-core area update
-  odb::dbSite* site = nullptr;
-  for (auto* row : block->getRows()) {
-    if (row->getSite()->getClass() != odb::dbSiteClass::PAD) {
-      site = row->getSite();
-      break;
-    }
-  }
-  if (site == nullptr) {
-    log_->error(GPL, 305, "Unable to find a site");
-  }
   odb::Rect coreRect = block->getCoreArea();
   odb::Rect dieRect = block->getDieArea();
 
@@ -839,6 +829,16 @@ void PlacerBaseCommon::init()
   // siteSize update
   // Comment by minjae
   // TODO: blocks are more than one, so we need to separate the site information
+  odb::dbSite* site = nullptr;
+  for (auto* row : block->getRows()) {
+    if (row->getSite()->getClass() != odb::dbSiteClass::PAD) {
+      site = row->getSite();
+      break;
+    }
+  }
+  if (site == nullptr) {
+    log_->error(GPL, 305, "Unable to find a site");
+  }
   siteSizeX_ = site->getWidth();
   siteSizeY_ = site->getHeight();
 
