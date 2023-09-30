@@ -837,6 +837,8 @@ void PlacerBaseCommon::init()
   die_ = Die(dieRect, coreRect);
 
   // siteSize update
+  // Comment by minjae
+  // TODO: blocks are more than one, so we need to separate the site information
   siteSizeX_ = site->getWidth();
   siteSizeY_ = site->getHeight();
 
@@ -844,6 +846,8 @@ void PlacerBaseCommon::init()
   log_->info(GPL, 4, "CoreAreaLxLy: {} {}", die_.coreLx(), die_.coreLy());
   log_->info(GPL, 5, "CoreAreaUxUy: {} {}", die_.coreUx(), die_.coreUy());
 
+  // Comment by minjae
+  // TODO: now block are more than one, so we need to search all blocks
   // insts fill with real instances
   dbSet<dbInst> insts = block->getInsts();
   instStor_.reserve(insts.size());
@@ -950,6 +954,8 @@ void PlacerBaseCommon::init()
     }
   }
 
+  // Comment by minjae
+  // TODO: one net should bind the other pins that are not in the same block
   // nets' pin update
   nets_.reserve(netStor_.size());
   for (auto& net : netStor_) {
@@ -1069,6 +1075,8 @@ void PlacerBase::init()
 
   die_ = pbCommon_->die();
 
+  // Comment by minjae
+  // TODO: We need to separate the site information for each block
   // siteSize update
   siteSizeX_ = pbCommon_->siteSizeX();
   siteSizeY_ = pbCommon_->siteSizeY();
@@ -1078,6 +1086,9 @@ void PlacerBase::init()
       continue;
     }
 
+    // Comment by minjae
+    // TODO: We need to skip if it is not the target block
+    //  considering the groups
     if (inst->dbInst() && inst->dbInst()->getGroup() != group_) {
       continue;
     }
@@ -1148,6 +1159,9 @@ void PlacerBase::initInstsForUnusableSites()
   // Initialize siteGrid as empty
   //
   std::vector<PlaceInfo> siteGrid(siteCountX * siteCountY, PlaceInfo::Empty);
+
+  // Comment by minjae
+  // TODO: Separate the process also for the different blocks
 
   // check if this belongs to a group
   // if there is a group, only mark the sites that belong to the group as Row

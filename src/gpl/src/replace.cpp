@@ -268,6 +268,12 @@ void Replace::doInitialPlace()
 
     pbVec_.push_back(std::make_shared<PlacerBase>(db_, pbc_, log_));
 
+    // Comment by minjae
+    // TODO: We need to separate the `PlacerBase`
+    //  with block and group at the same time.
+    //  For example,
+    //  block1 ⊃ group1, block1 ⊃ group2, block2 ⊃ group3, block2 ⊃ group4, ...
+
     for (auto pd : db_->getChip()->getBlock()->getPowerDomains()) {
       if (pd->getGroup()) {
         pbVec_.push_back(
@@ -308,6 +314,12 @@ bool Replace::initNesterovPlace()
 
     pbVec_.push_back(std::make_shared<PlacerBase>(db_, pbc_, log_));
 
+    // Comment by minjae
+    // TODO: We need to separate the `PlacerBase`
+    //  with block and group at the same time.
+    //  For example,
+    //  block1 ⊃ group1, block1 ⊃ group2, block2 ⊃ group3, block2 ⊃ group4, ...
+
     for (auto pd : db_->getChip()->getBlock()->getPowerDomains()) {
       if (pd->getGroup()) {
         pbVec_.push_back(
@@ -327,6 +339,9 @@ bool Replace::initNesterovPlace()
   }
 
   if (!nbc_) {
+    // Comment by minjae
+    // TODO: `nbVars` should be separated by the dbBlocks.
+    //  This needs a editing of the tcl command.
     NesterovBaseVars nbVars;
     nbVars.targetDensity = density_;
 
@@ -345,6 +360,8 @@ bool Replace::initNesterovPlace()
     }
   }
 
+  // Comment by minjae
+  // TODO: Consider the rb and tb for multi-die case
   if (!rb_) {
     RouteBaseVars rbVars;
     rbVars.maxDensity = routabilityMaxDensity_;

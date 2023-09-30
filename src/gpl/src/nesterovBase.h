@@ -288,6 +288,9 @@ class GNet
 
  private:
   std::vector<GPin*> gPins_;
+  // Comment by minjae
+  // Question: Is it possible for GNet to have multiple `Net`?
+  // Why is `nets_` a vector?
   std::vector<Net*> nets_;
   int lx_;
   int ly_;

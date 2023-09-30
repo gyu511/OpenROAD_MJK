@@ -1091,6 +1091,11 @@ void NesterovBaseCommon::init()
     gNetStor_.push_back(myGNet);
   }
 
+  // Comment by minjae
+  // TODO: put the interconnected information for gNet
+  //  and set the custom weight
+  //  Question: How can we set the custom net properly?
+
   // gCell ptr init
   gCells_.reserve(gCellStor_.size());
   for (auto& gCell : gCellStor_) {
@@ -1189,6 +1194,10 @@ GNet* NesterovBaseCommon::dbToNb(odb::dbNet* net) const
 // in ePlace paper.
 void NesterovBaseCommon::updateWireLengthForceWA(float wlCoeffX, float wlCoeffY)
 {
+  // Comment by minjae
+  // TODO: check;
+  //  shouldn't the wlCoeff separated by the dbGroup or dbBlocks?
+
   // clear all WA variables.
   for (auto& gNet : gNets_) {
     gNet->clearWaVars();
