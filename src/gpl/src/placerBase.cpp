@@ -827,22 +827,32 @@ void PlacerBaseCommon::init()
   die_ = Die(dieRect, coreRect);
 
   // siteSize update
-  // Comment by minjae
-  // TODO: blocks are more than one, so we need to separate the site information
   odb::dbSite* site = nullptr;
   for (auto* row : block->getRows()) {
     if (row->getSite()->getClass() != odb::dbSiteClass::PAD) {
       site = row->getSite();
+      blockSiteMap_[block] = site;
       break;
     }
   }
   if (site == nullptr) {
     log_->error(GPL, 305, "Unable to find a site");
   }
-  siteSizeX_ = site->getWidth();
-  siteSizeY_ = site->getHeight();
+  for (auto childBlock : block->getChildren()) {
+    site = nullptr;
+    for (auto* row : childBlock->getRows()) {
+      if (row->getSite()->getClass() != odb::dbSiteClass::PAD) {
+        site = row->getSite();
+        blockSiteMap_[childBlock] = site;
+        break;
+      }
+    }
+    if (site == nullptr) {
+      log_->error(GPL, 306, "Unable to find a site for child block");
+    }
+  }
 
-  log_->info(GPL, 3, "SiteSize: {} {}", siteSizeX_, siteSizeY_);
+  log_->info(GPL, 3, "SiteSize: {} {}", siteSizeX(block), siteSizeY(block));
   log_->info(GPL, 4, "CoreAreaLxLy: {} {}", die_.coreLx(), die_.coreLy());
   log_->info(GPL, 5, "CoreAreaUxUy: {} {}", die_.coreUx(), die_.coreUy());
 
@@ -857,22 +867,26 @@ void PlacerBaseCommon::init()
     if (!type.isCore() && !type.isBlock()) {
       continue;
     }
+
+    int siteSizeX = this->siteSizeX(inst->getBlock());
+    int siteSizeY = this->siteSizeY(inst->getBlock());
+
     Instance myInst(inst,
-                    pbVars_.padLeft * siteSizeX_,
-                    pbVars_.padRight * siteSizeX_,
-                    siteSizeY_,
+                    pbVars_.padLeft * siteSizeX,
+                    pbVars_.padRight * siteSizeX,
+                    siteSizeY,
                     log_);
 
     // Fixed instaces need to be snapped outwards to the nearest site
     // boundary.  A partially overlapped site is unusable and this
     // is the simplest way to ensure it is counted as fully used.
     if (myInst.isFixed()) {
-      myInst.snapOutward(coreRect.ll(), siteSizeX_, siteSizeY_);
+      myInst.snapOutward(coreRect.ll(), siteSizeX, siteSizeY);
     }
 
     instStor_.push_back(myInst);
 
-    if (myInst.dy() > siteSizeY_ * 6) {
+    if (myInst.dy() > this->siteSizeY(block) * 6) {
       macroInstsArea_ += myInst.area();
     }
 
@@ -1034,6 +1048,15 @@ void PlacerBaseCommon::unlockAll()
   }
 }
 
+int PlacerBaseCommon::siteSizeX(odb::dbBlock* block)
+{
+  return static_cast<int>(blockSiteMap_[block]->getWidth());
+}
+int PlacerBaseCommon::siteSizeY(odb::dbBlock* block)
+{
+  return static_cast<int>(blockSiteMap_[block]->getHeight());
+}
+
 ////////////////////////////////////////////////////////
 // PlacerBase
 
@@ -1047,20 +1070,23 @@ PlacerBase::PlacerBase()
       macroInstsArea_(0),
       stdInstsArea_(0),
       pbCommon_(nullptr),
-      group_(nullptr)
+      group_(nullptr),
+      block_(nullptr)
 {
 }
 
 PlacerBase::PlacerBase(odb::dbDatabase* db,
                        std::shared_ptr<PlacerBaseCommon> pbCommon,
                        utl::Logger* log,
-                       odb::dbGroup* group)
+                       odb::dbGroup* group,
+                       odb::dbBlock* block)
     : PlacerBase()
 {
   db_ = db;
   log_ = log;
   pbCommon_ = std::move(pbCommon);
   group_ = group;
+  block_ = block;
   init();
 }
 
@@ -1075,11 +1101,9 @@ void PlacerBase::init()
 
   die_ = pbCommon_->die();
 
-  // Comment by minjae
-  // TODO: We need to separate the site information for each block
   // siteSize update
-  siteSizeX_ = pbCommon_->siteSizeX();
-  siteSizeY_ = pbCommon_->siteSizeY();
+  siteSizeX_ = pbCommon_->siteSizeX(block_);
+  siteSizeY_ = pbCommon_->siteSizeY(block_);
 
   for (auto& inst : pbCommon_->insts()) {
     if (!inst->isInstance()) {

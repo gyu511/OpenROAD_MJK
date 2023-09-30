@@ -45,6 +45,8 @@ class dbITerm;
 class dbBTerm;
 class dbNet;
 class dbGroup;
+class dbBlock;
+class dbSite;
 
 class dbPlacementStatus;
 class dbSigType;
@@ -326,8 +328,8 @@ class PlacerBaseCommon
   Pin* dbToPb(odb::dbBTerm* term) const;
   Net* dbToPb(odb::dbNet* net) const;
 
-  int siteSizeX() const { return siteSizeX_; }
-  int siteSizeY() const { return siteSizeY_; }
+  int siteSizeX(odb::dbBlock* block);
+  int siteSizeY(odb::dbBlock* block);
 
   int padLeft() const { return pbVars_.padLeft; }
   int padRight() const { return pbVars_.padRight; }
@@ -363,6 +365,7 @@ class PlacerBaseCommon
   std::unordered_map<void*, Pin*> pinMap_;
   std::unordered_map<odb::dbNet*, Net*> netMap_;
 
+  std::unordered_map<odb::dbBlock*, odb::dbSite*> blockSiteMap_;
   int siteSizeX_;
   int siteSizeY_;
 
@@ -380,7 +383,8 @@ class PlacerBase
   PlacerBase(odb::dbDatabase* db,
              std::shared_ptr<PlacerBaseCommon> pbCommon,
              utl::Logger* log,
-             odb::dbGroup* group = nullptr);
+             odb::dbGroup* group = nullptr,
+             odb::dbBlock* block = nullptr);
   ~PlacerBase();
 
   const std::vector<Instance*>& insts() const { return insts_; }
@@ -444,6 +448,8 @@ class PlacerBase
 
   std::shared_ptr<PlacerBaseCommon> pbCommon_;
   odb::dbGroup* group_;
+
+  odb::dbBlock* block_;
 
   void init();
   void initInstsForUnusableSites();

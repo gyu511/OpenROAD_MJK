@@ -1415,9 +1415,10 @@ void NesterovBaseCommon::updateDbGCells()
 
       Instance* replInst = gCell->instance();
       // pad awareness on X coordinates
-      inst->setLocation(gCell->dCx() - replInst->dx() / 2
-                            + pbc_->siteSizeX() * pbc_->padLeft(),
-                        gCell->dCy() - replInst->dy() / 2);
+      inst->setLocation(
+          gCell->dCx() - replInst->dx() / 2
+              + pbc_->siteSizeX(inst->getBlock()) * pbc_->padLeft(),
+          gCell->dCy() - replInst->dy() / 2);
     }
   }
 }
