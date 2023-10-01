@@ -1107,8 +1107,8 @@ PlacerBase::PlacerBase()
 PlacerBase::PlacerBase(odb::dbDatabase* db,
                        std::shared_ptr<PlacerBaseCommon> pbCommon,
                        utl::Logger* log,
-                       odb::dbGroup* group,
-                       odb::dbBlock* block)
+                       odb::dbBlock* block,
+                       odb::dbGroup* group)
     : PlacerBase()
 {
   db_ = db;

@@ -188,12 +188,24 @@ void Replace::doIncrementalPlace()
 
     pbc_ = std::make_shared<PlacerBaseCommon>(db_, pbVars, log_);
 
-    pbVec_.push_back(std::make_shared<PlacerBase>(db_, pbc_, log_));
-
+    // For the top heir block
+    auto topBlock = db_->getChip()->getBlock();
+    pbVec_.push_back(std::make_shared<PlacerBase>(db_, pbc_, log_, topBlock));
     for (auto pd : db_->getChip()->getBlock()->getPowerDomains()) {
       if (pd->getGroup()) {
-        pbVec_.push_back(
-            std::make_shared<PlacerBase>(db_, pbc_, log_, pd->getGroup()));
+        pbVec_.push_back(std::make_shared<PlacerBase>(
+            db_, pbc_, log_, topBlock, pd->getGroup()));
+      }
+    }
+
+    // For the child blocks
+    for (auto block : topBlock->getChildren()) {
+      pbVec_.push_back(std::make_shared<PlacerBase>(db_, pbc_, log_, block));
+      for (auto pd : block->getPowerDomains()) {
+        if (pd->getGroup()) {
+          pbVec_.push_back(std::make_shared<PlacerBase>(
+              db_, pbc_, log_, block, pd->getGroup()));
+        }
       }
     }
 
@@ -266,18 +278,23 @@ void Replace::doInitialPlace()
 
     pbc_ = std::make_shared<PlacerBaseCommon>(db_, pbVars, log_);
 
-    pbVec_.push_back(std::make_shared<PlacerBase>(db_, pbc_, log_));
-
-    // Comment by minjae
-    // TODO: We need to separate the `PlacerBase`
-    //  with block and group at the same time.
-    //  For example,
-    //  block1 ⊃ group1, block1 ⊃ group2, block2 ⊃ group3, block2 ⊃ group4, ...
-
-    for (auto pd : db_->getChip()->getBlock()->getPowerDomains()) {
+    // For the top heir block
+    auto topBlock = db_->getChip()->getBlock();
+    pbVec_.push_back(std::make_shared<PlacerBase>(db_, pbc_, log_, topBlock));
+    for (auto pd : topBlock->getPowerDomains()) {
       if (pd->getGroup()) {
-        pbVec_.push_back(
-            std::make_shared<PlacerBase>(db_, pbc_, log_, pd->getGroup()));
+        pbVec_.push_back(std::make_shared<PlacerBase>(
+            db_, pbc_, log_, topBlock, pd->getGroup()));
+      }
+    }
+    // For the child blocks
+    for (auto block : topBlock->getChildren()) {
+      pbVec_.push_back(std::make_shared<PlacerBase>(db_, pbc_, log_, block));
+      for (auto pd : block->getPowerDomains()) {
+        if (pd->getGroup()) {
+          pbVec_.push_back(std::make_shared<PlacerBase>(
+              db_, pbc_, log_, block, pd->getGroup()));
+        }
       }
     }
 
@@ -312,18 +329,23 @@ bool Replace::initNesterovPlace()
 
     pbc_ = std::make_shared<PlacerBaseCommon>(db_, pbVars, log_);
 
-    pbVec_.push_back(std::make_shared<PlacerBase>(db_, pbc_, log_));
-
-    // Comment by minjae
-    // TODO: We need to separate the `PlacerBase`
-    //  with block and group at the same time.
-    //  For example,
-    //  block1 ⊃ group1, block1 ⊃ group2, block2 ⊃ group3, block2 ⊃ group4, ...
-
-    for (auto pd : db_->getChip()->getBlock()->getPowerDomains()) {
+    // For the top heir block
+    auto topBlock = db_->getChip()->getBlock();
+    pbVec_.push_back(std::make_shared<PlacerBase>(db_, pbc_, log_, topBlock));
+    for (auto pd : topBlock->getPowerDomains()) {
       if (pd->getGroup()) {
-        pbVec_.push_back(
-            std::make_shared<PlacerBase>(db_, pbc_, log_, pd->getGroup()));
+        pbVec_.push_back(std::make_shared<PlacerBase>(
+            db_, pbc_, log_, topBlock, pd->getGroup()));
+      }
+    }
+    // For the child blocks
+    for (auto block : topBlock->getChildren()) {
+      pbVec_.push_back(std::make_shared<PlacerBase>(db_, pbc_, log_, block));
+      for (auto pd : block->getPowerDomains()) {
+        if (pd->getGroup()) {
+          pbVec_.push_back(std::make_shared<PlacerBase>(
+              db_, pbc_, log_, block, pd->getGroup()));
+        }
       }
     }
 

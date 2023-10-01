@@ -383,8 +383,8 @@ class PlacerBase
   PlacerBase(odb::dbDatabase* db,
              std::shared_ptr<PlacerBaseCommon> pbCommon,
              utl::Logger* log,
-             odb::dbGroup* group = nullptr,
-             odb::dbBlock* block = nullptr);
+             odb::dbBlock* block,
+             odb::dbGroup* group = nullptr);
   ~PlacerBase();
 
   const std::vector<Instance*>& insts() const { return insts_; }
