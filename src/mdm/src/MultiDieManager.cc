@@ -112,11 +112,6 @@ void MultiDieManager::makeSubBlocks()
       childBlock = odb::dbBlock::create(topHeirBlock, dieName.c_str(), tech);
     } else {
       childBlock = (*db_->getChip()->getBlock()->getChildren().begin());
-      // TODO: @Matt ,
-      //  this is minor, but I want to change the `childBlock` name,
-      //  which is parsed by the tcl level. Is this possible?
-      //  Currently, the name of
-      //  child_block_0 = ispd18~, child_block1 = Die1, child_block2 = Die2...
     }
     // make the inst that can represent the child die
     odb::dbInst::create(topHeirBlock, childBlock, dieName.c_str());
@@ -196,10 +191,6 @@ void MultiDieManager::makeInterconnections(odb::dbBlock* lowerBlock,
 
       lowerBlockTerm->getITerm()->connect(topHeirNet);
       upperBlockTerm->getITerm()->connect(topHeirNet);
-
-      // @Matt, I have a question. What is the different  between
-      // lowerBlock->getITerms() and instForLowerBlock->getITerms()?
-      // This is different, right?
     }
   }
 }
