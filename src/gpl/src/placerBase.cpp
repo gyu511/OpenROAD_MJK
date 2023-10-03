@@ -62,6 +62,8 @@ static bool isCoreAreaOverlap(Die& die, Instance& inst);
 
 static int64_t getOverlapWithCoreArea(Die& die, Instance& inst);
 
+bool isNetIntersected(dbNet* net);
+
 ////////////////////////////////////////////////////////
 // Instance
 
@@ -589,10 +591,11 @@ Pin::~Pin()
 Net::Net() : net_(nullptr), lx_(0), ly_(0), ux_(0), uy_(0)
 {
 }
-Net::Net(odb::dbNet* net, bool skipIoMode) : Net()
+Net::Net(odb::dbNet* net, bool skipIoMode, bool intersected) : Net()
 {
   net_ = net;
   updateBox(skipIoMode);
+  intersected_ = intersected;
 }
 
 Net::~Net()
@@ -674,6 +677,10 @@ void Net::addPin(Pin* pin)
 odb::dbSigType Net::getSigType() const
 {
   return net_->getSigType();
+}
+bool Net::isIntersected() const
+{
+  return intersected_;
 }
 
 ////////////////////////////////////////////////////////
@@ -937,6 +944,11 @@ void PlacerBaseCommon::init()
   }
   for (auto childBlock : block->getChildren()) {
     for (auto net : childBlock->getNets()) {
+      // For multi-block case,
+      // skip the intersected nets only in the child blocks
+      if (isNetIntersected(net)){
+        continue;
+      }
       nets.push_back(net);
     }
   }
@@ -947,13 +959,14 @@ void PlacerBaseCommon::init()
 
     // escape nets with VDD/VSS/reset nets
     if (netType == dbSigType::SIGNAL || netType == dbSigType::CLOCK) {
-      Net myNet(net, pbVars_.skipIoMode);
+      Net myNet(net, pbVars_.skipIoMode, isNetIntersected(net));
       netStor_.push_back(myNet);
 
       // this is safe because of "reserve"
       Net* myNetPtr = &netStor_[netStor_.size() - 1];
       netMap_[net] = myNetPtr;
 
+      // Parse the instance terminals
       for (dbITerm* iTerm : net->getITerms()) {
         Pin myPin(iTerm);
         myPin.setNet(myNetPtr);
@@ -961,12 +974,29 @@ void PlacerBaseCommon::init()
         pinStor_.push_back(myPin);
       }
 
-      if (pbVars_.skipIoMode == false) {
-        for (dbBTerm* bTerm : net->getBTerms()) {
-          Pin myPin(bTerm);
-          myPin.setNet(myNetPtr);
-          pinStor_.push_back(myPin);
+      // Traverse the nets in the child blocks
+      if (myNet.isIntersected()) {
+        // p.s. The `nets` vector includes intersected nets
+        // which is only in the top heir block.
+        for (auto dbITerm : net->getITerms()) {
+          for (auto childBlockITerm :
+               dbITerm->getBTerm()->getNet()->getITerms()) {
+            Pin myPin(childBlockITerm);
+            myPin.setNet(myNetPtr);
+            myPin.setInstance(dbToPb(childBlockITerm->getInst()));
+            pinStor_.push_back(myPin);
+          }
         }
+      }
+
+      // Parse the block terminals
+      if (pbVars_.skipIoMode) {
+        continue;
+      }
+      for (dbBTerm* bTerm : net->getBTerms()) {
+        Pin myPin(bTerm);
+        myPin.setNet(myNetPtr);
+        pinStor_.push_back(myPin);
       }
     }
   }
@@ -1195,8 +1225,8 @@ void PlacerBase::init()
 // due to fragmented rows or placement blockages.
 void PlacerBase::initInstsForUnusableSites()
 {
-  dbSet<dbRow> rows = db_->getChip()->getBlock()->getRows();
-  dbSet<dbPowerDomain> pds = db_->getChip()->getBlock()->getPowerDomains();
+  dbSet<dbRow> rows = block_->getRows();
+  dbSet<dbPowerDomain> pds = block_->getPowerDomains();
 
   int64_t siteCountX = (die_.coreUx() - die_.coreLx()) / siteSizeX_;
   int64_t siteCountY = (die_.coreUy() - die_.coreLy()) / siteSizeY_;
@@ -1212,9 +1242,6 @@ void PlacerBase::initInstsForUnusableSites()
   // Initialize siteGrid as empty
   //
   std::vector<PlaceInfo> siteGrid(siteCountX * siteCountY, PlaceInfo::Empty);
-
-  // Comment by minjae
-  // TODO: Separate the process also for the different blocks
 
   // check if this belongs to a group
   // if there is a group, only mark the sites that belong to the group as Row
@@ -1257,7 +1284,7 @@ void PlacerBase::initInstsForUnusableSites()
   }
 
   // Mark blockage areas as empty so that their sites will be blocked.
-  for (dbBlockage* blockage : db_->getChip()->getBlock()->getBlockages()) {
+  for (dbBlockage* blockage : block_->getBlockages()) {
     dbInst* inst = blockage->getInstance();
     if (inst && !inst->isFixed()) {
       string msg
@@ -1456,6 +1483,12 @@ static int64_t getOverlapWithCoreArea(Die& die, Instance& inst)
       rectUy = min(die.coreUy(), inst.uy());
   return static_cast<int64_t>(rectUx - rectLx)
          * static_cast<int64_t>(rectUy - rectLy);
+}
+
+bool isNetIntersected(dbNet* net)
+{
+  auto property = dbBoolProperty::find(net, "intersected");
+  return property != nullptr && property->getValue();
 }
 
 }  // namespace gpl

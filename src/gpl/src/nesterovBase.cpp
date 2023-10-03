@@ -834,7 +834,7 @@ void BinGrid::updateBinsNonPlaceArea()
             getOverlapArea(
                 &bin,
                 inst,
-                pb_->db()->getChip()->getBlock()->getDbUnitsPerMicron())
+                pb_->block()->getDbUnitsPerMicron())
             * bin.targetDensity());
         bin.addNonPlaceAreaUnscaled(getOverlapAreaUnscaled(&bin, inst)
                                     * bin.targetDensity());
@@ -1090,11 +1090,6 @@ void NesterovBaseCommon::init()
     GNet myGNet(net);
     gNetStor_.push_back(myGNet);
   }
-
-  // Comment by minjae
-  // TODO: put the interconnected information for gNet
-  //  and set the custom weight
-  //  Question: How can we set the custom net properly?
 
   // gCell ptr init
   gCells_.reserve(gCellStor_.size());
@@ -1540,7 +1535,7 @@ void NesterovBase::init()
   stdInstsArea_ = pb_->stdInstsArea();
   macroInstsArea_ = pb_->macroInstsArea();
 
-  int dbu_per_micron = pb_->db()->getChip()->getBlock()->getDbUnitsPerMicron();
+  int dbu_per_micron = pb_->block()->getDbUnitsPerMicron();;
 
   // update gFillerCells
   initFillerGCells();

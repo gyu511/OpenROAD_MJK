@@ -191,6 +191,11 @@ void MultiDieManager::makeInterconnections(odb::dbBlock* lowerBlock,
 
       lowerBlockTerm->getITerm()->connect(topHeirNet);
       upperBlockTerm->getITerm()->connect(topHeirNet);
+
+      odb::dbBoolProperty::create(topHeirNet, "intersected", true);
+      odb::dbBoolProperty::create(lowerBlockNet, "intersected", true);
+      odb::dbBoolProperty::create(upperBlockNet, "intersected", true);
+
     }
   }
 }

@@ -219,7 +219,7 @@ class Net
 {
  public:
   Net();
-  Net(odb::dbNet* net, bool skipIoMode);
+  Net(odb::dbNet* net, bool skipIoMode, bool intersected);
   ~Net();
 
   int lx() const;
@@ -241,6 +241,8 @@ class Net
 
   void addPin(Pin* pin);
 
+  bool isIntersected() const;
+
  private:
   odb::dbNet* net_;
   std::vector<Pin*> pins_;
@@ -248,6 +250,7 @@ class Net
   int ly_;
   int ux_;
   int uy_;
+  bool intersected_;
 };
 
 class Die
@@ -416,6 +419,7 @@ class PlacerBase
 
   odb::dbDatabase* db() const { return db_; }
   odb::dbGroup* group() const { return group_; }
+  odb::dbBlock* block() const { return block_; }
 
   void unlockAll();
 
