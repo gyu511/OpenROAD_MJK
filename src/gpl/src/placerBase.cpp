@@ -36,6 +36,7 @@
 #include <odb/db.h>
 
 #include <iostream>
+#include <unordered_set>
 #include <utility>
 
 #include "nesterovBase.h"
@@ -946,7 +947,7 @@ void PlacerBaseCommon::init()
     for (auto net : childBlock->getNets()) {
       // For multi-block case,
       // skip the intersected nets only in the child blocks
-      if (isNetIntersected(net)){
+      if (isNetIntersected(net)) {
         continue;
       }
       nets.push_back(net);
@@ -1164,18 +1165,36 @@ void PlacerBase::init()
   siteSizeX_ = pbCommon_->siteSizeX(block_);
   siteSizeY_ = pbCommon_->siteSizeY(block_);
 
+  vector<Instance*> validInsts;
+  // for examine the overlap pushback
+  std::unordered_set<Instance*> validInstSet;
+
   for (auto& inst : pbCommon_->insts()) {
     if (!inst->isInstance()) {
       continue;
     }
-
-    // Comment by minjae
-    // TODO: We need to skip if it is not the target block
-    //  considering the groups
+    if (inst->dbInst()->getBlock() != block()) {
+      // check it is connected to the block with intersected net
+      bool connected = false;
+      for (auto pin : inst->pins()) {
+        if (isNetIntersected(pin->net()->dbNet())) {
+          connected = true;
+        }
+      }
+      if (!connected) {
+        continue;
+      }
+    }
     if (inst->dbInst() && inst->dbInst()->getGroup() != group_) {
       continue;
     }
 
+    if (validInstSet.insert(inst).second){
+      validInsts.push_back(inst);
+    }
+  }
+
+  for (auto& inst : validInsts) {
     if (inst->isFixed()) {
       // Check whether fixed instance is
       // within the corearea
