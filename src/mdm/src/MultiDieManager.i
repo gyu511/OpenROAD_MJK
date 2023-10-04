@@ -66,4 +66,10 @@ twoDieDetailPlace()
   getMultiDieManager()->twoDieDetailPlacement();
 }
 
+void
+GPLTest()
+{
+  getMultiDieManager()->GPLTest();
+}
+
 %} // inline

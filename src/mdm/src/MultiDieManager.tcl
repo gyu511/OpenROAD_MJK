@@ -43,3 +43,7 @@ proc mdm::make_shrunkLef { } {
   mdm::makeShrunkLef
 }
 
+proc mdm::test { } {
+  mdm::test
+}
+

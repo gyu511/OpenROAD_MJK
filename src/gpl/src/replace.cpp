@@ -316,7 +316,7 @@ void Replace::doInitialPlace()
   std::unique_ptr<InitialPlace> ip(
       new InitialPlace(ipVars, pbc_, pbVec_, log_));
   ip_ = std::move(ip);
-  ip_->doBicgstabPlace();
+  // ip_->doBicgstabPlace();
 }
 
 bool Replace::initNesterovPlace()

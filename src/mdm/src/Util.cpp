@@ -209,4 +209,148 @@ void MultiDieManager::readPartitionInfo(const std::string& fileName)
   partitionFile.close();
 }
 
+void MultiDieManager::GPLTest()
+{
+  numberOfDie_ = 2;
+
+  int dieWidth = 1000;
+  int dieHeight = 1000;
+  odb::Point ll = odb::Point(0, 0);
+  odb::Point ur = odb::Point(dieWidth, dieHeight);
+  odb::Rect dieBox(ll, ur);
+
+  // construct the db for the test
+  auto chip = odb::dbChip::create(db_);
+  auto tech = odb::dbTech::create(db_, "topHeirTech");
+  auto topHeirBLock = odb::dbBlock::create(chip, "topHeirBlock", tech);
+  topHeirBLock->setDieArea(dieBox);
+
+  auto childTech1 = odb::dbTech::create(db_, "childTech1");
+  auto childTech2 = odb::dbTech::create(db_, "childTech2");
+
+  odb::dbTechLayer* techLayer1 = odb::dbTechLayer::create(
+      childTech1, "layer", odb::dbTechLayerType::MASTERSLICE);
+  odb::dbTechLayer* techLayer2 = odb::dbTechLayer::create(
+      childTech2, "layer", odb::dbTechLayerType::MASTERSLICE);
+
+  auto childBlock1 = odb::dbBlock::create(topHeirBLock, "block1", childTech1);
+  auto childBlock2 = odb::dbBlock::create(topHeirBLock, "block2", childTech2);
+  childBlock1->setDieArea(dieBox);
+  childBlock2->setDieArea(dieBox);
+
+  odb::dbInst::create(topHeirBLock, childBlock1, "bottomDie");
+  odb::dbInst::create(topHeirBLock, childBlock2, "topDie");
+
+  // make a master
+  auto lib1 = odb::dbLib::create(db_, "lib1", childTech2);
+  auto lib2 = odb::dbLib::create(db_, "lib2", childTech1);
+  auto master1 = odb::dbMaster::create(lib1, "master1");
+  auto master2 = odb::dbMaster::create(lib2, "master2");
+
+  int cellWidth = 50;
+  int cellHeight = 50;
+  master1->setWidth(cellWidth);
+  master2->setWidth(cellWidth);
+
+  master1->setWidth(cellWidth);
+  master2->setWidth(cellWidth);
+  master1->setHeight(cellHeight);
+  master2->setHeight(cellHeight);
+
+  master1->setType(odb::dbMasterType::CORE);
+  master2->setType(odb::dbMasterType::CORE);
+
+  auto sigType = odb::dbSigType::SIGNAL;
+  auto ioType = odb::dbIoType::INOUT;
+  auto mTerm1 = odb::dbMTerm::create(master1, "mTerm1", ioType, sigType);
+  auto mTerm2 = odb::dbMTerm::create(master2, "mTerm2", ioType, sigType);
+
+  auto mPin1 = odb::dbMPin::create(mTerm1);
+  auto mPin2 = odb::dbMPin::create(mTerm2);
+
+  odb::dbBox::create(mPin1,
+                     techLayer1,
+                     cellWidth / 2,
+                     cellHeight / 2,
+                     cellWidth / 2 + 1,
+                     cellHeight / 2 + 1);
+  odb::dbBox::create(mPin2,
+                     techLayer2,
+                     cellWidth / 2,
+                     cellHeight / 2,
+                     cellWidth / 2 + 1,
+                     cellHeight / 2 + 1);
+
+  master1->setFrozen();
+  master2->setFrozen();
+
+  // make a instance
+  auto inst1 = odb::dbInst::create(childBlock1, master1, "inst1");
+  auto inst2 = odb::dbInst::create(childBlock2, master2, "inst2");
+
+  // set the position of instances
+  inst1->setLocation(ll.x() + cellWidth, ll.y() + cellHeight);
+  inst2->setLocation(ur.x() - cellWidth, ur.y() - cellHeight);
+
+  // make a net
+  auto net1 = odb::dbNet::create(childBlock1, "net1");
+  auto net2 = odb::dbNet::create(childBlock2, "net2");
+  auto netTopHeir = odb::dbNet::create(topHeirBLock, "netTopHeir");
+
+  // connect the net to the instance
+  (*inst1->getITerms().begin())->connect(net1);
+  (*inst2->getITerms().begin())->connect(net2);
+
+  // connect the intersected net between two dies
+  auto bTerm1 = odb::dbBTerm::create(net1, "bTerm1");
+  auto bTerm2 = odb::dbBTerm::create(net2, "bTerm2");
+
+  bTerm1->getITerm()->connect(netTopHeir);
+  bTerm2->getITerm()->connect(netTopHeir);
+
+  // row construction
+  auto site1 = odb::dbSite::create(lib1, "site1");
+  auto site2 = odb::dbSite::create(lib2, "site2");
+  auto site_width = cellWidth;
+  auto site_height = cellHeight;
+  site1->setWidth(site_width);
+  site2->setWidth(site_width);
+  site1->setHeight(site_height);
+  site2->setHeight(site_height);
+
+  auto numOfRow = dieHeight / site_height;
+  auto numOfSite = dieWidth / site_width;
+  for (int i = 0; i < numOfRow; ++i) {
+    odb::dbRow::create(topHeirBLock,
+                       ("row" + to_string(i)).c_str(),
+                       site1,
+                       0,
+                       i * site_height,
+                       odb::dbOrientType::MX,
+                       odb::dbRowDir::HORIZONTAL,
+                       numOfSite,
+                       site_width);
+    odb::dbRow::create(childBlock1,
+                       ("row" + to_string(i)).c_str(),
+                       site1,
+                       0,
+                       i * site_height,
+                       odb::dbOrientType::MX,
+                       odb::dbRowDir::HORIZONTAL,
+                       numOfSite,
+                       site_width);
+    odb::dbRow::create(childBlock2,
+                       ("row" + to_string(i)).c_str(),
+                       site1,
+                       0,
+                       i * site_height,
+                       odb::dbOrientType::MX,
+                       odb::dbRowDir::HORIZONTAL,
+                       numOfSite,
+                       site_width);
+  }
+
+  logger_->info(utl::MDM, 2, "Construction simple db for GPL test");
+}
+
 }  // namespace mdm
