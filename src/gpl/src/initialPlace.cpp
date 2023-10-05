@@ -159,8 +159,7 @@ void InitialPlace::placeInstsCenter()
   for (auto& inst : pbc_->placeInsts()) {
     if (!inst->isLocked()) {
       auto group = inst->dbInst()->getGroup();
-      if (group && group->getType() == odb::dbGroupType::POWER_DOMAIN
-          && group->getType() == odb::dbGroupType::PHYSICAL_CLUSTER) {
+      if (group && group->getType() == odb::dbGroupType::POWER_DOMAIN) {
         auto domain_region = group->getRegion();
         int domain_xMin = std::numeric_limits<int>::max();
         int domain_yMin = std::numeric_limits<int>::max();

@@ -45,6 +45,8 @@ class dbITerm;
 class dbBTerm;
 class dbNet;
 class dbGroup;
+class dbBlock;
+class dbSite;
 
 class dbPlacementStatus;
 class dbSigType;
@@ -217,7 +219,7 @@ class Net
 {
  public:
   Net();
-  Net(odb::dbNet* net, bool skipIoMode);
+  Net(odb::dbNet* net, bool skipIoMode, bool intersected);
   ~Net();
 
   int lx() const;
@@ -239,6 +241,8 @@ class Net
 
   void addPin(Pin* pin);
 
+  bool isIntersected() const;
+
  private:
   odb::dbNet* net_;
   std::vector<Pin*> pins_;
@@ -246,6 +250,7 @@ class Net
   int ly_;
   int ux_;
   int uy_;
+  bool intersected_;
 };
 
 class Die
@@ -326,8 +331,8 @@ class PlacerBaseCommon
   Pin* dbToPb(odb::dbBTerm* term) const;
   Net* dbToPb(odb::dbNet* net) const;
 
-  int siteSizeX() const { return siteSizeX_; }
-  int siteSizeY() const { return siteSizeY_; }
+  int siteSizeX(odb::dbBlock* block);
+  int siteSizeY(odb::dbBlock* block);
 
   int padLeft() const { return pbVars_.padLeft; }
   int padRight() const { return pbVars_.padRight; }
@@ -363,6 +368,7 @@ class PlacerBaseCommon
   std::unordered_map<void*, Pin*> pinMap_;
   std::unordered_map<odb::dbNet*, Net*> netMap_;
 
+  std::unordered_map<odb::dbBlock*, odb::dbSite*> blockSiteMap_;
   int siteSizeX_;
   int siteSizeY_;
 
@@ -380,6 +386,7 @@ class PlacerBase
   PlacerBase(odb::dbDatabase* db,
              std::shared_ptr<PlacerBaseCommon> pbCommon,
              utl::Logger* log,
+             odb::dbBlock* block,
              odb::dbGroup* group = nullptr);
   ~PlacerBase();
 
@@ -412,6 +419,7 @@ class PlacerBase
 
   odb::dbDatabase* db() const { return db_; }
   odb::dbGroup* group() const { return group_; }
+  odb::dbBlock* block() const { return block_; }
 
   void unlockAll();
 
@@ -444,6 +452,8 @@ class PlacerBase
 
   std::shared_ptr<PlacerBaseCommon> pbCommon_;
   odb::dbGroup* group_;
+
+  odb::dbBlock* block_;
 
   void init();
   void initInstsForUnusableSites();

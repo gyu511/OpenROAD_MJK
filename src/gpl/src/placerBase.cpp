@@ -36,6 +36,7 @@
 #include <odb/db.h>
 
 #include <iostream>
+#include <unordered_set>
 #include <utility>
 
 #include "nesterovBase.h"
@@ -61,6 +62,10 @@ static utl::Logger* slog_;
 static bool isCoreAreaOverlap(Die& die, Instance& inst);
 
 static int64_t getOverlapWithCoreArea(Die& die, Instance& inst);
+
+bool isNetIntersected(dbNet* net);
+
+odb::dbBTerm* returnHierBTerm(odb::dbITerm* iterm);
 
 ////////////////////////////////////////////////////////
 // Instance
@@ -589,10 +594,11 @@ Pin::~Pin()
 Net::Net() : net_(nullptr), lx_(0), ly_(0), ux_(0), uy_(0)
 {
 }
-Net::Net(odb::dbNet* net, bool skipIoMode) : Net()
+Net::Net(odb::dbNet* net, bool skipIoMode, bool intersected) : Net()
 {
   net_ = net;
   updateBox(skipIoMode);
+  intersected_ = intersected;
 }
 
 Net::~Net()
@@ -674,6 +680,10 @@ void Net::addPin(Pin* pin)
 odb::dbSigType Net::getSigType() const
 {
   return net_->getSigType();
+}
+bool Net::isIntersected() const
+{
+  return intersected_;
 }
 
 ////////////////////////////////////////////////////////
@@ -813,21 +823,12 @@ void PlacerBaseCommon::init()
 {
   slog_ = log_;
 
-  log_->info(GPL, 2, "DBU: {}", db_->getTech()->getDbUnitsPerMicron());
+  log_->info(
+      GPL, 2, "DBU: {}", db_->getChip()->getBlock()->getDbUnitsPerMicron());
 
   dbBlock* block = db_->getChip()->getBlock();
 
   // die-core area update
-  odb::dbSite* site = nullptr;
-  for (auto* row : block->getRows()) {
-    if (row->getSite()->getClass() != odb::dbSiteClass::PAD) {
-      site = row->getSite();
-      break;
-    }
-  }
-  if (site == nullptr) {
-    log_->error(GPL, 305, "Unable to find a site");
-  }
   odb::Rect coreRect = block->getCoreArea();
   odb::Rect dieRect = block->getDieArea();
 
@@ -837,38 +838,85 @@ void PlacerBaseCommon::init()
   die_ = Die(dieRect, coreRect);
 
   // siteSize update
-  siteSizeX_ = site->getWidth();
-  siteSizeY_ = site->getHeight();
+  odb::dbSite* site = nullptr;
+  for (auto* row : block->getRows()) {
+    if (row->getSite()->getClass() != odb::dbSiteClass::PAD) {
+      site = row->getSite();
+      blockSiteMap_[block] = site;
+      break;
+    }
+  }
+  if (site == nullptr) {
+    log_->error(GPL, 305, "Unable to find a site");
+  }
+  for (auto childBlock : block->getChildren()) {
+    site = nullptr;
+    for (auto* row : childBlock->getRows()) {
+      if (row->getSite()->getClass() != odb::dbSiteClass::PAD) {
+        site = row->getSite();
+        blockSiteMap_[childBlock] = site;
+        break;
+      }
+    }
+    if (site == nullptr) {
+      log_->error(GPL, 306, "Unable to find a site for child block");
+    }
+  }
 
-  log_->info(GPL, 3, "SiteSize: {} {}", siteSizeX_, siteSizeY_);
+  log_->info(GPL, 3, "SiteSize: {} {}", siteSizeX(block), siteSizeY(block));
   log_->info(GPL, 4, "CoreAreaLxLy: {} {}", die_.coreLx(), die_.coreLy());
   log_->info(GPL, 5, "CoreAreaUxUy: {} {}", die_.coreUx(), die_.coreUy());
 
   // insts fill with real instances
-  dbSet<dbInst> insts = block->getInsts();
-  instStor_.reserve(insts.size());
-  insts_.reserve(instStor_.size());
+  uint instCnt = 0;
+  instCnt += block->getInsts().size();
+  for (auto childBlock : block->getChildren()) {
+    // for multi-die case
+    instCnt += childBlock->getInsts().size();
+  }
+
+  vector<dbInst*> insts;
+  insts.reserve(instCnt);
+  for (auto inst : block->getInsts()) {
+    insts.push_back(inst);
+  }
+  for (auto childBlock : block->getChildren()) {
+    for (auto inst : childBlock->getInsts()) {
+      insts.push_back(inst);
+    }
+  }
+
+  instStor_.reserve(instCnt);
   for (dbInst* inst : insts) {
+    if (inst->getChild()) {
+      // If the inst is just for representing child block
+      continue;
+    }
+
     auto type = inst->getMaster()->getType();
     if (!type.isCore() && !type.isBlock()) {
       continue;
     }
+
+    int siteSizeX = this->siteSizeX(inst->getBlock());
+    int siteSizeY = this->siteSizeY(inst->getBlock());
+
     Instance myInst(inst,
-                    pbVars_.padLeft * siteSizeX_,
-                    pbVars_.padRight * siteSizeX_,
-                    siteSizeY_,
+                    pbVars_.padLeft * siteSizeX,
+                    pbVars_.padRight * siteSizeX,
+                    siteSizeY,
                     log_);
 
     // Fixed instaces need to be snapped outwards to the nearest site
     // boundary.  A partially overlapped site is unusable and this
     // is the simplest way to ensure it is counted as fully used.
     if (myInst.isFixed()) {
-      myInst.snapOutward(coreRect.ll(), siteSizeX_, siteSizeY_);
+      myInst.snapOutward(coreRect.ll(), siteSizeX, siteSizeY);
     }
 
     instStor_.push_back(myInst);
 
-    if (myInst.dy() > siteSizeY_ * 6) {
+    if (myInst.dy() > this->siteSizeY(block) * 6) {
       macroInstsArea_ += myInst.area();
     }
 
@@ -881,6 +929,7 @@ void PlacerBaseCommon::init()
           GPL, 120, "instance {} width is larger than core.", inst->getName());
   }
 
+  insts_.reserve(instStor_.size());
   for (auto& inst : instStor_) {
     instMap_[inst.dbInst()] = &inst;
     insts_.push_back(&inst);
@@ -891,33 +940,76 @@ void PlacerBaseCommon::init()
   }
 
   // nets fill
-  dbSet<dbNet> nets = block->getNets();
-  netStor_.reserve(nets.size());
+  uint netCnt = 0;
+  netCnt += block->getNets().size();
+  for (auto childBlock : block->getChildren()) {
+    netCnt += childBlock->getNets().size();
+  }
+
+  vector<dbNet*> nets;
+  nets.reserve(netCnt);
+  for (auto net : block->getNets()) {
+    nets.push_back(net);
+  }
+  for (auto childBlock : block->getChildren()) {
+    for (auto net : childBlock->getNets()) {
+      // For multi-block case,
+      // skip the intersected nets only in the child blocks
+      if (isNetIntersected(net)) {
+        continue;
+      }
+      nets.push_back(net);
+    }
+  }
+
+  netStor_.reserve(netCnt);
   for (dbNet* net : nets) {
     dbSigType netType = net->getSigType();
 
     // escape nets with VDD/VSS/reset nets
     if (netType == dbSigType::SIGNAL || netType == dbSigType::CLOCK) {
-      Net myNet(net, pbVars_.skipIoMode);
+      Net myNet(net, pbVars_.skipIoMode, isNetIntersected(net));
       netStor_.push_back(myNet);
 
       // this is safe because of "reserve"
       Net* myNetPtr = &netStor_[netStor_.size() - 1];
       netMap_[net] = myNetPtr;
 
+      // Parse the instance terminals
       for (dbITerm* iTerm : net->getITerms()) {
+        if (iTerm->getInst()->getChild()) {
+          // skip the instance terminal for the one representing the child block
+          continue;
+        }
         Pin myPin(iTerm);
         myPin.setNet(myNetPtr);
         myPin.setInstance(dbToPb(iTerm->getInst()));
         pinStor_.push_back(myPin);
       }
 
-      if (pbVars_.skipIoMode == false) {
-        for (dbBTerm* bTerm : net->getBTerms()) {
-          Pin myPin(bTerm);
-          myPin.setNet(myNetPtr);
-          pinStor_.push_back(myPin);
+      // Traverse the nets in the child blocks
+      if (myNet.isIntersected()) {
+        // p.s. The `nets` vector includes intersected nets
+        // which is only in the top heir block.
+        for (auto dbITerm : net->getITerms()) {
+          for (auto childBlockITerm :
+               returnHierBTerm(dbITerm)->getNet()->getITerms()) {
+            Pin myPin(childBlockITerm);
+            myPin.setNet(myNetPtr);
+            myPin.setInstance(dbToPb(childBlockITerm->getInst()));
+            pinStor_.push_back(myPin);
+          }
         }
+      }
+
+      // Parse the block terminals
+      if (pbVars_.skipIoMode) {
+        continue;
+      }
+      for (dbBTerm* bTerm : net->getBTerms()) {
+        Pin myPin(bTerm);
+        myPin.setNet(myNetPtr);
+        pinStor_.push_back(myPin);
       }
     }
   }
@@ -954,9 +1046,22 @@ void PlacerBaseCommon::init()
   nets_.reserve(netStor_.size());
   for (auto& net : netStor_) {
     for (dbITerm* iTerm : net.dbNet()->getITerms()) {
-      net.addPin(dbToPb(iTerm));
+      if (iTerm->getInst()->getChild()) {
+        // If the net is top hier net
+        // and iterm is the one in the instance that represents child block,
+        // then search the iterms in the child block
+        // which is connected by intersected net
+        auto childITerms = returnHierBTerm(iTerm)->getNet()->getITerms();
+        for (auto childITerm : childITerms) {
+          net.addPin(dbToPb(childITerm));
+        }
+      } else {
+        net.addPin(dbToPb(iTerm));
+      }
     }
     if (pbVars_.skipIoMode == false) {
+      // Multi die case handles just one level hier structure
+      // We don't need to change this part
       for (dbBTerm* bTerm : net.dbNet()->getBTerms()) {
         net.addPin(dbToPb(bTerm));
       }
@@ -1028,6 +1133,15 @@ void PlacerBaseCommon::unlockAll()
   }
 }
 
+int PlacerBaseCommon::siteSizeX(odb::dbBlock* block)
+{
+  return static_cast<int>(blockSiteMap_[block]->getWidth());
+}
+int PlacerBaseCommon::siteSizeY(odb::dbBlock* block)
+{
+  return static_cast<int>(blockSiteMap_[block]->getHeight());
+}
+
 ////////////////////////////////////////////////////////
 // PlacerBase
 
@@ -1041,13 +1155,15 @@ PlacerBase::PlacerBase()
       macroInstsArea_(0),
       stdInstsArea_(0),
       pbCommon_(nullptr),
-      group_(nullptr)
+      group_(nullptr),
+      block_(nullptr)
 {
 }
 
 PlacerBase::PlacerBase(odb::dbDatabase* db,
                        std::shared_ptr<PlacerBaseCommon> pbCommon,
                        utl::Logger* log,
+                       odb::dbBlock* block,
                        odb::dbGroup* group)
     : PlacerBase()
 {
@@ -1055,6 +1171,7 @@ PlacerBase::PlacerBase(odb::dbDatabase* db,
   log_ = log;
   pbCommon_ = std::move(pbCommon);
   group_ = group;
+  block_ = block;
   init();
 }
 
@@ -1070,18 +1187,28 @@ void PlacerBase::init()
   die_ = pbCommon_->die();
 
   // siteSize update
-  siteSizeX_ = pbCommon_->siteSizeX();
-  siteSizeY_ = pbCommon_->siteSizeY();
+  siteSizeX_ = pbCommon_->siteSizeX(block_);
+  siteSizeY_ = pbCommon_->siteSizeY(block_);
+
+  vector<Instance*> validInsts;
+  // for examine the overlap pushback
+  std::unordered_set<Instance*> validInstSet;
 
   for (auto& inst : pbCommon_->insts()) {
     if (!inst->isInstance()) {
       continue;
     }
-
+    if (inst->dbInst()->getBlock() != block()) {
+      continue;
+    }
     if (inst->dbInst() && inst->dbInst()->getGroup() != group_) {
       continue;
     }
 
+    validInsts.push_back(inst);
+  }
+
+  for (auto& inst : validInsts) {
     if (inst->isFixed()) {
       // Check whether fixed instance is
       // within the corearea
@@ -1131,8 +1258,8 @@ void PlacerBase::init()
 // due to fragmented rows or placement blockages.
 void PlacerBase::initInstsForUnusableSites()
 {
-  dbSet<dbRow> rows = db_->getChip()->getBlock()->getRows();
-  dbSet<dbPowerDomain> pds = db_->getChip()->getBlock()->getPowerDomains();
+  dbSet<dbRow> rows = block_->getRows();
+  dbSet<dbPowerDomain> pds = block_->getPowerDomains();
 
   int64_t siteCountX = (die_.coreUx() - die_.coreLx()) / siteSizeX_;
   int64_t siteCountY = (die_.coreUy() - die_.coreLy()) / siteSizeY_;
@@ -1154,7 +1281,7 @@ void PlacerBase::initInstsForUnusableSites()
   // if there is no group, then mark all as Row, and then for each power domain,
   // mark the sites that belong to the power domain as Empty
 
-  if (group_ != nullptr && group_->getRegion()->getBoundaries().size() != 0) {
+  if (group_ != nullptr) {
     for (auto boundary : group_->getRegion()->getBoundaries()) {
       Rect rect = boundary->getBox();
 
@@ -1190,7 +1317,7 @@ void PlacerBase::initInstsForUnusableSites()
   }
 
   // Mark blockage areas as empty so that their sites will be blocked.
-  for (dbBlockage* blockage : db_->getChip()->getBlock()->getBlockages()) {
+  for (dbBlockage* blockage : block_->getBlockages()) {
     dbInst* inst = blockage->getInstance();
     if (inst && !inst->isFixed()) {
       string msg
@@ -1391,4 +1518,18 @@ static int64_t getOverlapWithCoreArea(Die& die, Instance& inst)
          * static_cast<int64_t>(rectUy - rectLy);
 }
 
+bool isNetIntersected(dbNet* net)
+{
+  auto property = dbBoolProperty::find(net, "intersected");
+  return property != nullptr && property->getValue();
+}
+
+odb::dbBTerm* returnHierBTerm(odb::dbITerm* iterm)
+{
+  // This function is implemented temporary due to the odb bug
+  // return iterm->getBTerm();
+  string termName = iterm->getMTerm()->getName();
+  auto block = iterm->getInst()->getChild();
+  return block->findBTerm(termName.c_str());
+}
 }  // namespace gpl

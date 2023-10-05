@@ -834,7 +834,7 @@ void BinGrid::updateBinsNonPlaceArea()
             getOverlapArea(
                 &bin,
                 inst,
-                pb_->db()->getChip()->getBlock()->getDbUnitsPerMicron())
+                pb_->block()->getDbUnitsPerMicron())
             * bin.targetDensity());
         bin.addNonPlaceAreaUnscaled(getOverlapAreaUnscaled(&bin, inst)
                                     * bin.targetDensity());
@@ -1189,6 +1189,10 @@ GNet* NesterovBaseCommon::dbToNb(odb::dbNet* net) const
 // in ePlace paper.
 void NesterovBaseCommon::updateWireLengthForceWA(float wlCoeffX, float wlCoeffY)
 {
+  // Comment by minjae
+  // TODO: check;
+  //  shouldn't the wlCoeff separated by the dbGroup or dbBlocks?
+
   // clear all WA variables.
   for (auto& gNet : gNets_) {
     gNet->clearWaVars();
@@ -1406,9 +1410,10 @@ void NesterovBaseCommon::updateDbGCells()
 
       Instance* replInst = gCell->instance();
       // pad awareness on X coordinates
-      inst->setLocation(gCell->dCx() - replInst->dx() / 2
-                            + pbc_->siteSizeX() * pbc_->padLeft(),
-                        gCell->dCy() - replInst->dy() / 2);
+      inst->setLocation(
+          gCell->dCx() - replInst->dx() / 2
+              + pbc_->siteSizeX(inst->getBlock()) * pbc_->padLeft(),
+          gCell->dCy() - replInst->dy() / 2);
     }
   }
 }
@@ -1530,7 +1535,7 @@ void NesterovBase::init()
   stdInstsArea_ = pb_->stdInstsArea();
   macroInstsArea_ = pb_->macroInstsArea();
 
-  int dbu_per_micron = pb_->db()->getChip()->getBlock()->getDbUnitsPerMicron();
+  int dbu_per_micron = pb_->block()->getDbUnitsPerMicron();;
 
   // update gFillerCells
   initFillerGCells();

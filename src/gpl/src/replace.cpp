@@ -188,13 +188,25 @@ void Replace::doIncrementalPlace()
 
     pbc_ = std::make_shared<PlacerBaseCommon>(db_, pbVars, log_);
 
-    auto pb = std::make_shared<PlacerBase>(db_, pbc_, log_);
-    if (!pb->insts().empty()) {
-      pbVec_.push_back(pb);
+    // For the top heir block
+    auto topBlock = db_->getChip()->getBlock();
+    pbVec_.push_back(std::make_shared<PlacerBase>(db_, pbc_, log_, topBlock));
+    for (auto pd : db_->getChip()->getBlock()->getPowerDomains()) {
+      if (pd->getGroup()) {
+        pbVec_.push_back(std::make_shared<PlacerBase>(
+            db_, pbc_, log_, topBlock, pd->getGroup()));
+      }
     }
 
-    for (odb::dbGroup* group : db_->getChip()->getBlock()->getGroups()) {
-      pbVec_.push_back(std::make_shared<PlacerBase>(db_, pbc_, log_, group));
+    // For the child blocks
+    for (auto block : topBlock->getChildren()) {
+      pbVec_.push_back(std::make_shared<PlacerBase>(db_, pbc_, log_, block));
+      for (auto pd : block->getPowerDomains()) {
+        if (pd->getGroup()) {
+          pbVec_.push_back(std::make_shared<PlacerBase>(
+              db_, pbc_, log_, block, pd->getGroup()));
+        }
+      }
     }
 
     total_placeable_insts_ = 0;
@@ -266,13 +278,24 @@ void Replace::doInitialPlace()
 
     pbc_ = std::make_shared<PlacerBaseCommon>(db_, pbVars, log_);
 
-    auto pb = std::make_shared<PlacerBase>(db_, pbc_, log_);
-    if (!pb->insts().empty()) {
-      pbVec_.push_back(pb);
+    // For the top heir block
+    auto topBlock = db_->getChip()->getBlock();
+    pbVec_.push_back(std::make_shared<PlacerBase>(db_, pbc_, log_, topBlock));
+    for (auto pd : topBlock->getPowerDomains()) {
+      if (pd->getGroup()) {
+        pbVec_.push_back(std::make_shared<PlacerBase>(
+            db_, pbc_, log_, topBlock, pd->getGroup()));
+      }
     }
-
-    for (odb::dbGroup* group : db_->getChip()->getBlock()->getGroups()) {
-      pbVec_.push_back(std::make_shared<PlacerBase>(db_, pbc_, log_, group));
+    // For the child blocks
+    for (auto block : topBlock->getChildren()) {
+      pbVec_.push_back(std::make_shared<PlacerBase>(db_, pbc_, log_, block));
+      for (auto pd : block->getPowerDomains()) {
+        if (pd->getGroup()) {
+          pbVec_.push_back(std::make_shared<PlacerBase>(
+              db_, pbc_, log_, block, pd->getGroup()));
+        }
+      }
     }
 
     total_placeable_insts_ = 0;
@@ -298,7 +321,7 @@ void Replace::doInitialPlace()
 
 bool Replace::initNesterovPlace()
 {
-  if (pbc_ == nullptr) {
+  if (!pbc_) {
     PlacerBaseVars pbVars;
     pbVars.padLeft = padLeft_;
     pbVars.padRight = padRight_;
@@ -306,13 +329,24 @@ bool Replace::initNesterovPlace()
 
     pbc_ = std::make_shared<PlacerBaseCommon>(db_, pbVars, log_);
 
-    auto pb = std::make_shared<PlacerBase>(db_, pbc_, log_);
-    if (!pb->insts().empty()) {
-      pbVec_.push_back(pb);
+    // For the top heir block
+    auto topBlock = db_->getChip()->getBlock();
+    pbVec_.push_back(std::make_shared<PlacerBase>(db_, pbc_, log_, topBlock));
+    for (auto pd : topBlock->getPowerDomains()) {
+      if (pd->getGroup()) {
+        pbVec_.push_back(std::make_shared<PlacerBase>(
+            db_, pbc_, log_, topBlock, pd->getGroup()));
+      }
     }
-
-    for (odb::dbGroup* group : db_->getChip()->getBlock()->getGroups()) {
-      pbVec_.push_back(std::make_shared<PlacerBase>(db_, pbc_, log_, group));
+    // For the child blocks
+    for (auto block : topBlock->getChildren()) {
+      pbVec_.push_back(std::make_shared<PlacerBase>(db_, pbc_, log_, block));
+      for (auto pd : block->getPowerDomains()) {
+        if (pd->getGroup()) {
+          pbVec_.push_back(std::make_shared<PlacerBase>(
+              db_, pbc_, log_, block, pd->getGroup()));
+        }
+      }
     }
 
     total_placeable_insts_ = 0;
@@ -327,6 +361,9 @@ bool Replace::initNesterovPlace()
   }
 
   if (!nbc_) {
+    // Comment by minjae
+    // TODO: `nbVars` should be separated by the dbBlocks.
+    //  This needs a editing of the tcl command.
     NesterovBaseVars nbVars;
     nbVars.targetDensity = density_;
 
@@ -341,10 +378,15 @@ bool Replace::initNesterovPlace()
     nbc_ = std::make_shared<NesterovBaseCommon>(nbVars, pbc_, log_);
 
     for (const auto& pb : pbVec_) {
+      if (pb->insts().empty()) {
+        continue;
+      }
       nbVec_.push_back(std::make_shared<NesterovBase>(nbVars, pb, nbc_, log_));
     }
   }
 
+  // Comment by minjae
+  // TODO: Consider the rb and tb for multi-die case
   if (!rb_) {
     RouteBaseVars rbVars;
     rbVars.maxDensity = routabilityMaxDensity_;

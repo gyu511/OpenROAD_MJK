@@ -150,6 +150,10 @@ void NesterovPlace::updatePrevGradient(const std::shared_ptr<NesterovBase>& nb)
 
 void NesterovPlace::updateCurGradient(const std::shared_ptr<NesterovBase>& nb)
 {
+  // Comment by minjae
+  // Question: Shouldn't `wireLengthCoefX_` and `wireLengthCoefY_` need to
+  // be separated by group or dbBlock?
+
   nb->updateCurGradient(wireLengthCoefX_, wireLengthCoefY_);
   auto wireLengthGradSum_ = nb->getWireLengthGradSum();
   auto densityGradSum_ = nb->getDensityGradSum();
