@@ -209,6 +209,24 @@ void MultiDieManager::readPartitionInfo(const std::string& fileName)
   partitionFile.close();
 }
 
+void MultiDieManager::inheritRows(odb::dbBlock* parentBlock,
+                                  odb::dbBlock* childBlock)
+{
+  for (auto row : parentBlock->getRows()) {
+    int rowOriginX, rowOriginY;
+    row->getOrigin(rowOriginX, rowOriginY);
+    odb::dbRow::create(childBlock,
+                       row->getName().c_str(),
+                       row->getSite(),
+                       rowOriginX,
+                       rowOriginY,
+                       row->getOrient(),
+                       row->getDirection(),
+                       row->getSiteCount(),
+                       row->getSpacing());
+  }
+}
+
 void MultiDieManager::GPLTest()
 {
   numberOfDie_ = 2;
@@ -290,7 +308,10 @@ void MultiDieManager::GPLTest()
 
   // set the position of instances
   inst1->setLocation(ll.x() + cellWidth, ll.y() + cellHeight);
-  inst2->setLocation(ur.x() - cellWidth, ur.y() - cellHeight);
+  inst2->setLocation(ur.x() - 2 * cellWidth, ur.y() - 2 * cellHeight);
+
+  inst1->setPlacementStatus(odb::dbPlacementStatus::PLACED);
+  inst2->setPlacementStatus(odb::dbPlacementStatus::PLACED);
 
   // make a net
   auto net1 = odb::dbNet::create(childBlock1, "net1");

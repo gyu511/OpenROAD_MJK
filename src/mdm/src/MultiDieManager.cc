@@ -93,28 +93,32 @@ void MultiDieManager::splitInstances()
 }
 void MultiDieManager::makeSubBlocks()
 {
-  auto topHeirBlock = db_->getChip()->getBlock();
-  // +1 for the top heir block
-  assert(numberOfDie_ + 1 == db_->getTechs().size());
   assert(db_->getTechs().size() >= 2);
+
+  // 1st Block --> 2nd Block --> 3rd Block ...
+  // top hier  --> child heir -> child of child hier ...
+  odb::dbBlock* upperHierBlock = db_->getChip()->getBlock();
+  odb::dbBlock* lowerHierBlock;
+
+  // Let's assume that the die area are same each other
+  auto dieArea = upperHierBlock->getDieArea();
 
   int dieIdx = 0;
   for (auto tech : db_->getTechs()) {
-    if (tech == *db_->getTechs().begin()) {
-      // exclude the first tech which is the top heir,
+    if (dieIdx == 0) {
+      // the first one already is made at the tcl level
+      // e.g. read_def -tech top ispd18_test1.input.def
+      dieIdx++;
       continue;
     }
     string dieName = "Die" + to_string(dieIdx);
-    odb::dbBlock* childBlock = nullptr;
-    if (dieIdx != 0) {
-      // the second which is parsed at the tcl level
-      // e.g. read_def -child -tech top ispd18_test1.input.def
-      childBlock = odb::dbBlock::create(topHeirBlock, dieName.c_str(), tech);
-    } else {
-      childBlock = (*db_->getChip()->getBlock()->getChildren().begin());
-    }
-    // make the inst that can represent the child die
-    odb::dbInst::create(topHeirBlock, childBlock, dieName.c_str());
+
+    lowerHierBlock
+        = odb::dbBlock::create(upperHierBlock, dieName.c_str(), tech);
+    inheritRows(upperHierBlock, lowerHierBlock);
+    odb::dbInst::create(upperHierBlock, lowerHierBlock, dieName.c_str());
+    lowerHierBlock->setDieArea(dieArea);
+    upperHierBlock = lowerHierBlock;
     dieIdx++;
   }
 }
@@ -123,12 +127,15 @@ void MultiDieManager::switchInstancesToAssignedDie()
   // for the most bottom die, the instances is already assigned in the tcl
   // level. e.g. read_def -child -tech bottom
   // So we need switch instances from bottom to other dies
-  auto mostBottomDie = *db_->getChip()->getBlock()->getChildren().begin();
+  auto mostBottomDie = db_->getChip()->getBlock();
 
   // Because in the instances are destroyed in `switchInstanceToAssignedDie`,
   // we need to make the copy of the pointer of the instances.
   vector<odb::dbInst*> instPointerContainer;
   for (auto inst : mostBottomDie->getInsts()) {
+    if (inst->getChild()) {
+      continue;
+    }
     instPointerContainer.push_back(inst);
   }
 
@@ -195,7 +202,6 @@ void MultiDieManager::makeInterconnections(odb::dbBlock* lowerBlock,
       odb::dbBoolProperty::create(topHeirNet, "intersected", true);
       odb::dbBoolProperty::create(lowerBlockNet, "intersected", true);
       odb::dbBoolProperty::create(upperBlockNet, "intersected", true);
-
     }
   }
 }

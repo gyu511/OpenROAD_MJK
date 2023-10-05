@@ -67,16 +67,11 @@ std::pair<odb::dbBlock*, odb::dbLib*> SwitchInstanceHelper::findTargetDieAndLib(
     MultiDieManager* manager,
     int dieID)
 {
-  odb::dbBlock* targetBlock = nullptr;
+  odb::dbBlock* targetBlock = manager->db_->getChip()->getBlock();
   odb::dbLib* targetLib = nullptr;
 
-  int dieIdx = 0;
-  for (auto childDie : manager->db_->getChip()->getBlock()->getChildren()) {
-    if (dieIdx == dieID) {
-      targetBlock = childDie;
-      break;
-    }
-    dieIdx++;
+  for (int i = 0; i < dieID; ++i) {
+    targetBlock = *targetBlock->getChildren().begin();
   }
   int libIdx = 0;
   for (auto lib : manager->db_->getLibs()) {
