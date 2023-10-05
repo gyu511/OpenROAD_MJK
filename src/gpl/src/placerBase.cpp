@@ -65,6 +65,8 @@ static int64_t getOverlapWithCoreArea(Die& die, Instance& inst);
 
 bool isNetIntersected(dbNet* net);
 
+odb::dbBTerm* returnHierBTerm(odb::dbITerm* iterm);
+
 ////////////////////////////////////////////////////////
 // Instance
 
@@ -821,7 +823,8 @@ void PlacerBaseCommon::init()
 {
   slog_ = log_;
 
-  log_->info(GPL, 2, "DBU: {}", db_->getTech()->getDbUnitsPerMicron());
+  log_->info(
+      GPL, 2, "DBU: {}", db_->getChip()->getBlock()->getDbUnitsPerMicron());
 
   dbBlock* block = db_->getChip()->getBlock();
 
@@ -885,6 +888,11 @@ void PlacerBaseCommon::init()
 
   instStor_.reserve(instCnt);
   for (dbInst* inst : insts) {
+    if (inst->getChild()) {
+      // If the inst is just for representing child block
+      continue;
+    }
+
     auto type = inst->getMaster()->getType();
     if (!type.isCore() && !type.isBlock()) {
       continue;
@@ -969,6 +977,10 @@ void PlacerBaseCommon::init()
 
       // Parse the instance terminals
       for (dbITerm* iTerm : net->getITerms()) {
+        if (iTerm->getInst()->getChild()) {
+          // skip the instance terminal for the one representing the child block
+          continue;
+        }
         Pin myPin(iTerm);
         myPin.setNet(myNetPtr);
         myPin.setInstance(dbToPb(iTerm->getInst()));
@@ -981,7 +993,7 @@ void PlacerBaseCommon::init()
         // which is only in the top heir block.
         for (auto dbITerm : net->getITerms()) {
           for (auto childBlockITerm :
-               dbITerm->getBTerm()->getNet()->getITerms()) {
+               returnHierBTerm(dbITerm)->getNet()->getITerms()) {
             Pin myPin(childBlockITerm);
             myPin.setNet(myNetPtr);
             myPin.setInstance(dbToPb(childBlockITerm->getInst()));
@@ -1034,9 +1046,22 @@ void PlacerBaseCommon::init()
   nets_.reserve(netStor_.size());
   for (auto& net : netStor_) {
     for (dbITerm* iTerm : net.dbNet()->getITerms()) {
-      net.addPin(dbToPb(iTerm));
+      if (iTerm->getInst()->getChild()) {
+        // If the net is top hier net
+        // and iterm is the one in the instance that represents child block,
+        // then search the iterms in the child block
+        // which is connected by intersected net
+        auto childITerms = returnHierBTerm(iTerm)->getNet()->getITerms();
+        for (auto childITerm : childITerms) {
+          net.addPin(dbToPb(childITerm));
+        }
+      } else {
+        net.addPin(dbToPb(iTerm));
+      }
     }
     if (pbVars_.skipIoMode == false) {
+      // Multi die case handles just one level hier structure
+      // We don't need to change this part
       for (dbBTerm* bTerm : net.dbNet()->getBTerms()) {
         net.addPin(dbToPb(bTerm));
       }
@@ -1174,24 +1199,13 @@ void PlacerBase::init()
       continue;
     }
     if (inst->dbInst()->getBlock() != block()) {
-      // check it is connected to the block with intersected net
-      bool connected = false;
-      for (auto pin : inst->pins()) {
-        if (isNetIntersected(pin->net()->dbNet())) {
-          connected = true;
-        }
-      }
-      if (!connected) {
-        continue;
-      }
+      continue;
     }
     if (inst->dbInst() && inst->dbInst()->getGroup() != group_) {
       continue;
     }
 
-    if (validInstSet.insert(inst).second){
-      validInsts.push_back(inst);
-    }
+    validInsts.push_back(inst);
   }
 
   for (auto& inst : validInsts) {
@@ -1510,4 +1524,12 @@ bool isNetIntersected(dbNet* net)
   return property != nullptr && property->getValue();
 }
 
+odb::dbBTerm* returnHierBTerm(odb::dbITerm* iterm)
+{
+  // This function is implemented temporary due to the odb bug
+  // return iterm->getBTerm();
+  string termName = iterm->getMTerm()->getName();
+  auto block = iterm->getInst()->getChild();
+  return block->findBTerm(termName.c_str());
+}
 }  // namespace gpl

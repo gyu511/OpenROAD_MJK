@@ -316,7 +316,7 @@ void Replace::doInitialPlace()
   std::unique_ptr<InitialPlace> ip(
       new InitialPlace(ipVars, pbc_, pbVec_, log_));
   ip_ = std::move(ip);
-  // ip_->doBicgstabPlace();
+  ip_->doBicgstabPlace();
 }
 
 bool Replace::initNesterovPlace()
@@ -378,6 +378,9 @@ bool Replace::initNesterovPlace()
     nbc_ = std::make_shared<NesterovBaseCommon>(nbVars, pbc_, log_);
 
     for (const auto& pb : pbVec_) {
+      if (pb->insts().empty()) {
+        continue;
+      }
       nbVec_.push_back(std::make_shared<NesterovBase>(nbVars, pb, nbc_, log_));
     }
   }

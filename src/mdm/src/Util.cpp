@@ -297,6 +297,11 @@ void MultiDieManager::GPLTest()
   auto net2 = odb::dbNet::create(childBlock2, "net2");
   auto netTopHeir = odb::dbNet::create(topHeirBLock, "netTopHeir");
 
+  // mark these nets are intersected net
+  odb::dbBoolProperty::create(netTopHeir, "intersected", true);
+  odb::dbBoolProperty::create(net1, "intersected", true);
+  odb::dbBoolProperty::create(net2, "intersected", true);
+
   // connect the net to the instance
   (*inst1->getITerms().begin())->connect(net1);
   (*inst2->getITerms().begin())->connect(net2);
