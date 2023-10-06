@@ -65,8 +65,6 @@ static int64_t getOverlapWithCoreArea(Die& die, Instance& inst);
 
 bool isNetIntersected(dbNet* net);
 
-odb::dbBTerm* returnHierBTerm(odb::dbITerm* iterm);
-
 ////////////////////////////////////////////////////////
 // Instance
 
@@ -993,7 +991,7 @@ void PlacerBaseCommon::init()
         // which is only in the top heir block.
         for (auto dbITerm : net->getITerms()) {
           for (auto childBlockITerm :
-               returnHierBTerm(dbITerm)->getNet()->getITerms()) {
+               dbITerm->getBTerm()->getNet()->getITerms()) {
             Pin myPin(childBlockITerm);
             myPin.setNet(myNetPtr);
             myPin.setInstance(dbToPb(childBlockITerm->getInst()));
@@ -1051,7 +1049,7 @@ void PlacerBaseCommon::init()
         // and iterm is the one in the instance that represents child block,
         // then search the iterms in the child block
         // which is connected by intersected net
-        auto childITerms = returnHierBTerm(iTerm)->getNet()->getITerms();
+        auto childITerms = iTerm->getBTerm()->getNet()->getITerms();
         for (auto childITerm : childITerms) {
           net.addPin(dbToPb(childITerm));
         }
@@ -1524,12 +1522,4 @@ bool isNetIntersected(dbNet* net)
   return property != nullptr && property->getValue();
 }
 
-odb::dbBTerm* returnHierBTerm(odb::dbITerm* iterm)
-{
-  // This function is implemented temporary due to the odb bug
-  // return iterm->getBTerm();
-  string termName = iterm->getMTerm()->getName();
-  auto block = iterm->getInst()->getChild();
-  return block->findBTerm(termName.c_str());
-}
 }  // namespace gpl
