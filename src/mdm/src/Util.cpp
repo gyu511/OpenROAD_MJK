@@ -227,7 +227,7 @@ void MultiDieManager::inheritRows(odb::dbBlock* parentBlock,
   }
 }
 
-void MultiDieManager::GPLTest()
+void MultiDieManager::constructSimpleExample1()
 {
   numberOfDie_ = 2;
 
@@ -377,6 +377,135 @@ void MultiDieManager::GPLTest()
   }
 
   logger_->info(utl::MDM, 2, "Construction simple db for GPL test");
+}
+
+void MultiDieManager::constructSimpleExample2()
+{
+  numberOfDie_ = 2;
+
+  int dieWidth = 1000;
+  int dieHeight = 1000;
+  odb::Point ll = odb::Point(0, 0);
+  odb::Point ur = odb::Point(dieWidth, dieHeight);
+  odb::Rect dieBox(ll, ur);
+
+  auto chip = odb::dbChip::create(db_);
+  auto tech1 = odb::dbTech::create(db_, "tech1");
+  auto tech2 = odb::dbTech::create(db_, "tech2");
+
+  odb::dbTechLayer* techLayer1 = odb::dbTechLayer::create(
+      tech1, "layer", odb::dbTechLayerType::MASTERSLICE);
+  odb::dbTechLayer* techLayer2 = odb::dbTechLayer::create(
+      tech2, "layer", odb::dbTechLayerType::MASTERSLICE);
+
+  auto block1 = odb::dbBlock::create(chip, "block1", tech1);
+  auto block2 = odb::dbBlock::create(block1, "block2", tech2);
+  odb::dbInst::create(block1, block2, "interfaceInst");
+
+  block1->setDieArea(dieBox);
+  block2->setDieArea(dieBox);
+
+  // make a master
+  auto lib1 = odb::dbLib::create(db_, "lib1", tech1);
+  auto lib2 = odb::dbLib::create(db_, "lib2", tech2);
+  auto master1 = odb::dbMaster::create(lib1, "master1");
+  auto master2 = odb::dbMaster::create(lib2, "master2");
+
+  int cellWidth = 50;
+  int cellHeight = 50;
+  master1->setWidth(cellWidth);
+  master2->setWidth(cellWidth);
+  master1->setHeight(cellHeight);
+  master2->setHeight(cellHeight);
+
+  master1->setType(odb::dbMasterType::CORE);
+  master2->setType(odb::dbMasterType::CORE);
+
+  auto sigType = odb::dbSigType::SIGNAL;
+  auto ioType = odb::dbIoType::INOUT;
+  auto mTerm1 = odb::dbMTerm::create(master1, "mTerm1", ioType, sigType);
+  auto mTerm2 = odb::dbMTerm::create(master2, "mTerm2", ioType, sigType);
+
+  auto mPin1 = odb::dbMPin::create(mTerm1);
+  auto mPin2 = odb::dbMPin::create(mTerm2);
+
+  odb::dbBox::create(mPin1,
+                     techLayer1,
+                     cellWidth / 2,
+                     cellHeight / 2,
+                     cellWidth / 2 + 1,
+                     cellHeight / 2 + 1);
+
+  odb::dbBox::create(mPin2,
+                     techLayer2,
+                     cellWidth / 2,
+                     cellHeight / 2,
+                     cellWidth / 2 + 1,
+                     cellHeight / 2 + 1);
+
+  master1->setFrozen();
+  master2->setFrozen();
+
+  // make a instance
+  auto inst1 = odb::dbInst::create(block1, master1, "inst1");
+  auto inst2 = odb::dbInst::create(block2, master2, "inst2");
+
+  // set the position of instances
+  inst1->setLocation(ll.x() + cellWidth, ll.y() + cellHeight);
+  inst2->setLocation(ur.x() - 2 * cellWidth, ur.y() - 2 * cellHeight);
+
+  inst1->setPlacementStatus(odb::dbPlacementStatus::PLACED);
+  inst2->setPlacementStatus(odb::dbPlacementStatus::PLACED);
+
+  // make a net
+  auto net1 = odb::dbNet::create(block1, "net1");
+  auto net2 = odb::dbNet::create(block2, "net2");
+
+  // mark these nets as intersected net
+  odb::dbBoolProperty::create(net1, "intersected", true);
+  odb::dbBoolProperty::create(net2, "intersected", true);
+
+  // connect the net to the instance
+  (*inst1->getITerms().begin())->connect(net1);
+  (*inst2->getITerms().begin())->connect(net2);
+
+  // connect the intersected nets
+  auto bTerm = odb::dbBTerm::create(net2, "interfaceBTerm");
+  bTerm->getITerm()->connect(net1);
+
+  // row construction
+  auto site1 = odb::dbSite::create(lib1, "site1");
+  auto site2 = odb::dbSite::create(lib2, "site2");
+  auto site_width = cellWidth;
+  auto site_height = cellHeight;
+  site1->setWidth(site_width);
+  site2->setWidth(site_width);
+  site1->setHeight(site_height);
+  site2->setHeight(site_height);
+
+  auto numOfRow = dieHeight / site_height;
+  auto numOfSite = dieWidth / site_width;
+  for (int i = 0; i < numOfRow; ++i) {
+    auto rowName = "row" + to_string(i);
+    odb::dbRow::create(block1,
+                       rowName.c_str(),
+                       site1,
+                       0,
+                       i * site_height,
+                       odb::dbOrientType::R0,
+                       odb::dbRowDir::HORIZONTAL,
+                       numOfSite,
+                       0);
+    odb::dbRow::create(block2,
+                       rowName.c_str(),
+                       site2,
+                       0,
+                       i * site_height,
+                       odb::dbOrientType::R0,
+                       odb::dbRowDir::HORIZONTAL,
+                       numOfSite,
+                       0);
+  }
 }
 
 }  // namespace mdm

@@ -104,7 +104,8 @@ class MultiDieManager
 
   void twoDieDetailPlacement();
 
-  void GPLTest();
+  void constructSimpleExample1();
+  void constructSimpleExample2();
 
  private:
   odb::dbTech* makeNewTech(const std::string& techName);

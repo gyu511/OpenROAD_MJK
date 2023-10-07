@@ -67,9 +67,15 @@ twoDieDetailPlace()
 }
 
 void
-GPLTest()
+constructSimpleExample1()
 {
-  getMultiDieManager()->GPLTest();
+  getMultiDieManager()->constructSimpleExample1();
+}
+
+void
+constructSimpleExample2()
+{
+  getMultiDieManager()->constructSimpleExample2();
 }
 
 %} // inline

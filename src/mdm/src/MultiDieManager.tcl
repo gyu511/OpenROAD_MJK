@@ -42,8 +42,3 @@ proc mdm::two_die_detail_placement { } {
 proc mdm::make_shrunkLef { } {
   mdm::makeShrunkLef
 }
-
-proc mdm::test { } {
-  mdm::test
-}
-
