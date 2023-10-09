@@ -369,8 +369,6 @@ class PlacerBaseCommon
   std::unordered_map<odb::dbNet*, Net*> netMap_;
 
   std::unordered_map<odb::dbBlock*, odb::dbSite*> blockSiteMap_;
-  int siteSizeX_;
-  int siteSizeY_;
 
   int64_t macroInstsArea_;
 
