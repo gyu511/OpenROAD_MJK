@@ -36,6 +36,7 @@
 #include <memory>
 #include <unordered_map>
 #include <vector>
+#include <algorithm>
 
 namespace odb {
 class dbDatabase;
@@ -243,6 +244,10 @@ class Net
 
   bool isIntersected() const;
 
+  bool operator==(const Net& other) const {
+    return dbNet() == other.dbNet();
+  }
+
  private:
   odb::dbNet* net_;
   std::vector<Pin*> pins_;
@@ -369,13 +374,13 @@ class PlacerBaseCommon
   std::unordered_map<odb::dbNet*, Net*> netMap_;
 
   std::unordered_map<odb::dbBlock*, odb::dbSite*> blockSiteMap_;
-  int siteSizeX_;
-  int siteSizeY_;
 
   int64_t macroInstsArea_;
 
   void init();
   void reset();
+
+  void combineFragmentedNets();
 };
 
 class PlacerBase

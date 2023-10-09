@@ -795,8 +795,6 @@ PlacerBaseCommon::PlacerBaseCommon()
     : db_(nullptr),
       log_(nullptr),
       pbVars_(),
-      siteSizeX_(0),
-      siteSizeY_(0),
       macroInstsArea_(0)
 {
 }
@@ -824,250 +822,310 @@ void PlacerBaseCommon::init()
   log_->info(
       GPL, 2, "DBU: {}", db_->getChip()->getBlock()->getDbUnitsPerMicron());
 
-  dbBlock* block = db_->getChip()->getBlock();
+  dbBlock* topBlock = db_->getChip()->getBlock();
 
   // die-core area update
-  odb::Rect coreRect = block->getCoreArea();
-  odb::Rect dieRect = block->getDieArea();
+  odb::Rect coreRect = topBlock->getCoreArea();
+  odb::Rect dieRect = topBlock->getDieArea();
 
   if (!dieRect.contains(coreRect))
     log_->error(GPL, 118, "core area outside of die.");
 
   die_ = Die(dieRect, coreRect);
 
-  // siteSize update
-  odb::dbSite* site = nullptr;
-  for (auto* row : block->getRows()) {
-    if (row->getSite()->getClass() != odb::dbSiteClass::PAD) {
-      site = row->getSite();
-      blockSiteMap_[block] = site;
-      break;
-    }
-  }
-  if (site == nullptr) {
-    log_->error(GPL, 305, "Unable to find a site");
-  }
-  for (auto childBlock : block->getChildren()) {
-    site = nullptr;
-    for (auto* row : childBlock->getRows()) {
-      if (row->getSite()->getClass() != odb::dbSiteClass::PAD) {
+  // siteSize update (Traverse blocks with DFS and find the siteSizes)
+  stack<dbBlock*> blockStack;
+  blockStack.push(topBlock);
+
+  while (!blockStack.empty()) {
+    auto currentBlock = blockStack.top();
+    blockStack.pop();
+
+    dbSite* site = nullptr;
+    for (auto row : currentBlock->getRows()) {
+      if (row->getSite()->getClass() != dbSiteClass::PAD) {
         site = row->getSite();
-        blockSiteMap_[childBlock] = site;
+        blockSiteMap_[currentBlock] = site;
         break;
       }
     }
     if (site == nullptr) {
-      log_->error(GPL, 306, "Unable to find a site for child block");
+      log_->error(GPL, 305, "Unable to find a site");
+    }
+
+    for (auto childBlock : currentBlock->getChildren()) {
+      blockStack.push(childBlock);
     }
   }
 
-  log_->info(GPL, 3, "SiteSize: {} {}", siteSizeX(block), siteSizeY(block));
+  log_->info(
+      GPL, 3, "SiteSize: {} {}", siteSizeX(topBlock), siteSizeY(topBlock));
   log_->info(GPL, 4, "CoreAreaLxLy: {} {}", die_.coreLx(), die_.coreLy());
   log_->info(GPL, 5, "CoreAreaUxUy: {} {}", die_.coreUx(), die_.coreUy());
 
-  // insts fill with real instances
-  uint instCnt = 0;
-  instCnt += block->getInsts().size();
-  for (auto childBlock : block->getChildren()) {
-    // for multi-die case
-    instCnt += childBlock->getInsts().size();
-  }
+  // Construct Instance objects //
+  // // Get db instance pointers first by traversing blocks with DFS
+  // // and then construct Instance objects
+  vector<dbInst*> dbInsts;
+  blockStack.push(topBlock);
+  while (!blockStack.empty()) {
+    auto currentBlock = blockStack.top();
+    blockStack.pop();
 
-  vector<dbInst*> insts;
-  insts.reserve(instCnt);
-  for (auto inst : block->getInsts()) {
-    insts.push_back(inst);
-  }
-  for (auto childBlock : block->getChildren()) {
-    for (auto inst : childBlock->getInsts()) {
-      insts.push_back(inst);
+    for (auto dbInst : currentBlock->getInsts()) {
+      dbInsts.push_back(dbInst);
+    }
+
+    for (auto childBlock : currentBlock->getChildren()) {
+      blockStack.push(childBlock);
     }
   }
 
-  instStor_.reserve(instCnt);
-  for (dbInst* inst : insts) {
-    if (inst->getChild()) {
-      // If the inst is just for representing child block
-      continue;
-    }
-
-    auto type = inst->getMaster()->getType();
+  instStor_.reserve(dbInsts.size());
+  insts_.reserve(dbInsts.size());
+  for (auto dbInst : dbInsts) {
+    auto type = dbInst->getMaster()->getType();
     if (!type.isCore() && !type.isBlock()) {
       continue;
     }
-
-    int siteSizeX = this->siteSizeX(inst->getBlock());
-    int siteSizeY = this->siteSizeY(inst->getBlock());
-
-    Instance myInst(inst,
-                    pbVars_.padLeft * siteSizeX,
-                    pbVars_.padRight * siteSizeX,
-                    siteSizeY,
-                    log_);
+    if (dbInst->getChild()) {
+      // if the instance is for representing child topBlock, then skip
+      continue;
+    }
+    Instance inst(dbInst,
+                  pbVars_.padLeft * siteSizeX(dbInst->getBlock()),
+                  pbVars_.padRight * siteSizeX(dbInst->getBlock()),
+                  siteSizeY(dbInst->getBlock()),
+                  log_);
 
     // Fixed instaces need to be snapped outwards to the nearest site
     // boundary.  A partially overlapped site is unusable and this
     // is the simplest way to ensure it is counted as fully used.
-    if (myInst.isFixed()) {
-      myInst.snapOutward(coreRect.ll(), siteSizeX, siteSizeY);
+    if (inst.isFixed()) {
+      inst.snapOutward(coreRect.ll(),
+                       siteSizeX(dbInst->getBlock()),
+                       siteSizeY(dbInst->getBlock()));
     }
 
-    instStor_.push_back(myInst);
+    instStor_.push_back(inst);
 
-    if (myInst.dy() > this->siteSizeY(block) * 6) {
-      macroInstsArea_ += myInst.area();
+    if (inst.dy() > siteSizeY(dbInst->getBlock()) * 6) {
+      macroInstsArea_ += inst.area();
     }
 
-    dbBox* bbox = inst->getBBox();
+    dbBox* bbox = dbInst->getBBox();
     if (bbox->getDY() > die_.coreDy())
-      log_->error(
-          GPL, 119, "instance {} height is larger than core.", inst->getName());
+      log_->error(GPL,
+                  119,
+                  "instance {} height is larger than core.",
+                  dbInst->getName());
     if (bbox->getDX() > die_.coreDx())
-      log_->error(
-          GPL, 120, "instance {} width is larger than core.", inst->getName());
+      log_->error(GPL,
+                  120,
+                  "instance {} width is larger than core.",
+                  dbInst->getName());
   }
 
-  insts_.reserve(instStor_.size());
+  // Construct Instance pointers and map
   for (auto& inst : instStor_) {
-    instMap_[inst.dbInst()] = &inst;
-    insts_.push_back(&inst);
-
-    if (!inst.isFixed()) {
-      placeInsts_.push_back(&inst);
+    auto instPtr = &inst;
+    insts_.push_back(instPtr);
+    instMap_[instPtr->dbInst()] = instPtr;
+    if (!instPtr->isFixed()) {
+      placeInsts_.push_back(instPtr);
     }
   }
 
-  // nets fill
-  uint netCnt = 0;
-  netCnt += block->getNets().size();
-  for (auto childBlock : block->getChildren()) {
-    netCnt += childBlock->getNets().size();
-  }
+  // Construct Net objects //
+  // // Get db net pointers first by traversing blocks with DFS
+  // // and then construct Net objects
+  vector<dbNet*> dbNets;
+  blockStack.push(topBlock);
 
-  vector<dbNet*> nets;
-  nets.reserve(netCnt);
-  for (auto net : block->getNets()) {
-    nets.push_back(net);
-  }
-  for (auto childBlock : block->getChildren()) {
-    for (auto net : childBlock->getNets()) {
-      // For multi-block case,
-      // skip the intersected nets only in the child blocks
-      if (isNetIntersected(net)) {
-        continue;
-      }
-      nets.push_back(net);
+  while (!blockStack.empty()) {
+    auto currentBlock = blockStack.top();
+    blockStack.pop();
+
+    for (auto dbNet : currentBlock->getNets()) {
+      dbNets.push_back(dbNet);
+    }
+
+    for (auto childBlock : currentBlock->getChildren()) {
+      blockStack.push(childBlock);
     }
   }
 
-  netStor_.reserve(netCnt);
-  for (dbNet* net : nets) {
-    dbSigType netType = net->getSigType();
+  netStor_.reserve(dbNets.size());
+  nets_.reserve(dbNets.size());
+  for (auto dbNet : dbNets) {
+    dbSigType netType = dbNet->getSigType();
 
     // escape nets with VDD/VSS/reset nets
     if (netType == dbSigType::SIGNAL || netType == dbSigType::CLOCK) {
-      Net myNet(net, pbVars_.skipIoMode, isNetIntersected(net));
-      netStor_.push_back(myNet);
+      Net net(dbNet, pbVars_.skipIoMode, isNetIntersected(dbNet));
+      netStor_.push_back(net);
+    }
+  }
 
-      // this is safe because of "reserve"
-      Net* myNetPtr = &netStor_[netStor_.size() - 1];
-      netMap_[net] = myNetPtr;
+  // Construct Net pointers and map
+  for (auto& net : netStor_) {
+    auto netPtr = &net;
+    nets_.push_back(netPtr);
+    netMap_[netPtr->dbNet()] = netPtr;
+  }
 
-      // Parse the instance terminals
-      for (dbITerm* iTerm : net->getITerms()) {
-        if (iTerm->getInst()->getChild()) {
-          // skip the instance terminal for the one representing the child block
-          continue;
-        }
-        Pin myPin(iTerm);
-        myPin.setNet(myNetPtr);
-        myPin.setInstance(dbToPb(iTerm->getInst()));
-        pinStor_.push_back(myPin);
-      }
-
-      // Traverse the nets in the child blocks
-      if (myNet.isIntersected()) {
-        // p.s. The `nets` vector includes intersected nets
-        // which is only in the top heir block.
-        for (auto dbITerm : net->getITerms()) {
-          for (auto childBlockITerm :
-               dbITerm->getBTerm()->getNet()->getITerms()) {
-            Pin myPin(childBlockITerm);
-            myPin.setNet(myNetPtr);
-            myPin.setInstance(dbToPb(childBlockITerm->getInst()));
-            pinStor_.push_back(myPin);
-          }
-        }
-      }
-
-      // Parse the block terminals
-      if (pbVars_.skipIoMode) {
+  // Construct Pin objects //
+  for (auto& net : netStor_) {
+    for (auto dbITerm : net.dbNet()->getITerms()) {
+      if (dbITerm->getBTerm()) {
+        // If iterm is for the interconnect, skip
         continue;
       }
-      for (dbBTerm* bTerm : net->getBTerms()) {
-        Pin myPin(bTerm);
-        myPin.setNet(myNetPtr);
-        pinStor_.push_back(myPin);
+      Pin pin(dbITerm);
+      pinStor_.push_back(pin);
+    }
+    for (auto dbBTerm : net.dbNet()->getBTerms()) {
+      if (dbBTerm->getITerm()) {
+        // If bterm is for the interconnect, skip
+        continue;
       }
+      Pin pin(dbBTerm);
+      pinStor_.push_back(pin);
     }
   }
 
-  // pinMap_ and pins_ update
+  // Construct Pin pointers and map
   pins_.reserve(pinStor_.size());
   for (auto& pin : pinStor_) {
+    auto pinPtr = &pin;
+    pins_.push_back(pinPtr);
     if (pin.isITerm()) {
-      pinMap_[(void*) pin.dbITerm()] = &pin;
-    } else if (pin.isBTerm()) {
-      pinMap_[(void*) pin.dbBTerm()] = &pin;
+      pinMap_[(void*) pin.dbITerm()] = pinPtr;
+    } else {
+      pinMap_[(void*) pin.dbBTerm()] = pinPtr;
     }
-    pins_.push_back(&pin);
   }
 
-  // instStor_'s pins_ fill
+  // Construct Net-Pin connections
+  // net <-> pin
+  for (auto& net : nets_) {
+    for (auto iterm : net->dbNet()->getITerms()) {
+      if (iterm->getBTerm()) {
+        // If iterm is for the interconnect, skip
+        continue;
+      }
+      dbToPb(iterm)->setNet(net);
+      net->addPin(dbToPb(iterm));
+    }
+    if (pbVars_.skipIoMode) {
+      continue;
+    }
+    for (auto bterm : net->dbNet()->getBTerms()) {
+      if (bterm->getITerm()) {
+        // If bterm is for the interconnect, skip
+        continue;
+      }
+      dbToPb(bterm)->setNet(net);
+      net->addPin(dbToPb(bterm));
+    }
+  }
+
+  // Construct Instance-Pin connections
+  // inst <-> pin
   for (auto& inst : instStor_) {
     if (!inst.isInstance()) {
       continue;
     }
-    for (dbITerm* iTerm : inst.dbInst()->getITerms()) {
-      // note that, DB's ITerm can have
-      // VDD/VSS pins.
-      //
-      // Escape those pins
-      Pin* curPin = dbToPb(iTerm);
-      if (curPin) {
-        inst.addPin(curPin);
+    for (auto iterm : inst.dbInst()->getITerms()) {
+      Pin* pin = dbToPb(iterm);
+      if (pin) {
+        inst.addPin(pin);
+        pin->setInstance(&inst);
       }
     }
   }
 
-  // nets' pin update
-  nets_.reserve(netStor_.size());
-  for (auto& net : netStor_) {
-    for (dbITerm* iTerm : net.dbNet()->getITerms()) {
-      if (iTerm->getInst()->getChild()) {
-        // If the net is top hier net
-        // and iterm is the one in the instance that represents child block,
-        // then search the iterms in the child block
-        // which is connected by intersected net
-        auto childITerms = iTerm->getBTerm()->getNet()->getITerms();
-        for (auto childITerm : childITerms) {
-          net.addPin(dbToPb(childITerm));
-        }
-      } else {
-        net.addPin(dbToPb(iTerm));
-      }
-    }
-    if (pbVars_.skipIoMode == false) {
-      // Multi die case handles just one level hier structure
-      // We don't need to change this part
-      for (dbBTerm* bTerm : net.dbNet()->getBTerms()) {
-        net.addPin(dbToPb(bTerm));
-      }
-    }
-    nets_.push_back(&net);
-  }
+  // combine the fragmented nets intersecting each other
+  combineFragmentedNets();
 }
 
+void PlacerBaseCommon::combineFragmentedNets()
+{
+  // Combine the dbNets, which are intersected and connected each other, as one.
+  // Note for this section:
+  // The `netStor_` should collect the dbNets in the order from
+  // the top hierarchical block to the lower hierarchical blocks.
+  unordered_set<dbNet*> connected;
+  for (auto& net : netStor_) {
+    if (net.dbNet() == nullptr){
+      // if it is erased in previous loop
+      continue;
+    }
+    if (net.isIntersected()) {
+      if (connected.find(net.dbNet()) == connected.end()) {
+        // 1. Collect the fragmented dbNets
+        vector<dbNet*> intersectedNets;
+        stack<dbNet*> dbNetStack;
+        auto rootDbNet = net.dbNet();
+        dbNetStack.push(rootDbNet);
+
+        // Search the dbNets using DFS
+        while (!dbNetStack.empty()) {
+          dbNet* currentDbNet = dbNetStack.top();
+          dbNetStack.pop();
+
+          // Process the current net
+          intersectedNets.push_back(currentDbNet);
+          connected.insert(currentDbNet);
+
+          for (auto iTerm : currentDbNet->getITerms()) {
+            if (iTerm->getBTerm()) {
+              dbNet* nextDbNet = iTerm->getBTerm()->getNet();
+              if (nextDbNet) {
+                dbNetStack.push(nextDbNet);
+              }
+            }
+          }
+        }
+
+        // 2. Make new net and combine the collected dbNets as one
+        Net myNet(rootDbNet, pbVars_.skipIoMode, true);
+        // Here is the reason why reserve 50% more space
+        netStor_.push_back(myNet);
+        auto netPtr = &netStor_.back();
+
+        for (auto dbNet : intersectedNets) {
+          for (auto iTerm : dbNet->getITerms()) {
+            auto pinIter = pinMap_.find(iTerm);
+            if (pinIter == pinMap_.end()) {
+              continue;
+            }
+            auto pin = pinIter->second;
+            pin->setNet(netPtr);
+          }
+          if (!pbVars_.skipIoMode) {
+            for (auto bTerm : dbNet->getBTerms()) {
+              auto pinIter = pinMap_.find(bTerm);
+              if (pinIter == pinMap_.end()) {
+                continue;
+              }
+              auto pin = pinIter->second;
+              pin->setNet(netPtr);
+            }
+          }
+
+          // Erase the fragment dbNets
+          auto it = find(netStor_.begin(), netStor_.end(), net);
+          if (it != netStor_.end()) {
+            netStor_.erase(it);
+          }
+          netMap_.erase(dbNet);
+          netMap_[dbNet] = netPtr;
+        }
+      }
+    }
+  }
+}
 void PlacerBaseCommon::reset()
 {
   db_ = nullptr;
