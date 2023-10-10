@@ -1044,88 +1044,8 @@ void PlacerBaseCommon::init()
       }
     }
   }
-
-  // combine the fragmented nets intersecting each other
-  combineFragmentedNets();
 }
 
-void PlacerBaseCommon::combineFragmentedNets()
-{
-  // Combine the dbNets, which are intersected and connected each other, as one.
-  // Note for this section:
-  // The `netStor_` should collect the dbNets in the order from
-  // the top hierarchical block to the lower hierarchical blocks.
-  unordered_set<dbNet*> connected;
-  for (auto& net : netStor_) {
-    if (net.dbNet() == nullptr){
-      // if it is erased in previous loop
-      continue;
-    }
-    if (net.isIntersected()) {
-      if (connected.find(net.dbNet()) == connected.end()) {
-        // 1. Collect the fragmented dbNets
-        vector<dbNet*> intersectedNets;
-        stack<dbNet*> dbNetStack;
-        auto rootDbNet = net.dbNet();
-        dbNetStack.push(rootDbNet);
-
-        // Search the dbNets using DFS
-        while (!dbNetStack.empty()) {
-          dbNet* currentDbNet = dbNetStack.top();
-          dbNetStack.pop();
-
-          // Process the current net
-          intersectedNets.push_back(currentDbNet);
-          connected.insert(currentDbNet);
-
-          for (auto iTerm : currentDbNet->getITerms()) {
-            if (iTerm->getBTerm()) {
-              dbNet* nextDbNet = iTerm->getBTerm()->getNet();
-              if (nextDbNet) {
-                dbNetStack.push(nextDbNet);
-              }
-            }
-          }
-        }
-
-        // 2. Make new net and combine the collected dbNets as one
-        Net myNet(rootDbNet, pbVars_.skipIoMode, true);
-        // Here is the reason why reserve 50% more space
-        netStor_.push_back(myNet);
-        auto netPtr = &netStor_.back();
-
-        for (auto dbNet : intersectedNets) {
-          for (auto iTerm : dbNet->getITerms()) {
-            auto pinIter = pinMap_.find(iTerm);
-            if (pinIter == pinMap_.end()) {
-              continue;
-            }
-            auto pin = pinIter->second;
-            pin->setNet(netPtr);
-          }
-          if (!pbVars_.skipIoMode) {
-            for (auto bTerm : dbNet->getBTerms()) {
-              auto pinIter = pinMap_.find(bTerm);
-              if (pinIter == pinMap_.end()) {
-                continue;
-              }
-              auto pin = pinIter->second;
-              pin->setNet(netPtr);
-            }
-          }
-
-          // Erase the fragment dbNets
-          auto it = find(netStor_.begin(), netStor_.end(), net);
-          if (it != netStor_.end()) {
-            netStor_.erase(it);
-          }
-          netMap_.erase(dbNet);
-          netMap_[dbNet] = netPtr;
-        }
-      }
-    }
-  }
-}
 void PlacerBaseCommon::reset()
 {
   db_ = nullptr;
