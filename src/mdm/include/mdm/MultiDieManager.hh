@@ -45,6 +45,9 @@
 #include "gpl/Replace.h"
 #include "odb/db.h"
 #include "par/PartitionMgr.h"
+#include "db_sta/dbSta.hh"
+#include "db_sta/dbNetwork.hh"
+#include "utl/Logger.h"
 
 namespace mdm {
 class MultiDieManager;
@@ -82,7 +85,8 @@ class MultiDieManager
             utl::Logger* logger,
             par::PartitionMgr* partitionMgr,
             gpl::Replace* replace,
-            dpl::Opendp* opendp);
+            dpl::Opendp* opendp,
+            sta::dbSta* sta);
 
   void set3DIC(int numberOfDie,
                uint hybridBondX = 10,
@@ -164,6 +168,7 @@ class MultiDieManager
   par::PartitionMgr* partitionMgr_{};
   gpl::Replace* replace_{};
   dpl::Opendp* opendp_{};
+  sta::dbSta* sta_{};
 
   int numberOfDie_{};
   float shrinkAreaRatio_{};

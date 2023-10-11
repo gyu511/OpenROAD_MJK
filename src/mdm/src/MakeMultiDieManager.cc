@@ -65,7 +65,10 @@ void initMultiDieManager(OpenRoad* openroad)
                                        openroad->getLogger(),
                                        openroad->getPartitionMgr(),
                                        openroad->getReplace(),
-                                       openroad->getOpendp());
+                                       openroad->getOpendp(),
+                                       openroad->getSta());
+
+
 }
 
 }  // namespace ord

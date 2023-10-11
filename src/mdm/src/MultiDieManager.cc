@@ -33,8 +33,6 @@
 
 #include "mdm/MultiDieManager.hh"
 
-#include "utl/Logger.h"
-
 namespace mdm {
 using namespace std;
 
@@ -46,13 +44,15 @@ void MultiDieManager::init(odb::dbDatabase* db,
                            utl::Logger* logger,
                            par::PartitionMgr* partitionMgr,
                            gpl::Replace* replace,
-                           dpl::Opendp* opendp)
+                           dpl::Opendp* opendp,
+                           sta::dbSta* sta)
 {
   db_ = db;
   logger_ = logger;
   partitionMgr_ = partitionMgr;
   replace_ = replace;
   opendp_ = opendp;
+  sta_ = sta;
 }
 
 void MultiDieManager::set3DIC(int numberOfDie,
