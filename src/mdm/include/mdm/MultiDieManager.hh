@@ -111,6 +111,15 @@ class MultiDieManager
   void constructSimpleExample1();
   void constructSimpleExample2();
 
+  /**
+   * Before calling this function,
+   * you need to load the lef in test/timing/example1.lef
+   * Refer to the test/mdm-timingTest1.tcl
+   * */
+  void timingTest1();
+
+  void test();
+
  private:
   odb::dbTech* makeNewTech(const std::string& techName);
   void makeShrunkLib(const std::string& whichDie,
@@ -180,6 +189,15 @@ class MultiDieManager
 
   // temporal variables
   odb::dbDatabase* targetDb_{};
+  void rowConstruction(int dieWidth,
+                       int dieHeight,
+                       odb::dbBlock* topHeirBlock,
+                       odb::dbBlock* childBlock1,
+                       odb::dbBlock* childBlock2,
+                       odb::dbLib* lib1,
+                       odb::dbLib* lib2,
+                       const odb::dbInst* inst1,
+                       const odb::dbInst* inst2) const;
 };
 
 }  // namespace mdm
