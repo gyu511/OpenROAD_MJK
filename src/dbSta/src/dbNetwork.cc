@@ -120,22 +120,29 @@ class DbInstanceChildIterator : public InstanceChildIterator
   Instance* next() override;
 
  private:
+  bool hasValidInstanceAhead();    // Helper function for hasNext()
+  void moveToNextBlock();          // Helper function for next()
+  bool moveToNextValidInstance();  // Helper function for next()
+
   const dbNetwork* network_;
   bool top_;
-  dbSet<dbInst>::iterator iter_;
-  dbSet<dbInst>::iterator end_;
+  dbSet<dbInst>::iterator inst_iter_;
+  dbSet<dbInst>::iterator inst_end_;
+
+  std::stack<dbBlock*> block_stack_;
+  dbBlock* current_block_;
 };
 
 DbInstanceChildIterator::DbInstanceChildIterator(const Instance* instance,
                                                  const dbNetwork* network)
-    : network_(network)
+    : network_(network), current_block_(network->block())
 {
-  dbBlock* block = network->block();
-  if (instance == network->topInstance() && block) {
-    dbSet<dbInst> insts = block->getInsts();
+  if (instance == network->topInstance() && current_block_) {
+    dbSet<dbInst> insts = current_block_->getInsts();
     top_ = true;
-    iter_ = insts.begin();
-    end_ = insts.end();
+    inst_iter_ = insts.begin();
+    inst_end_ = insts.end();
+    block_stack_.push(current_block_);
   } else {
     top_ = false;
   }
@@ -143,14 +150,81 @@ DbInstanceChildIterator::DbInstanceChildIterator(const Instance* instance,
 
 bool DbInstanceChildIterator::hasNext()
 {
-  return top_ && iter_ != end_;
+  if (!top_) {
+    return false;
+  }
+  return hasValidInstanceAhead();
 }
 
 Instance* DbInstanceChildIterator::next()
 {
-  dbInst* child = *iter_;
-  iter_++;
+  if (!moveToNextValidInstance()) {
+    throw std::runtime_error("No more instances to iterate");
+  }
+  dbInst* child = *inst_iter_;
+  inst_iter_++;
   return network_->dbToSta(child);
+}
+bool DbInstanceChildIterator::hasValidInstanceAhead()
+{
+  auto local_iter = inst_iter_;
+  auto local_end = inst_end_;
+  std::stack<dbBlock*> local_stack = block_stack_;
+  dbBlock* local_block = current_block_;
+
+  while (local_iter == local_end || (*local_iter)->getChild()) {
+    if (local_iter != local_end) {
+      ++local_iter;
+      continue;
+    }
+    if (current_block_) {
+      for (auto childBlock : local_block->getChildren()) {
+        local_stack.push(childBlock);
+      }
+    }
+    local_block = local_stack.top();
+    local_stack.pop();
+
+    if (local_stack.empty()) {
+      current_block_ = nullptr;
+      return false;
+    }
+
+    local_iter = local_block->getInsts().begin();
+    local_end = local_block->getInsts().end();
+  }
+
+  return local_iter != local_end;
+}
+
+bool DbInstanceChildIterator::moveToNextValidInstance()
+{
+  while (inst_iter_ == inst_end_ || (*inst_iter_)->getChild()) {
+    if (inst_iter_ != inst_end_) {
+      // If the instance is for the hierarchical block, then skip it
+      ++inst_iter_;
+    } else {
+      if (block_stack_.empty()) {
+        return false;
+      }
+      moveToNextBlock();
+    }
+  }
+  return true;
+}
+void DbInstanceChildIterator::moveToNextBlock()
+{
+  if (block_stack_.empty()) {
+    throw std::runtime_error("No more instances to iterate");
+  }
+
+  for (auto childBlock : current_block_->getChildren()) {
+    block_stack_.push(childBlock);
+  }
+  current_block_ = block_stack_.top();
+  block_stack_.pop();
+  inst_iter_ = current_block_->getInsts().begin();
+  inst_end_ = current_block_->getInsts().end();
 }
 
 class DbInstanceNetIterator : public InstanceNetIterator
@@ -161,40 +235,95 @@ class DbInstanceNetIterator : public InstanceNetIterator
   Net* next() override;
 
  private:
+  /**
+   * traverse the nets which is the connected but intersected by tier,
+   * and mark them as traversed
+   * */
+  void traverseConnectedNet(dbNet* net);
+
   const dbNetwork* network_;
-  dbSet<dbNet>::iterator iter_;
-  dbSet<dbNet>::iterator end_;
+  dbSet<dbNet>::iterator net_iter_;
+  dbSet<dbNet>::iterator net_end_;
   Net* next_ = nullptr;
+
+  std::stack<dbBlock*> block_stack;
+  dbBlock* current_block_;
+
+  /**
+   * This map collects the traversed nets but only intersected ones by the tiers
+   * */
+  std::unordered_set<dbNet*> traversed_net_;
 };
 
 DbInstanceNetIterator::DbInstanceNetIterator(const Instance* instance,
                                              const dbNetwork* network)
-    : network_(network)
+    : network_(network), current_block_(network->block())
 {
   if (instance == network->topInstance()) {
-    dbSet<dbNet> nets = network->block()->getNets();
-    iter_ = nets.begin();
-    end_ = nets.end();
+    dbSet<dbNet> nets = current_block_->getNets();
+    net_iter_ = nets.begin();
+    net_end_ = nets.end();
   }
 }
 
 bool DbInstanceNetIterator::hasNext()
 {
-  while (iter_ != end_) {
-    dbNet* net = *iter_;
-    if (!net->getSigType().isSupply() || !net->isSpecial()) {
-      next_ = network_->dbToSta(*iter_);
-      ++iter_;
-      return true;
+  while (true) {
+    while (net_iter_ != net_end_) {
+      dbNet* net = *net_iter_;
+      if (traversed_net_.find(net) == traversed_net_.end()) {
+        if (!net->getSigType().isSupply() || !net->isSpecial()) {
+          traverseConnectedNet(net);
+          next_ = network_->dbToSta(*net_iter_);
+          ++net_iter_;
+          return true;
+        }
+      }
+      ++net_iter_;
     }
-    iter_++;
+
+    if (block_stack.empty()) {
+      return false;
+    }
+    current_block_ = block_stack.top();
+    block_stack.pop();
+
+    for (auto child_block : current_block_->getChildren()) {
+      block_stack.push(child_block);
+    }
+
+    dbSet<dbNet> nets = current_block_->getNets();
+    net_iter_ = nets.begin();
+    net_end_ = nets.end();
   }
-  return false;
 }
 
 Net* DbInstanceNetIterator::next()
 {
   return next_;
+}
+void DbInstanceNetIterator::traverseConnectedNet(dbNet* net)
+{
+  if (traversed_net_.find(net) != traversed_net_.end()) {
+    return;  // This net is already visited
+  }
+  traversed_net_.insert(net);
+
+  // Explore nets in the upper hierachy block
+  for (auto bTerm : net->getBTerms()) {
+    if (bTerm->getITerm()) {
+      odb::dbNet* upperNet = bTerm->getITerm()->getNet();
+      traverseConnectedNet(upperNet);
+    }
+  }
+
+  // Explore nets in the lower hierachy
+  for (auto iTerm : net->getITerms()) {
+    if (iTerm->getBTerm()) {
+      odb::dbNet* lowerNet = iTerm->getBTerm()->getNet();
+      traverseConnectedNet(lowerNet);
+    }
+  }
 }
 
 ////////////////////////////////////////////////////////////////
@@ -214,6 +343,8 @@ class DbInstancePinIterator : public InstancePinIterator
   dbSet<dbBTerm>::iterator bitr_;
   dbSet<dbBTerm>::iterator bitr_end_;
   Pin* next_;
+
+  std::stack<dbBlock*> block_stack_;
 };
 
 DbInstancePinIterator::DbInstancePinIterator(const Instance* inst,
@@ -222,9 +353,12 @@ DbInstancePinIterator::DbInstancePinIterator(const Instance* inst,
 {
   top_ = (inst == network->topInstance());
   if (top_) {
-    dbBlock* block = network->block();
-    bitr_ = block->getBTerms().begin();
-    bitr_end_ = block->getBTerms().end();
+    block_stack_.push(network->block());
+    if (!block_stack_.empty()) {
+      dbBlock* current_block = block_stack_.top();
+      bitr_ = current_block->getBTerms().begin();
+      bitr_end_ = current_block->getBTerms().end();
+    }
   } else {
     dbInst* db_inst;
     dbModInst* mod_inst;  // has no inst pins in odb
@@ -239,23 +373,35 @@ DbInstancePinIterator::DbInstancePinIterator(const Instance* inst,
 bool DbInstancePinIterator::hasNext()
 {
   if (top_) {
-    if (bitr_ == bitr_end_) {
-      return false;
+    while (!block_stack_.empty()) {  // TODO the condition of bitr_ == bitr_end_
+                                     // in while loop?
+      if (bitr_ != bitr_end_) {
+        dbBTerm* bterm = *bitr_;
+        if (!bterm->getITerm()) {
+          next_ = network_->dbToSta(bterm);
+          ++bitr_;
+          return true;
+        }
+        ++bitr_;
+      } else {
+        block_stack_.pop();
+        if (!block_stack_.empty()) {
+          dbBlock* block = block_stack_.top();
+          bitr_ = block->getBTerms().begin();
+          bitr_end_ = block->getBTerms().end();
+        }
+      }
     }
-    dbBTerm* bterm = *bitr_;
-    next_ = network_->dbToSta(bterm);
-    bitr_++;
-    return true;
-  }
-
-  while (iitr_ != iitr_end_) {
-    dbITerm* iterm = *iitr_;
-    if (!iterm->getSigType().isSupply()) {
-      next_ = network_->dbToSta(*iitr_);
+  } else {
+    while (iitr_ != iitr_end_) {
+      dbITerm* iterm = *iitr_;
+      if ((!iterm->getSigType().isSupply()) && (!iterm->getBTerm())) {
+        next_ = network_->dbToSta(*iitr_);
+        ++iitr_;
+        return true;
+      }
       ++iitr_;
-      return true;
     }
-    iitr_++;
   }
   return false;
 }
@@ -275,17 +421,24 @@ class DbNetPinIterator : public NetPinIterator
   Pin* next() override;
 
  private:
-  dbSet<dbITerm>::iterator iitr_;
-  dbSet<dbITerm>::iterator iitr_end_;
+  // collect the iterm traversing the blocks with DFS
+  void collectITerms(odb::dbNet* net, std::vector<dbITerm*>& iTerms);
+
+  std::vector<dbITerm*> iterms_;
+  std::vector<dbITerm*>::iterator iitr_;
+  std::vector<dbITerm*>::iterator iitr_end_;
   Pin* next_;
+
+  std::set<odb::dbNet*> visited_nets_;
 };
 
 DbNetPinIterator::DbNetPinIterator(const Net* net,
                                    const dbNetwork* /* network */)
 {
   dbNet* dnet = reinterpret_cast<dbNet*>(const_cast<Net*>(net));
-  iitr_ = dnet->getITerms().begin();
-  iitr_end_ = dnet->getITerms().end();
+  collectITerms(dnet, iterms_);
+  iitr_ = iterms_.begin();
+  iitr_end_ = iterms_.end();
   next_ = nullptr;
 }
 
@@ -308,6 +461,35 @@ Pin* DbNetPinIterator::next()
   return next_;
 }
 
+void DbNetPinIterator::collectITerms(odb::dbNet* net,
+                                     std::vector<dbITerm*>& iTerms)
+{
+  if (visited_nets_.find(net) != visited_nets_.end()) {
+    return;  // This net is already visited
+  }
+
+  // collect pins in the current net
+  for (auto iTerm : net->getITerms()) {
+    iTerms.push_back(iTerm);
+  }
+
+  // Explore nets in the upper hierarchy block
+  for (auto bTerm : net->getBTerms()) {
+    if (bTerm->getITerm()) {
+      odb::dbNet* upperNet = bTerm->getITerm()->getNet();
+      collectITerms(upperNet, iTerms);  // Recursive call
+    }
+  }
+
+  // Explore nets in the lower hierarchy
+  for (auto iTerm : net->getITerms()) {
+    if (iTerm->getBTerm()) {
+      odb::dbNet* lowerNet = iTerm->getBTerm()->getNet();
+      collectITerms(lowerNet, iTerms);
+    }
+  }
+}
+
 ////////////////////////////////////////////////////////////////
 
 class DbNetTermIterator : public NetTermIterator
@@ -318,18 +500,25 @@ class DbNetTermIterator : public NetTermIterator
   Term* next() override;
 
  private:
+  // collect the bterm traversing the blocks with DFS
+  // If the bterm is for the interconnection, then skip to collect for that
+  void collectBTerms(odb::dbNet* net, std::vector<dbBTerm*>& bTerms);
+
   const dbNetwork* network_;
-  dbSet<dbBTerm>::iterator iter_;
-  dbSet<dbBTerm>::iterator end_;
+  std::vector<dbBTerm*> bterms_;
+  std::vector<dbBTerm*>::iterator iter_;
+  std::vector<dbBTerm*>::iterator end_;
+
+  std::set<odb::dbNet*> visited_nets_;
 };
 
 DbNetTermIterator::DbNetTermIterator(const Net* net, const dbNetwork* network)
     : network_(network)
 {
   dbNet* dnet = network_->staToDb(net);
-  dbSet<dbBTerm> terms = dnet->getBTerms();
-  iter_ = terms.begin();
-  end_ = terms.end();
+  collectBTerms(dnet, bterms_);
+  iter_ = bterms_.begin();
+  end_ = bterms_.end();
 }
 
 bool DbNetTermIterator::hasNext()
@@ -342,6 +531,37 @@ Term* DbNetTermIterator::next()
   dbBTerm* bterm = *iter_;
   iter_++;
   return network_->dbToStaTerm(bterm);
+}
+
+void DbNetTermIterator::collectBTerms(odb::dbNet* net,
+                                      std::vector<dbBTerm*>& bTerms)
+{
+  if (visited_nets_.find(net) != visited_nets_.end()) {
+    return;  // This net is already visited
+  }
+
+  // collect pins in the current net
+  for (auto bTerm : net->getBTerms()) {
+    if (!bTerm->getITerm()) {
+      bTerms.push_back(bTerm);  // If the bTerm is not for the interconnect
+    }
+  }
+
+  // Explore nets in the upper hierarchy block
+  for (auto bTerm : net->getBTerms()) {
+    if (bTerm->getITerm()) {
+      odb::dbNet* upperNet = bTerm->getITerm()->getNet();
+      collectBTerms(upperNet, bTerms);  // Recursive call
+    }
+  }
+
+  // Explore nets in the lower hierarchy
+  for (auto iTerm : net->getITerms()) {
+    if (iTerm->getBTerm()) {
+      odb::dbNet* lowerNet = iTerm->getBTerm()->getNet();
+      collectBTerms(lowerNet, bTerms);
+    }
+  }
 }
 
 ////////////////////////////////////////////////////////////////
@@ -791,17 +1011,71 @@ NetTermIterator* dbNetwork::termIterator(const Net* net) const
   return new DbNetTermIterator(net, this);
 }
 
+void collectITerms(odb::dbNet* net,
+                   std::vector<odb::dbITerm*>& iTerms,
+                   std::vector<odb::dbBTerm*>& bTerms,
+                   std::set<odb::dbNet*>& visited_nets)
+{
+  if (visited_nets.find(net) != visited_nets.end()) {
+    return;  // This net is already visited
+  }
+  visited_nets.insert(net);
+
+  // collect pins in the current net
+  for (auto iTerm : net->getITerms()) {
+    if (!iTerm->getBTerm()) {
+      // skip the one for hier
+      iTerms.push_back(iTerm);
+    }
+  }
+  for (auto bTerm : net->getBTerms()) {
+    // skip the one for hier
+    if (!bTerm->getITerm()) {
+      bTerms.push_back(bTerm);
+    }
+  }
+
+  // Explore nets in the upper hierarchy block
+  for (auto bTerm : net->getBTerms()) {
+    if (bTerm->getITerm()) {
+      odb::dbNet* upperNet = bTerm->getITerm()->getNet();
+      if (upperNet) {
+        collectITerms(
+            upperNet, iTerms, bTerms, visited_nets);  // Recursive call
+      }
+    }
+  }
+
+  // Explore nets in the lower hierarchy
+  for (auto iTerm : net->getITerms()) {
+    if (iTerm->getBTerm()) {
+      odb::dbNet* lowerNet = iTerm->getBTerm()->getNet();
+      if (lowerNet) {
+        collectITerms(lowerNet, iTerms, bTerms, visited_nets);
+      }
+    }
+  }
+}
+
 // override ConcreteNetwork::visitConnectedPins
 void dbNetwork::visitConnectedPins(const Net* net,
                                    PinVisitor& visitor,
                                    NetSet& visited_nets) const
 {
   dbNet* db_net = staToDb(net);
-  for (dbITerm* iterm : db_net->getITerms()) {
+
+  // traverse the blocks for multi=die cases
+  std::set<odb::dbNet*> visited_nets_for_block;
+  std::vector<dbITerm*> iTerms;
+  std::vector<dbBTerm*> bTerms;
+
+  collectITerms(db_net, iTerms, bTerms, visited_nets_for_block);
+
+  for (auto iterm : iTerms) {
     Pin* pin = dbToSta(iterm);
     visitor(pin);
   }
-  for (dbBTerm* bterm : db_net->getBTerms()) {
+  for (auto bterm : bTerms) {
     Pin* pin = dbToSta(bterm);
     visitor(pin);
   }

@@ -36,6 +36,8 @@
 #pragma once
 
 #include <set>
+#include <unordered_set>
+#include <iostream>
 
 #include "odb/db.h"
 #include "sta/ConcreteNetwork.hh"
