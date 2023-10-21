@@ -379,133 +379,364 @@ void MultiDieManager::constructSimpleExample1()
   logger_->info(utl::MDM, 2, "Construction simple db for GPL test");
 }
 
-void MultiDieManager::constructSimpleExample2()
+void MultiDieManager::timingTest1()
 {
   numberOfDie_ = 2;
-
-  int dieWidth = 1000;
-  int dieHeight = 1000;
+  auto dbUnit = db_->getChip()->getBlock()->getDbUnitsPerMicron();
+  int dieWidth = 1000 * dbUnit;
+  int dieHeight = 1000 * dbUnit;
   odb::Point ll = odb::Point(0, 0);
   odb::Point ur = odb::Point(dieWidth, dieHeight);
   odb::Rect dieBox(ll, ur);
 
-  auto chip = odb::dbChip::create(db_);
-  auto tech1 = odb::dbTech::create(db_, "tech1");
-  auto tech2 = odb::dbTech::create(db_, "tech2");
+  auto topHeirBlock = db_->getChip()->getBlock();
+  topHeirBlock->setDieArea(dieBox);
 
-  odb::dbTechLayer* techLayer1 = odb::dbTechLayer::create(
-      tech1, "layer", odb::dbTechLayerType::MASTERSLICE);
-  odb::dbTechLayer* techLayer2 = odb::dbTechLayer::create(
-      tech2, "layer", odb::dbTechLayerType::MASTERSLICE);
+  auto techLayerTopHier = odb::dbTechLayer::create(
+      db_->findTech("topHierTech"), "M2", odb::dbTechLayerType::ROUTING);
 
-  auto block1 = odb::dbBlock::create(chip, "block1", tech1);
-  auto block2 = odb::dbBlock::create(block1, "block2", tech2);
-  odb::dbInst::create(block1, block2, "interfaceInst");
+  auto lib1 = db_->findLib("example1-1");
+  auto tech1 = db_->findTech("childLef1");
+  auto techLayer1 = tech1->findLayer("M2");
 
-  block1->setDieArea(dieBox);
-  block2->setDieArea(dieBox);
+  auto lib2 = db_->findLib("example1-2");
+  auto tech2 = db_->findTech("childLef2");
+  auto techLayer2 = tech1->findLayer("M2");
 
-  // make a master
-  auto lib1 = odb::dbLib::create(db_, "lib1", tech1);
-  auto lib2 = odb::dbLib::create(db_, "lib2", tech2);
-  auto master1 = odb::dbMaster::create(lib1, "master1");
-  auto master2 = odb::dbMaster::create(lib2, "master2");
+  auto childBlock1 = odb::dbBlock::create(topHeirBlock, "childBlock1", tech1);
+  auto childBlock2 = odb::dbBlock::create(topHeirBlock, "childBlock2", tech2);
+  childBlock1->setDieArea(dieBox);
+  childBlock2->setDieArea(dieBox);
 
-  int cellWidth = 50;
-  int cellHeight = 50;
-  master1->setWidth(cellWidth);
-  master2->setWidth(cellWidth);
-  master1->setHeight(cellHeight);
-  master2->setHeight(cellHeight);
+  auto dieInst1 = odb::dbInst::create(topHeirBlock, childBlock1, "childDie1");
+  auto dieInst2 = odb::dbInst::create(topHeirBlock, childBlock2, "childDie2");
+  dieInst1->setPlacementStatus(odb::dbPlacementStatus::PLACED);
+  dieInst2->setPlacementStatus(odb::dbPlacementStatus::PLACED);
 
-  master1->setType(odb::dbMasterType::CORE);
-  master2->setType(odb::dbMasterType::CORE);
+  odb::dbMaster* master1 = nullptr;
+  if (lib1) {
+    master1 = lib1->findMaster("INV_X1");
+  } else {
+    logger_->error(utl::MDM, 5, "Cannot find lib1");
+  }
 
-  auto sigType = odb::dbSigType::SIGNAL;
-  auto ioType = odb::dbIoType::INOUT;
-  auto mTerm1 = odb::dbMTerm::create(master1, "mTerm1", ioType, sigType);
-  auto mTerm2 = odb::dbMTerm::create(master2, "mTerm2", ioType, sigType);
+  odb::dbMaster* master2 = nullptr;
+  if (lib2) {
+    master2 = lib2->findMaster("AND2_X1");
+  } else {
+    logger_->error(utl::MDM, 6, "Cannot find lib2");
+  }
 
-  auto mPin1 = odb::dbMPin::create(mTerm1);
-  auto mPin2 = odb::dbMPin::create(mTerm2);
+  odb::dbMaster* masterFF1 = nullptr;
+  if (lib1) {
+    masterFF1 = lib1->findMaster("DFF_X1");
+  }
+  odb::dbMaster* masterFF2 = nullptr;
+  if (lib2) {
+    masterFF2 = lib2->findMaster("DFF_X1");
+  }
 
-  odb::dbBox::create(mPin1,
-                     techLayer1,
-                     cellWidth / 2,
-                     cellHeight / 2,
-                     cellWidth / 2 + 1,
-                     cellHeight / 2 + 1);
-
-  odb::dbBox::create(mPin2,
-                     techLayer2,
-                     cellWidth / 2,
-                     cellHeight / 2,
-                     cellWidth / 2 + 1,
-                     cellHeight / 2 + 1);
-
-  master1->setFrozen();
-  master2->setFrozen();
-
-  // make a instance
-  auto inst1 = odb::dbInst::create(block1, master1, "inst1");
-  auto inst2 = odb::dbInst::create(block2, master2, "inst2");
+  auto inst1 = odb::dbInst::create(childBlock1, master1, "inst1");
+  auto inst2 = odb::dbInst::create(childBlock2, master2, "inst2");
+  auto flipFlop1 = odb::dbInst::create(childBlock1, masterFF1, "flipFlop1");
+  auto flipFlop2 = odb::dbInst::create(childBlock2, masterFF2, "flipFlop2");
 
   // set the position of instances
-  inst1->setLocation(ll.x() + cellWidth, ll.y() + cellHeight);
-  inst2->setLocation(ur.x() - 2 * cellWidth, ur.y() - 2 * cellHeight);
+  inst1->setLocation(ur.x() * 4 / 10, ur.y() / 2);
+  inst2->setLocation(ur.x() * 6 / 10, ur.y() / 2);
+  flipFlop1->setLocation(ur.x() * 2 / 10, ur.y() / 2);
+  flipFlop2->setLocation(ur.x() * 8 / 10, ur.y() / 2);
 
   inst1->setPlacementStatus(odb::dbPlacementStatus::PLACED);
   inst2->setPlacementStatus(odb::dbPlacementStatus::PLACED);
+  flipFlop1->setPlacementStatus(odb::dbPlacementStatus::PLACED);
+  flipFlop2->setPlacementStatus(odb::dbPlacementStatus::PLACED);
 
   // make a net
-  auto net1 = odb::dbNet::create(block1, "net1");
-  auto net2 = odb::dbNet::create(block2, "net2");
+  auto net1 = odb::dbNet::create(childBlock1, "net1");
+  auto net2 = odb::dbNet::create(childBlock2, "net2");
+  auto netTopHeir = odb::dbNet::create(topHeirBlock, "netTopHeir");
 
-  // mark these nets as intersected net
+  // mark these nets are intersected net
+  odb::dbBoolProperty::create(netTopHeir, "intersected", true);
   odb::dbBoolProperty::create(net1, "intersected", true);
   odb::dbBoolProperty::create(net2, "intersected", true);
 
   // connect the net to the instance
-  (*inst1->getITerms().begin())->connect(net1);
-  (*inst2->getITerms().begin())->connect(net2);
+  inst1->findITerm("ZN")->connect(net1);
+  inst2->findITerm("A1")->connect(net2);
 
-  // connect the intersected nets
-  auto bTerm = odb::dbBTerm::create(net2, "interfaceBTerm");
-  bTerm->getITerm()->connect(net1);
+  // connect the intersected net between two dies
+  auto bTerm1 = odb::dbBTerm::create(net1, "bTerm1");
+  auto bTerm2 = odb::dbBTerm::create(net2, "bTerm2");
+
+  bTerm1->getITerm()->connect(netTopHeir);
+  bTerm2->getITerm()->connect(netTopHeir);
+
+  // make the interconnection pins and position in child die
+  auto bPin1 = odb::dbBPin::create(bTerm1);
+  auto bPin2 = odb::dbBPin::create(bTerm2);
+  auto child1PinX1 = ur.x() * 5 / 10;
+  auto child1PinX2 = ur.x() * 5 / 10 + 5 * dbUnit;
+  auto child1PinY1 = ur.y() * 5 / 10;
+  auto child1PinY2 = ur.y() * 5 / 10 + 5 * dbUnit;
+
+  auto child2PinX1 = ur.x() * 5 / 10;
+  auto child2PinX2 = ur.x() * 5 / 10 + 5 * dbUnit;
+  auto child2PinY1 = ur.y() * 5 / 10;
+  auto child2PinY2 = ur.y() * 5 / 10 + 5 * dbUnit;
+
+  odb::dbBox::create(
+      bPin1, techLayer1, child1PinX1, child1PinY1, child1PinX2, child1PinY2);
+  odb::dbBox::create(
+      bPin2, techLayer2, child2PinX1, child2PinY1, child2PinX2, child2PinY2);
+
+  auto topHierMPin1 = odb::dbMPin::create(bTerm1->getITerm()->getMTerm());
+  auto topHierMPin2 = odb::dbMPin::create(bTerm2->getITerm()->getMTerm());
+  odb::dbBox::create(topHierMPin1,
+                     techLayer1,
+                     child1PinX1,
+                     child1PinY1,
+                     child1PinX2,
+                     child1PinY2);
+
+  odb::dbBox::create(topHierMPin2,
+                     techLayer2,
+                     child2PinX1,
+                     child2PinY1,
+                     child2PinX2,
+                     child2PinY2);
+
+  ///////////// I/O construction ////////////////
+  //////////////input port/////////////
+  int inputPinX1 = 0;
+  int inputPinX2 = 5 * dbUnit;
+  int inputPinY1 = ur.y() / 2;
+  int inputPinY2 = ur.y() / 2 + 5 * dbUnit;
+  int outputPinX1 = ur.x() - 5 * dbUnit;
+  int outputPinX2 = ur.x();
+  int outputPinY1 = ur.y() / 2 + 5 * dbUnit;
+  int outputPinY2 = ur.y() / 2;
+
+  auto inputNetTopHier = odb::dbNet::create(topHeirBlock, "inputNetTopHier");
+  auto inputBTermTopHier
+      = odb::dbBTerm::create(inputNetTopHier, "inputTopHier");
+  auto inputBPinTopHier = odb::dbBPin::create(inputBTermTopHier);
+
+  odb::dbBox::create(inputBPinTopHier,
+                     techLayerTopHier,
+                     inputPinX1,
+                     inputPinY1,
+                     inputPinX2,
+                     inputPinY2);
+
+  auto inputNetChild = odb::dbNet::create(childBlock1, "inputNetChildBlock");
+  auto inputBTermChild = odb::dbBTerm::create(inputNetChild, "inputBTermChild");
+  auto inputBPinChild = odb::dbBPin::create(inputBTermChild);
+  odb::dbBox::create(inputBPinChild,
+                     techLayer1,
+                     inputPinX1,
+                     inputPinY1,
+                     inputPinX2,
+                     inputPinY2);
+
+  auto inputMPinTopHier
+      = odb::dbMPin::create(inputBTermChild->getITerm()->getMTerm());
+  odb::dbBox::create(inputMPinTopHier,
+                     techLayerTopHier,
+                     inputPinX1,
+                     inputPinY1,
+                     inputPinX2,
+                     inputPinY2);
+
+  inputBTermChild->getITerm()->connect(inputNetTopHier);
+  ////////////////output port/////////////
+  auto outputNetChild = odb::dbNet::create(childBlock2, "outputNetChildBlock");
+  auto outputBTermChild
+      = odb::dbBTerm::create(outputNetChild, "outputBTermChild");
+  auto outputBPinChild = odb::dbBPin::create(outputBTermChild);
+  odb::dbBox::create(outputBPinChild,
+                     techLayer2,
+                     outputPinX1,
+                     outputPinY1,
+                     outputPinX2,
+                     outputPinY2);
+
+  auto outputMPinTopHier
+      = odb::dbMPin::create(outputBTermChild->getITerm()->getMTerm());
+  odb::dbBox::create(outputMPinTopHier,
+                     techLayerTopHier,
+                     outputPinX1,
+                     outputPinY1,
+                     outputPinX2,
+                     outputPinY2);
+
+  auto outputNetTopHier = odb::dbNet::create(topHeirBlock, "outputNetTopHier");
+  auto outputBTermTopHier
+      = odb::dbBTerm::create(outputNetTopHier, "outputTopHier");
+  auto outputPinTopHier = odb::dbBPin::create(outputBTermTopHier);
+  odb::dbBox::create(outputPinTopHier,
+                     techLayerTopHier,
+                     outputPinX1,
+                     outputPinY1,
+                     outputPinX2,
+                     outputPinY2);
+
+  outputBTermChild->getITerm()->connect(outputNetTopHier);
+
+  inputBTermTopHier->setIoType(odb::dbIoType::INPUT);
+  outputBTermTopHier->setIoType(odb::dbIoType::OUTPUT);
+
+  //////////////////////////clock construction////////////////////////////
+  int clkPinX1 = ur.x() / 2;
+  int clkPinX2 = ur.x() / 2 + 5 * dbUnit;
+  int clkPinY1 = 0;
+  int clkPinY2 = 5 * dbUnit;
+
+  // construct clk input pin & clk net
+  auto clkNetTopHier = odb::dbNet::create(topHeirBlock, "clkNetTopHier");
+  auto clkBTermTopHier = odb::dbBTerm::create(clkNetTopHier, "clkPort");
+  auto clkBPinTopHier = odb::dbBPin::create(clkBTermTopHier);
+  odb::dbBox::create(
+      clkBPinTopHier, techLayerTopHier, clkPinX1, clkPinY1, clkPinX2, clkPinY2);
+
+  // construct clk input pin & clk net in the child block
+  auto clkNetChild1 = odb::dbNet::create(childBlock1, "clkNetChildBlock1");
+  auto clkNetChild2 = odb::dbNet::create(childBlock2, "clkNetChildBlock2");
+  auto clkBTermChild1 = odb::dbBTerm::create(clkNetChild1, "clkBTermChild1");
+  auto clkBTermChild2 = odb::dbBTerm::create(clkNetChild2, "clkBTermChild2");
+  auto clkBPinChild1 = odb::dbBPin::create(clkBTermChild1);
+  odb::dbBox::create(
+      clkBPinChild1, techLayer1, clkPinX1, clkPinY1, clkPinX2, clkPinY2);
+  auto clkBPinChild2 = odb::dbBPin::create(clkBTermChild2);
+  odb::dbBox::create(
+      clkBPinChild2, techLayer2, clkPinX1, clkPinY1, clkPinX2, clkPinY2);
+
+  // interconnection between top and child block
+  auto clkMPin1TopHier
+      = odb::dbMPin::create(clkBTermChild1->getITerm()->getMTerm());
+  odb::dbBox::create(clkMPin1TopHier,
+                     techLayerTopHier,
+                     clkPinX1,
+                     clkPinY1,
+                     clkPinX2,
+                     clkPinY2);
+
+  auto clkMPin2TopHier
+      = odb::dbMPin::create(clkBTermChild2->getITerm()->getMTerm());
+  odb::dbBox::create(clkMPin2TopHier,
+                     techLayerTopHier,
+                     clkPinX1,
+                     clkPinY1,
+                     clkPinX2,
+                     clkPinY2);
+
+  // connect clk pin and interconnection
+  clkBTermChild1->getITerm()->connect(clkNetTopHier);
+  clkBTermChild2->getITerm()->connect(clkNetTopHier);
+
+  // connect clk pin in child block and flip-flops
+  flipFlop1->findITerm("CK")->connect(clkNetChild1);
+  flipFlop2->findITerm("CK")->connect(clkNetChild2);
+
+  // connect input pin in child block and flip-flop input
+  flipFlop1->findITerm("D")->connect(inputNetChild);
+
+  // input signal,
+  // connect the output of flip-flop and input of and gate
+  auto fToInv1 = odb::dbNet::create(childBlock1, "fToInv1");
+  flipFlop1->findITerm("Q")->connect(fToInv1);
+  inst1->findITerm("A")->connect(fToInv1);
+
+  // output signal,
+  // connect the output of and gate and input of flip-flop
+  auto andToF2 = odb::dbNet::create(childBlock2, "andToF2");
+  inst2->findITerm("ZN")->connect(andToF2);
+  flipFlop2->findITerm("D")->connect(andToF2);
+
+  // coonect output pin in the child block and flip-flop output
+  flipFlop2->findITerm("Q")->connect(outputNetChild);
+
+  clkBTermTopHier->setIoType(odb::dbIoType::INPUT);
 
   // row construction
-  auto site1 = odb::dbSite::create(lib1, "site1");
-  auto site2 = odb::dbSite::create(lib2, "site2");
-  auto site_width = cellWidth;
-  auto site_height = cellHeight;
-  site1->setWidth(site_width);
-  site2->setWidth(site_width);
-  site1->setHeight(site_height);
-  site2->setHeight(site_height);
+  rowConstruction(dieWidth,
+                  dieHeight,
+                  topHeirBlock,
+                  childBlock1,
+                  childBlock2,
+                  lib1,
+                  lib2,
+                  inst1,
+                  inst2);
+}
+void MultiDieManager::rowConstruction(int dieWidth,
+                                      int dieHeight,
+                                      odb::dbBlock* topHeirBlock,
+                                      odb::dbBlock* childBlock1,
+                                      odb::dbBlock* childBlock2,
+                                      odb::dbLib* lib1,
+                                      odb::dbLib* lib2,
+                                      const odb::dbInst* inst1,
+                                      const odb::dbInst* inst2) const
+{  // row construction //
+  auto site1 = lib1->findSite("site1");
+  auto site2 = lib2->findSite("site1");
+  auto site_width1 = inst1->getMaster()->getWidth();
+  auto site_height1 = inst1->getMaster()->getHeight();
+  auto site_width2 = inst2->getMaster()->getWidth();
+  auto site_height2 = inst2->getMaster()->getHeight();
 
-  auto numOfRow = dieHeight / site_height;
-  auto numOfSite = dieWidth / site_width;
-  for (int i = 0; i < numOfRow; ++i) {
-    auto rowName = "row" + to_string(i);
-    odb::dbRow::create(block1,
-                       rowName.c_str(),
+  site1->setWidth(site_width1);
+  site2->setWidth(site_width2);
+  site1->setHeight(site_height1);
+  site2->setHeight(site_height2);
+
+  auto numOfRow1 = dieHeight / site_height1;
+  auto numOfSite1 = dieWidth / site_width1;
+  auto numOfRow2 = dieHeight / site_height2;
+  auto numOfSite2 = dieWidth / site_width2;
+
+  for (int i = 0; i < numOfRow1; ++i) {
+    odb::dbRow::create(topHeirBlock,
+                       ("row" + to_string(i)).c_str(),
                        site1,
                        0,
-                       i * site_height,
-                       odb::dbOrientType::R0,
+                       i * site_height1,
+                       odb::dbOrientType::MX,
                        odb::dbRowDir::HORIZONTAL,
-                       numOfSite,
-                       0);
-    odb::dbRow::create(block2,
-                       rowName.c_str(),
-                       site2,
-                       0,
-                       i * site_height,
-                       odb::dbOrientType::R0,
-                       odb::dbRowDir::HORIZONTAL,
-                       numOfSite,
-                       0);
+                       numOfSite1,
+                       site_width1);
   }
+  for (int i = 0; i < numOfRow1; ++i) {
+    odb::dbRow::create(childBlock1,
+                       ("row" + to_string(i)).c_str(),
+                       site1,
+                       0,
+                       i * site_height1,
+                       odb::dbOrientType::MX,
+                       odb::dbRowDir::HORIZONTAL,
+                       numOfSite1,
+                       site_width1);
+  }
+
+  for (int i = 0; i < numOfRow2; ++i) {
+    odb::dbRow::create(childBlock2,
+                       ("row" + to_string(i)).c_str(),
+                       site1,
+                       0,
+                       i * site_height2,
+                       odb::dbOrientType::MX,
+                       odb::dbRowDir::HORIZONTAL,
+                       numOfSite2,
+                       site_width2);
+  }
+  // row construction end //
+}
+
+void MultiDieManager::test()
+{
+  timingTest1();
 }
 
 }  // namespace mdm

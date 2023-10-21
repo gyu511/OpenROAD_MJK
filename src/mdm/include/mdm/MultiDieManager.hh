@@ -45,6 +45,9 @@
 #include "gpl/Replace.h"
 #include "odb/db.h"
 #include "par/PartitionMgr.h"
+#include "db_sta/dbSta.hh"
+#include "db_sta/dbNetwork.hh"
+#include "utl/Logger.h"
 
 namespace mdm {
 class MultiDieManager;
@@ -82,7 +85,8 @@ class MultiDieManager
             utl::Logger* logger,
             par::PartitionMgr* partitionMgr,
             gpl::Replace* replace,
-            dpl::Opendp* opendp);
+            dpl::Opendp* opendp,
+            sta::dbSta* sta);
 
   void set3DIC(int numberOfDie,
                uint hybridBondX = 10,
@@ -106,6 +110,15 @@ class MultiDieManager
 
   void constructSimpleExample1();
   void constructSimpleExample2();
+
+  /**
+   * Before calling this function,
+   * you need to load the lef in test/timing/example1.lef
+   * Refer to the test/mdm-timingTest1.tcl
+   * */
+  void timingTest1();
+
+  void test();
 
  private:
   odb::dbTech* makeNewTech(const std::string& techName);
@@ -164,6 +177,7 @@ class MultiDieManager
   par::PartitionMgr* partitionMgr_{};
   gpl::Replace* replace_{};
   dpl::Opendp* opendp_{};
+  sta::dbSta* sta_{};
 
   int numberOfDie_{};
   float shrinkAreaRatio_{};
@@ -175,6 +189,15 @@ class MultiDieManager
 
   // temporal variables
   odb::dbDatabase* targetDb_{};
+  void rowConstruction(int dieWidth,
+                       int dieHeight,
+                       odb::dbBlock* topHeirBlock,
+                       odb::dbBlock* childBlock1,
+                       odb::dbBlock* childBlock2,
+                       odb::dbLib* lib1,
+                       odb::dbLib* lib2,
+                       const odb::dbInst* inst1,
+                       const odb::dbInst* inst2) const;
 };
 
 }  // namespace mdm

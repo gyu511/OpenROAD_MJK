@@ -66,6 +66,7 @@ target_link_libraries(mdm
         gpl
         dpl_lib
         par_lib
+        dbSta_lib
 )
 
 messages(

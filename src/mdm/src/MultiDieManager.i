@@ -73,9 +73,9 @@ constructSimpleExample1()
 }
 
 void
-constructSimpleExample2()
+test()
 {
-  getMultiDieManager()->constructSimpleExample2();
+  getMultiDieManager()->test();
 }
 
 %} // inline
