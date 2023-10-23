@@ -164,46 +164,56 @@ void MultiDieManager::makeShrunkLib(const string& whichDie,
     }
   }
 }
-// return the n_th lib
-odb::dbLib* MultiDieManager::findLibByPartitionInfo(int value)
-{
-  int iter = 0;
-  for (auto libIter : db_->getLibs()) {
-    if (iter == value) {
-      return libIter;
-    }
-    iter++;
-  }
-  return nullptr;  // or handle appropriately if lib is not found
-}
 
 void MultiDieManager::readPartitionInfo(const std::string& fileName)
 {
   // read partition file and apply it
   ifstream partitionFile(fileName);
   if (!partitionFile.is_open()) {
-    logger_->error(utl::MDM, 4, "Cannot open partition file");
-  }
-  string line;
-  while (getline(partitionFile, line)) {
-    istringstream iss(line);
-    string instName;
-    int partitionId;
-    iss >> instName >> partitionId;
-    odb::dbInst* inst;
-    for (auto chip : db_->getChips()) {
-      inst = chip->getBlock()->findInst(instName.c_str());
+    logger_->warn(utl::MDM, 3, "Cannot open partition file, use default");
+    // logger_->error(utl::MDM, 4, "Cannot open partition file");
+
+    uint instNum = 0;
+    vector<odb::dbInst*> instSet;
+    for (auto inst : db_->getChip()->getBlock()->getInsts()) {
+      instSet.push_back(inst);
+      instNum++;
+    }
+    for (auto childBlock : db_->getChip()->getBlock()->getChildren()) {
+      for (auto inst : childBlock->getInsts()) {
+        instSet.push_back(inst);
+        instNum++;
+      }
+    }
+    int partitionNum = 0;
+    int instIdx = 0;
+    for (auto inst : instSet) {
+      odb::dbIntProperty::create(inst, "partition_id", partitionNum);
+      instIdx++;
+      if (instIdx == static_cast<int>(instNum / 2)) {
+        partitionNum++;
+      }
+    }
+  } else {
+    string line;
+    while (getline(partitionFile, line)) {
+      istringstream iss(line);
+      string instName;
+      int partitionId;
+      iss >> instName >> partitionId;
+      odb::dbInst* inst;
+      inst = db_->getChip()->getBlock()->findInst(instName.c_str());
       if (!inst) {
-        for (auto block : chip->getBlock()->getChildren()) {
+        for (auto block : db_->getChip()->getBlock()->getChildren()) {
           inst = block->findInst(instName.c_str());
           if (inst) {
             continue;
           }
         }
       }
-    }
-    if (inst != nullptr) {
-      odb::dbIntProperty::create(inst, "partition_id", partitionId);
+      if (inst != nullptr) {
+        odb::dbIntProperty::create(inst, "partition_id", partitionId);
+      }
     }
   }
   partitionFile.close();
@@ -226,6 +236,41 @@ void MultiDieManager::inheritRows(odb::dbBlock* parentBlock,
                        row->getSpacing());
   }
 }
+void MultiDieManager::makeIOPinInterconnections()
+{
+  auto topBlock = db_->getChip()->getBlock();
+  for (auto bterm : topBlock->getBTerms()) {
+    auto topHierNet = bterm->getNet();
+    for (auto childBlock : db_->getChip()->getBlock()->getChildren()) {
+      auto childNet = childBlock->findNet(topHierNet->getName().c_str());
+      if (!childNet) {
+        continue;
+      }
+      auto childBlockTerm
+          = odb::dbBTerm::create(childNet, bterm->getName().c_str());
+      childBlockTerm->getITerm()->connect(topHierNet);
+
+      childBlockTerm->setIoType(bterm->getIoType());
+      childBlockTerm->setSigType(bterm->getSigType());
+
+      // inherit the pin information to new bterm
+      for (auto topHierPin : bterm->getBPins()) {
+        auto childPin = odb::dbBPin::create(childBlockTerm);
+        for (auto topHierBox : topHierPin->getBoxes()) {
+          auto layer = childBlock->getTech()->findLayer(
+              topHierBox->getTechLayer()->getName().c_str());
+          odb::dbBox::create(childPin,
+                             layer,
+                             topHierBox->xMin(),
+                             topHierBox->yMin(),
+                             topHierBox->xMax(),
+                             topHierBox->yMax());
+        }
+      }
+    }
+  }
+}
+
 
 void MultiDieManager::constructSimpleExample1()
 {
@@ -670,6 +715,7 @@ void MultiDieManager::timingTest1()
                   inst1,
                   inst2);
 }
+
 void MultiDieManager::rowConstruction(int dieWidth,
                                       int dieHeight,
                                       odb::dbBlock* topHeirBlock,

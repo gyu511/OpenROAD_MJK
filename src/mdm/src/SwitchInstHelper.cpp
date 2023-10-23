@@ -39,9 +39,6 @@ void SwitchInstanceHelper::switchInstanceToAssignedDie(
     odb::dbInst* originalInst)
 {
   auto targetBlockID = findAssignedDieId(originalInst);
-  if (targetBlockID == 0) {
-    return;  // No need to switch if it is on the first die
-  }
   auto [targetBlock, targetLib] = findTargetDieAndLib(manager, targetBlockID);
   auto targetMaster
       = targetLib->findMaster(originalInst->getMaster()->getName().c_str());
@@ -67,20 +64,20 @@ std::pair<odb::dbBlock*, odb::dbLib*> SwitchInstanceHelper::findTargetDieAndLib(
     MultiDieManager* manager,
     int dieID)
 {
-  odb::dbBlock* targetBlock = manager->db_->getChip()->getBlock();
+  odb::dbBlock* targetBlock = nullptr;
   odb::dbLib* targetLib = nullptr;
 
+  auto blockIter = manager->db_->getChip()->getBlock()->getChildren().begin();
   for (int i = 0; i < dieID; ++i) {
-    targetBlock = *targetBlock->getChildren().begin();
+    blockIter++;
   }
-  int libIdx = 0;
-  for (auto lib : manager->db_->getLibs()) {
-    if (libIdx == dieID) {
-      targetLib = lib;
-      break;
-    }
-    libIdx++;
+  targetBlock = *blockIter;
+
+  auto libIter = manager->db_->getLibs().begin();
+  for (int i = 0; i < dieID; ++i) {
+    libIter++;
   }
+  targetLib = *libIter;
 
   return {targetBlock, targetLib};
 }
@@ -88,7 +85,11 @@ void SwitchInstanceHelper::inheritPlacementInfo(odb::dbInst* originalInst,
                                                 odb::dbInst* newInst)
 {
   auto placementStatus = originalInst->getPlacementStatus();
-  newInst->setPlacementStatus(placementStatus);
+  if (placementStatus == odb::dbPlacementStatus::FIRM) {
+    newInst->setPlacementStatus(odb::dbPlacementStatus::PLACED);
+  } else {
+    newInst->setPlacementStatus(placementStatus);
+  }
   if (placementStatus != odb::dbPlacementStatus::NONE) {
     odb::Point location = originalInst->getLocation();
     newInst->setLocation(location.x(), location.y());

@@ -171,6 +171,7 @@ class MultiDieManager
   void switchInstancesToAssignedDie();
   void makeInterconnections(odb::dbBlock* lowerBlock, odb::dbBlock* upperBlock);
   void inheritRows(odb::dbBlock* parentBlock, odb::dbBlock* childBlock);
+  void makeIOPinInterconnections();
 
   odb::dbDatabase* db_{};
   utl::Logger* logger_{};

@@ -76,7 +76,8 @@ void MultiDieManager::set3DIC(int numberOfDie,
 void MultiDieManager::splitInstances()
 {
   // TODO: We need to make the partitioning part be in the TCL command.
-  readPartitionInfo("partitionInfo/ispd18_test1.par");
+  string partitionFile = "partitionInfo/ispd18_test3.par";
+  readPartitionInfo(partitionFile);
   makeSubBlocks();
 
   switchInstancesToAssignedDie();
@@ -90,119 +91,111 @@ void MultiDieManager::splitInstances()
     makeInterconnections(lowerBlock, upperBlock);
     lowerBlock = upperBlock;
   }
-}
-void MultiDieManager::makeSubBlocks()
-{
-  assert(db_->getTechs().size() >= 2);
 
-  // 1st Block --> 2nd Block --> 3rd Block ...
-  // top hier  --> child heir -> child of child hier ...
-  odb::dbBlock* upperHierBlock = db_->getChip()->getBlock();
-  odb::dbBlock* lowerHierBlock;
-
-  // Let's assume that the die area are same each other
-  auto dieArea = upperHierBlock->getDieArea();
-
-  int dieIdx = 0;
-  for (auto tech : db_->getTechs()) {
-    if (dieIdx == 0) {
-      // the first one already is made at the tcl level
-      // e.g. read_def -tech top ispd18_test1.input.def
-      dieIdx++;
-      continue;
-    }
-    string dieName = "Die" + to_string(dieIdx);
-
-    lowerHierBlock
-        = odb::dbBlock::create(upperHierBlock, dieName.c_str(), tech);
-    inheritRows(upperHierBlock, lowerHierBlock);
-    odb::dbInst::create(upperHierBlock, lowerHierBlock, dieName.c_str());
-    lowerHierBlock->setDieArea(dieArea);
-    upperHierBlock = lowerHierBlock;
-    dieIdx++;
-  }
-}
-void MultiDieManager::switchInstancesToAssignedDie()
-{
-  // for the most bottom die, the instances is already assigned in the tcl
-  // level. e.g. read_def -child -tech bottom
-  // So we need switch instances from bottom to other dies
-  auto mostBottomDie = db_->getChip()->getBlock();
-
-  // Because in the instances are destroyed in `switchInstanceToAssignedDie`,
-  // we need to make the copy of the pointer of the instances.
-  vector<odb::dbInst*> instPointerContainer;
-  for (auto inst : mostBottomDie->getInsts()) {
-    if (inst->getChild()) {
-      continue;
-    }
-    instPointerContainer.push_back(inst);
-  }
-
-  // switch the instances one by one
-  for (auto inst : instPointerContainer) {
-    SwitchInstanceHelper::switchInstanceToAssignedDie(this, inst);
-  }
+  // make the connection between the block terminals in the top hier
+  // and the child block
+  makeIOPinInterconnections();
 
   // remove the redundant nets (floating nets)
-  for (auto net : mostBottomDie->getNets()) {
+  for (auto net : db_->getChip()->getBlock()->getNets()) {
     if (net->getBTermCount() == 0 && net->getITermCount() == 0) {
       odb::dbNet::destroy(net);
     }
   }
 }
 
+void MultiDieManager::makeSubBlocks()
+{
+  assert(db_->getTechs().size() >= 2);
+
+  odb::dbBlock* topBlock = db_->getChip()->getBlock();
+
+  // Let's assume that the die area are same each other
+  auto dieArea = topBlock->getDieArea();
+
+  auto techIter = db_->getTechs().begin();
+  techIter++;
+  for (int dieIdx = 0; dieIdx < numberOfDie_; ++dieIdx) {
+    string dieName = "Die" + to_string(dieIdx + 1);
+    auto childBlock
+        = odb::dbBlock::create(topBlock, dieName.c_str(), *techIter++);
+    odb::dbInst::create(topBlock, childBlock, dieName.c_str());
+    childBlock->setDieArea(dieArea);
+    inheritRows(topBlock, childBlock);
+  }
+}
+void MultiDieManager::switchInstancesToAssignedDie()
+{
+  // We will switch the instances from top hier die to assigned child die.
+  auto topBlock = db_->getChip()->getBlock();
+
+  // Because in the instances will be destroyed in
+  // `switchInstanceToAssignedDie`, we need to make the copy of the pointer of
+  // the instances in advances.
+  vector<odb::dbInst*> instSet;
+  for (auto inst : topBlock->getInsts()) {
+    if (inst->getChild()) {
+      continue;
+    }
+    instSet.push_back(inst);
+  }
+
+  // switch the instances one by one
+  for (auto inst : instSet) {
+    SwitchInstanceHelper::switchInstanceToAssignedDie(this, inst);
+  }
+}
+
 void MultiDieManager::makeInterconnections(odb::dbBlock* lowerBlock,
                                            odb::dbBlock* upperBlock)
 {
-  // interconnection should be implemented through
-  // lowerBlock - top heir block - upperBlock
+  // REMINDER
+  // Current State, specifically for the lower die:
+  // Let `instForLowerBlock` as the instance in the top heir block
+  // and exist for representing the lower block.
+  // e.g.
+  // auto instForLowerBlock = lowerBlock->getParentInst();
+  // auto instForUpperBlock = upperBlock->getParentInst();
+  //
+  // [1] About `lowerBlockTerm`
+  // 1.1. This is in the `lowerBlock`,
+  // 1.2. This is connected to `lowerBlockNet`.
+  //
+  // [2] About The new iTerm of `instForLowerBlock`
+  // 2.1. This is in the top heir block, not in `lowerBlock`.
+  // 2.2. This is mapped to the `lowerBlockTerm`, which is in `lowerBlock`.
+  // 2.3. This is accessed by using
+  // `instForLowerBlock->findITerm(interconnectName.c_str())`.
+  // 2.4. This is accessed by using`lowerBlockTerm->getITerm()`.
+  // 2.5. This is not connected to any net.
 
-  // traverse the nets
+  // interconnections for
+  // child block1 - top heir block - child block2
+
+  auto topHeirBlock = db_->getChip()->getBlock();
+  // traverse the nets in the lower block
   for (auto lowerBlockNet : lowerBlock->getNets()) {
     auto netName = lowerBlockNet->getName();
     auto upperBlockNet = upperBlock->findNet(netName.c_str());
-    if (upperBlockNet) {
-      // access or make the interconnected net at top heir block
-      auto topHeirBlock = db_->getChip()->getBlock();
-      auto topHeirNet = topHeirBlock->findNet(netName.c_str());
-      if (!topHeirNet) {
-        topHeirNet = odb::dbNet::create(topHeirBlock, netName.c_str());
-      }
-      // connect between topHeir - lowerBlock, and between topHeir - upperBlock
-      auto interconnectName = netName + "_interconnect";
-      auto lowerBlockTerm
-          = odb::dbBTerm::create(lowerBlockNet, interconnectName.c_str());
-      auto upperBlockTerm
-          = odb::dbBTerm::create(upperBlockNet, interconnectName.c_str());
-
-      // REMINDER
-      // Current State, specifically for the lower die:
-      // Let `instForLowerBlock` as the instance in the top heir block
-      // and exist for representing the lower block.
-      // e.g.
-      // auto instForLowerBlock = lowerBlock->getParentInst();
-      // auto instForUpperBlock = upperBlock->getParentInst();
-      //
-      // [1] About `lowerBlockTerm`
-      // 1.1. This is in the `lowerBlock`,
-      // 1.2. This is connected to `lowerBlockNet`.
-      //
-      // [2] About The new iTerm of `instForLowerBlock`
-      // 2.1. This is in the top heir block, not in `lowerBlock`.
-      // 2.2. This is mapped to the `lowerBlockTerm`, which is in `lowerBlock`.
-      // 2.3. This is accessed by using
-      // `instForLowerBlock->findITerm(interconnectName.c_str())`.
-      // 2.4. This is accessed by using`lowerBlockTerm->getITerm()`.
-      // 2.5. This is not connected to any net.
-
-      lowerBlockTerm->getITerm()->connect(topHeirNet);
-      upperBlockTerm->getITerm()->connect(topHeirNet);
-
-      odb::dbBoolProperty::create(topHeirNet, "intersected", true);
-      odb::dbBoolProperty::create(lowerBlockNet, "intersected", true);
-      odb::dbBoolProperty::create(upperBlockNet, "intersected", true);
+    if (!upperBlockNet) {
+      continue;
     }
+    auto topHierNet = topHeirBlock->findNet(netName.c_str());
+    assert(topHierNet);
+
+    // connect between topHeir - lowerBlock, and between topHeir - upperBlock
+    auto interconnectName = netName + "Interconnection";
+    auto lowerBlockTerm
+        = odb::dbBTerm::create(lowerBlockNet, interconnectName.c_str());
+    auto upperBlockTerm
+        = odb::dbBTerm::create(upperBlockNet, interconnectName.c_str());
+
+    lowerBlockTerm->getITerm()->connect(topHierNet);
+    upperBlockTerm->getITerm()->connect(topHierNet);
+
+    odb::dbBoolProperty::create(topHierNet, "intersected", true);
+    odb::dbBoolProperty::create(lowerBlockNet, "intersected", true);
+    odb::dbBoolProperty::create(upperBlockNet, "intersected", true);
   }
 }
 
