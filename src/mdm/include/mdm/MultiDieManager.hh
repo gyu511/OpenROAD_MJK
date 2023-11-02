@@ -41,6 +41,7 @@
 #include <vector>
 
 #include "HybridBond.h"
+#include "TestCaseManager.h"
 #include "dpl/Opendp.h"
 #include "gpl/Replace.h"
 #include "odb/db.h"
@@ -76,6 +77,7 @@ class SwitchInstanceHelper
 class MultiDieManager
 {
   friend class SwitchInstanceHelper;
+  friend class TestCaseManager;
 
  public:
   MultiDieManager();
@@ -94,6 +96,8 @@ class MultiDieManager
                uint hybridBondSpaceX = 10,
                uint hybridBondSpaceY = 10,
                float areaRatio = 0.5);
+  void getHPWL();
+
   /**
    * \brief
    * Make shrunk lef files.
@@ -172,6 +176,17 @@ class MultiDieManager
   void makeInterconnections(odb::dbBlock* lowerBlock, odb::dbBlock* upperBlock);
   void inheritRows(odb::dbBlock* parentBlock, odb::dbBlock* childBlock);
   void makeIOPinInterconnections();
+  void rowConstruction(int dieWidth,
+                       int dieHeight,
+                       odb::dbBlock* topHeirBlock,
+                       odb::dbBlock* childBlock1,
+                       odb::dbBlock* childBlock2,
+                       odb::dbLib* lib1,
+                       odb::dbLib* lib2,
+                       const odb::dbInst* inst1,
+                       const odb::dbInst* inst2) const;
+
+  TestCaseManager testCaseManager_;
 
   odb::dbDatabase* db_{};
   utl::Logger* logger_{};
@@ -190,15 +205,6 @@ class MultiDieManager
 
   // temporal variables
   odb::dbDatabase* targetDb_{};
-  void rowConstruction(int dieWidth,
-                       int dieHeight,
-                       odb::dbBlock* topHeirBlock,
-                       odb::dbBlock* childBlock1,
-                       odb::dbBlock* childBlock2,
-                       odb::dbLib* lib1,
-                       odb::dbLib* lib2,
-                       const odb::dbInst* inst1,
-                       const odb::dbInst* inst2) const;
 };
 
 }  // namespace mdm

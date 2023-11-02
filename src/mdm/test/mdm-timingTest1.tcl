@@ -27,7 +27,7 @@ read_liberty timing/example1_slow.lib
 # Make def data
 # read_def timing/example1.def
 puts "tclCmd: mdm::test"
-mdm::test
+mdm::timingTest
 
 gui::design_created
 

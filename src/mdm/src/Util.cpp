@@ -271,7 +271,6 @@ void MultiDieManager::makeIOPinInterconnections()
   }
 }
 
-
 void MultiDieManager::constructSimpleExample1()
 {
   numberOfDie_ = 2;
@@ -782,7 +781,49 @@ void MultiDieManager::rowConstruction(int dieWidth,
 
 void MultiDieManager::test()
 {
-  timingTest1();
+  testCaseManager_.ICCADContest(TestCaseManager::ICCAD2022_CASE3_HIDDEN, this);
+}
+
+void MultiDieManager::getHPWL()
+{
+  int hpwl = 0;
+  for (auto block : db_->getChip()->getBlock()->getChildren()) {
+    for (auto net : block->getNets()) {
+      if (odb::dbBoolProperty::find(net, "intersected")) {
+        continue;
+      }
+      hpwl += net->getTermBBox().dx() + net->getTermBBox().dy();
+    }
+  }
+
+  for (auto intersectedNet1 :
+       db_->getChip()->getBlock()->getChildren().begin()->getNets()) {
+    if (!odb::dbBoolProperty::find(intersectedNet1, "intersected")) {
+      continue;
+    }
+    odb::dbNet* intersectedNet2 = nullptr;
+    odb::Rect box1;
+    odb::Rect box2;
+    for (auto bterm : intersectedNet1->getBTerms()) {
+      if (bterm->getITerm()){
+        for(auto iterm: bterm->getITerm()->getNet()->getITerms()){
+          if (iterm->getBTerm()){
+            if (iterm->getBTerm()->getBlock() != intersectedNet1->getBlock()){
+              intersectedNet2 = iterm->getBTerm()->getNet();
+            }
+          }
+        }
+      }
+    }
+
+    assert(intersectedNet2 != nullptr);
+    box1 = intersectedNet1->getTermBBox();
+    box2 = intersectedNet2->getTermBBox();
+    box1.merge(box2);
+    hpwl += box1.dx() + box1.dy();
+  }
+  cout << "HPWL is: " <<  hpwl << endl;
+
 }
 
 }  // namespace mdm

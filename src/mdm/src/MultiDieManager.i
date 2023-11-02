@@ -78,4 +78,16 @@ test()
   getMultiDieManager()->test();
 }
 
+void
+timingTest()
+{
+  getMultiDieManager()->timingTest1();
+}
+
+void
+getHPWL()
+{
+  getMultiDieManager()->getHPWL();
+}
+
 %} // inline
