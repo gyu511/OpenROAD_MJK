@@ -781,7 +781,7 @@ void MultiDieManager::rowConstruction(int dieWidth,
 
 void MultiDieManager::test()
 {
-  testCaseManager_.ICCADContest(TestCaseManager::ICCAD2022_CASE3_HIDDEN, this);
+
 }
 
 void MultiDieManager::getHPWL()

@@ -208,7 +208,8 @@ class Opendp
   void detailedPlacement(int max_displacement_x,
                          int max_displacement_y,
                          const std::string& report_file_name = std::string(""),
-                         bool disallow_one_site_gaps = false);
+                         bool disallow_one_site_gaps = false,
+                         dbBlock* block=nullptr);
   void reportLegalizationStats() const;
   void setPaddingGlobal(int left, int right);
   void setPadding(dbMaster* master, int left, int right);
@@ -252,7 +253,7 @@ class Opendp
 
  private:
   friend class OpendpTest_IsPlaced_Test;
-  void importDb();
+  void importDb(dbBlock* block= nullptr);
   void importClear();
   Rect getBbox(dbInst* inst);
   void makeMacros();
@@ -261,6 +262,7 @@ class Opendp
   static bool isPlacedType(dbMasterType type);
   void makeGroups();
   double dbuToMicrons(int64_t dbu) const;
+  double dbuToMicrons(int64_t dbu, dbBlock* block) const;
   double dbuAreaToMicrons(int64_t dbu_area) const;
   bool isFixed(const Cell* cell) const;  // fixed cell or not
   bool isMultiRow(const Cell* cell) const;

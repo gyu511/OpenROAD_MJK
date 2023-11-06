@@ -34,26 +34,12 @@
 #include "mdm/MultiDieManager.hh"
 namespace mdm {
 using namespace std;
-void MultiDieManager::twoDieDetailPlacement()
+void MultiDieManager::multiDieDetailPlacement()
 {
-  vector<odb::dbDatabase*> targetDbSet;
-  for (int i = 0; i < 2; ++i) {
-    if (i == 0) {
-      constructionDbForOneDie(TOP);
-      detailPlacement();
-      applyDetailPlacementResult();
-      targetDb_ = nullptr;
-    } else if (i == 1) {
-      constructionDbForOneDie(BOTTOM);
-      detailPlacement();
-      applyDetailPlacementResult();
-      targetDbSet.push_back(targetDb_);
-      targetDb_ = nullptr;
-    }
-  }
-
-  for (auto targetDb : targetDbSet) {
-    odb::dbDatabase::destroy(targetDb);
+  auto odp = new dpl::Opendp();
+  odp->init(db_, logger_);
+  for(auto block: db_->getChip()->getBlock()->getChildren()){
+    odp->detailedPlacement(0, 0, "", false, block);
   }
 }
 

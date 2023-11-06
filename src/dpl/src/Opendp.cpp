@@ -136,9 +136,10 @@ void Opendp::setDebug(std::unique_ptr<DplObserver>& observer)
 void Opendp::detailedPlacement(int max_displacement_x,
                                int max_displacement_y,
                                const std::string& report_file_name,
-                               bool disallow_one_site_gaps)
+                               bool disallow_one_site_gaps,
+                               dbBlock* block)
 {
-  importDb();
+  importDb(block);
 
   if (have_fillers_) {
     logger_->warn(DPL, 37, "Use remove_fillers before detailed placement.");
@@ -654,6 +655,12 @@ int Opendp::gridEndY(const Cell* cell, int row_height) const
 double Opendp::dbuToMicrons(int64_t dbu) const
 {
   double dbu_micron = db_->getTech()->getDbUnitsPerMicron();
+  return dbu / dbu_micron;
+}
+
+double Opendp::dbuToMicrons(int64_t dbu, dbBlock* block) const
+{
+  double dbu_micron = block->getDbUnitsPerMicron();
   return dbu / dbu_micron;
 }
 

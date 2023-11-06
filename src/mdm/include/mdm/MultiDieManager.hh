@@ -110,7 +110,7 @@ class MultiDieManager
    * */
   void makeShrunkLefs();
 
-  void twoDieDetailPlacement();
+  void multiDieDetailPlacement();
 
   void constructSimpleExample1();
   void constructSimpleExample2();

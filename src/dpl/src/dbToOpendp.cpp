@@ -56,9 +56,12 @@ using odb::Rect;
 
 static bool swapWidthHeight(const dbOrientType& orient);
 
-void Opendp::importDb()
+void Opendp::importDb(dbBlock* block)
 {
-  block_ = db_->getChip()->getBlock();
+  if (block == nullptr) {
+    block = db_->getChip()->getBlock();
+  }
+  block_ = block;
   core_ = block_->getCoreArea();
   have_fillers_ = false;
   have_one_site_cells_ = false;

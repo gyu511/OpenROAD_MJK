@@ -482,7 +482,7 @@ dbu_to_microns(int dbu)
 int
 microns_to_dbu(double microns)
 {
-  auto tech = getDb()->getTech();
+  auto tech = *getDb()->getTechs().begin();
   if (!tech) {
     auto logger = getLogger();
     logger->error(utl::ORD, 50, "No tech is loaded");
