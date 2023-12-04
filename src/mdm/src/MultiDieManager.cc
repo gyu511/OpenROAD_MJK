@@ -55,12 +55,7 @@ void MultiDieManager::init(odb::dbDatabase* db,
   sta_ = sta;
 }
 
-void MultiDieManager::set3DIC(int numberOfDie,
-                              uint hybridBondX,
-                              uint hybridBondY,
-                              uint hybridBondSpaceX,
-                              uint hybridBondSpaceY,
-                              float areaRatio)
+void MultiDieManager::set3DIC(int numberOfDie, float areaRatio)
 {
   // set the variables
   hybridBondInfo_.setHybridBondInfo(

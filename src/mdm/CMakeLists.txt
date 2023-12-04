@@ -48,7 +48,6 @@ target_sources(mdm
         src/MakeMultiDieManager.cc
         src/MultiDieManager.cc
         src/SwitchInstHelper.cpp
-        src/HybridBond.cpp
         src/DetailPlacementMgr.cpp
         src/Util.cpp
         src/TestCaseManager.cpp

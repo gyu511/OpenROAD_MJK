@@ -40,20 +40,17 @@
 #include <string>
 #include <vector>
 
-#include "HybridBond.h"
 #include "TestCaseManager.h"
+#include "db_sta/dbNetwork.hh"
+#include "db_sta/dbSta.hh"
 #include "dpl/Opendp.h"
 #include "gpl/Replace.h"
 #include "odb/db.h"
 #include "par/PartitionMgr.h"
-#include "db_sta/dbSta.hh"
-#include "db_sta/dbNetwork.hh"
 #include "utl/Logger.h"
 
 namespace mdm {
 class MultiDieManager;
-class HybridBond;
-class HybridBondInfo;
 
 class SwitchInstanceHelper
 {
@@ -90,12 +87,7 @@ class MultiDieManager
             dpl::Opendp* opendp,
             sta::dbSta* sta);
 
-  void set3DIC(int numberOfDie,
-               uint hybridBondX = 10,
-               uint hybridBondY = 10,
-               uint hybridBondSpaceX = 10,
-               uint hybridBondSpaceY = 10,
-               float areaRatio = 0.5);
+  void set3DIC(int numberOfDie, float areaRatio = 0.5);
   void getHPWL();
 
   /**
@@ -113,7 +105,6 @@ class MultiDieManager
   void multiDieDetailPlacement();
 
   void constructSimpleExample1();
-  void constructSimpleExample2();
 
   /**
    * Before calling this function,
@@ -121,8 +112,6 @@ class MultiDieManager
    * Refer to the test/mdm-timingTest1.tcl
    * */
   void timingTest1();
-
-  void test();
 
  private:
   odb::dbTech* makeNewTech(const std::string& techName);
@@ -151,11 +140,6 @@ class MultiDieManager
   void makeSubBlocks();
 
   /**
-   * Return the n_th lib
-   * */
-  odb::dbLib* findLibByPartitionInfo(int value);
-
-  /**
    * Reading function for partitioning information in `par` is not work in
    * proper way. So make this function as temporal solution.
    * */
@@ -169,9 +153,6 @@ class MultiDieManager
     TOP,
     BOTTOM
   };
-  void constructionDbForOneDie(WHICH_DIE whichDie);
-  void detailPlacement();
-  void applyDetailPlacementResult();
   void switchInstancesToAssignedDie();
   void makeInterconnections(odb::dbBlock* lowerBlock, odb::dbBlock* upperBlock);
   void inheritRows(odb::dbBlock* parentBlock, odb::dbBlock* childBlock);
@@ -198,13 +179,6 @@ class MultiDieManager
   int numberOfDie_{};
   float shrinkAreaRatio_{};
   std::vector<float> shrinkLengthRatios_;
-
-  // Hybrid Bond information --> This would be absorbed in odb later.
-  std::vector<HybridBond> hybridbond_set_;
-  HybridBondInfo hybridBondInfo_{};
-
-  // temporal variables
-  odb::dbDatabase* targetDb_{};
 };
 
 }  // namespace mdm

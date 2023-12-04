@@ -779,11 +779,6 @@ void MultiDieManager::rowConstruction(int dieWidth,
   // row construction end //
 }
 
-void MultiDieManager::test()
-{
-
-}
-
 void MultiDieManager::getHPWL()
 {
   int hpwl = 0;
@@ -805,10 +800,10 @@ void MultiDieManager::getHPWL()
     odb::Rect box1;
     odb::Rect box2;
     for (auto bterm : intersectedNet1->getBTerms()) {
-      if (bterm->getITerm()){
-        for(auto iterm: bterm->getITerm()->getNet()->getITerms()){
-          if (iterm->getBTerm()){
-            if (iterm->getBTerm()->getBlock() != intersectedNet1->getBlock()){
+      if (bterm->getITerm()) {
+        for (auto iterm : bterm->getITerm()->getNet()->getITerms()) {
+          if (iterm->getBTerm()) {
+            if (iterm->getBTerm()->getBlock() != intersectedNet1->getBlock()) {
               intersectedNet2 = iterm->getBTerm()->getNet();
             }
           }
@@ -822,8 +817,7 @@ void MultiDieManager::getHPWL()
     box1.merge(box2);
     hpwl += box1.dx() + box1.dy();
   }
-  cout << "HPWL is: " <<  hpwl << endl;
-
+  cout << "HPWL is: " << hpwl << endl;
 }
 
 }  // namespace mdm
