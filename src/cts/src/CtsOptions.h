@@ -194,13 +194,17 @@ class CtsOptions
   {
     maxDiameter_ = distance;
     sinkClusteringUseMaxCap_ = false;
+    maxDiameterSet_ = true;
   }
-  unsigned getSizeSinkClustering() const { return sinkClustersSize_; }
-  void setSizeSinkClustering(unsigned size)
+  bool isMaxDiameterSet() const { return maxDiameterSet_; }
+  unsigned getSinkClusteringSize() const { return sinkClustersSize_; }
+  void setSinkClusteringSize(unsigned size)
   {
     sinkClustersSize_ = size;
     sinkClusteringUseMaxCap_ = false;
+    sinkClustersSizeSet_ = true;
   }
+  bool isSinkClusteringSizeSet() const { return sinkClustersSizeSet_; }
   unsigned getSinkClusteringLevels() const { return sinkClusteringLevels_; }
   void setSinkClusteringLevels(unsigned levels)
   {
@@ -218,6 +222,26 @@ class CtsOptions
   stt::SteinerTreeBuilder* getSttBuilder() const { return sttBuilder_; }
   void setObstructionAware(bool obs) { obsAware_ = obs; }
   bool getObstructionAware() const { return obsAware_; }
+  void setApplyNDR(bool ndr) { applyNDR_ = ndr; }
+  bool applyNDR() const { return applyNDR_; }
+  void enableInsertionDelay(bool insDelay) { insertionDelay_ = insDelay; }
+  bool insertionDelayEnabled() const { return insertionDelay_; }
+  void setBufferListInferred(bool inferred) { bufferListInferred_ = inferred; }
+  bool isBufferListInferred() const { return bufferListInferred_; }
+  void setSinkBufferInferred(bool inferred) { sinkBufferInferred_ = inferred; }
+  bool isSinkBufferInferred() const { return sinkBufferInferred_; }
+  void setRootBufferInferred(bool inferred) { rootBufferInferred_ = inferred; }
+  bool isRootBufferInferred() const { return rootBufferInferred_; }
+  void setSinkBufferMaxCapDerate(float derate)
+  {
+    sinkBufferMaxCapDerate_ = derate;
+    sinkBufferMaxCapDerateSet_ = true;
+  }
+  float getSinkBufferMaxCapDerate() const { return sinkBufferMaxCapDerate_; }
+  bool isSinkBufferMaxCapDerateSet() const
+  {
+    return sinkBufferMaxCapDerateSet_;
+  }
 
  private:
   std::string clockNets_ = "";
@@ -242,8 +266,8 @@ class CtsOptions
   double maxCharSlew_ = 0;
   double maxCharCap_ = 0;
   double sinkBufferInputCap_ = 0;
-  int capSteps_ = 34;
-  int slewSteps_ = 12;
+  int capSteps_ = 20;
+  int slewSteps_ = 7;
   unsigned charWirelengthIterations_ = 4;
   unsigned clockTreeMaxDepth_ = 100;
   bool enableFakeLutEntries_ = true;
@@ -254,7 +278,9 @@ class CtsOptions
   int buffersInserted_ = 0;
   int sinks_ = 0;
   double maxDiameter_ = 50;
+  bool maxDiameterSet_ = false;
   unsigned sinkClustersSize_ = 20;
+  bool sinkClustersSizeSet_ = false;
   bool balanceLevels_ = false;
   unsigned sinkClusteringLevels_ = 0;
   unsigned numStaticLayers_ = 0;
@@ -263,6 +289,14 @@ class CtsOptions
   utl::Logger* logger_ = nullptr;
   stt::SteinerTreeBuilder* sttBuilder_ = nullptr;
   bool obsAware_ = false;
+  bool applyNDR_ = false;
+  bool insertionDelay_ = false;
+  bool bufferListInferred_ = false;
+  bool sinkBufferInferred_ = false;
+  bool rootBufferInferred_ = false;
+  bool sinkBufferMaxCapDerateSet_ = false;
+  float sinkBufferMaxCapDerateDefault_ = 0.01;
+  float sinkBufferMaxCapDerate_ = sinkBufferMaxCapDerateDefault_;
 };
 
 }  // namespace cts

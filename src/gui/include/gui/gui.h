@@ -58,6 +58,7 @@ class Logger;
 namespace gui {
 class HeatMapDataSource;
 class PlacementDensityDataSource;
+class RUDYDataSource;
 class Painter;
 class Selected;
 class Options;
@@ -611,6 +612,7 @@ class Gui
   // Save layout to an image file
   void saveImage(const std::string& filename,
                  const odb::Rect& region = odb::Rect(),
+                 int width_px = 0,
                  double dbu_per_pixel = 0,
                  const std::map<std::string, bool>& display_settings = {});
 
@@ -795,6 +797,7 @@ class Gui
   std::set<Renderer*> renderers_;
 
   std::unique_ptr<PlacementDensityDataSource> placement_density_heat_map_;
+  std::unique_ptr<RUDYDataSource> rudy_heat_map_;
 
   static Gui* singleton_;
 };

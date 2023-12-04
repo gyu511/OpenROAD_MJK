@@ -62,6 +62,8 @@ FastRouteCore::FastRouteCore(odb::dbDatabase* db,
       h_capacity_(0),
       x_grid_(0),
       y_grid_(0),
+      x_grid_max_(0),
+      y_grid_max_(0),
       x_corner_(0),
       y_corner_(0),
       tile_size_(0),
@@ -73,7 +75,7 @@ FastRouteCore::FastRouteCore(odb::dbDatabase* db,
       has_2D_overflow_(false),
       grid_hv_(0),
       verbose_(false),
-      update_slack_(0),
+      critical_nets_percentage_(10),
       via_cost_(0),
       mazeedge_threshold_(0),
       v_capacity_lb_(0),
@@ -281,6 +283,18 @@ FrNet* FastRouteCore::addNet(odb::dbNet* db_net,
   return net;
 }
 
+void FastRouteCore::removeNet(odb::dbNet* db_net)
+{
+  // TODO The deleted flag is a temporary solution. Correctly delete the
+  // FrNet and update the nets list
+  if (db_net_id_map_.find(db_net) != db_net_id_map_.end()) {
+    int netID = db_net_id_map_[db_net];
+    nets_[netID]->setIsDeleted(true);
+    clearNetRoute(netID);
+    db_net_id_map_.erase(db_net);
+  }
+}
+
 void FastRouteCore::getNetId(odb::dbNet* db_net, int& net_id, bool& exists)
 {
   auto itr = db_net_id_map_.find(db_net);
@@ -294,8 +308,8 @@ void FastRouteCore::clearNetRoute(const int netID)
   releaseNetResources(netID);
 
   // clear stree
-  sttrees_[netID].nodes.reset();
-  sttrees_[netID].edges.reset();
+  sttrees_[netID].nodes.clear();
+  sttrees_[netID].edges.clear();
 }
 
 void FastRouteCore::initEdges()
@@ -541,7 +555,7 @@ void FastRouteCore::initBlockedIntervals(std::vector<int>& track_space)
     int edge_cap = getEdgeCapacity(x, y, x, y + 1, layer);
     if (edge_cap > 0) {
       int reduce = 0;
-      for (auto interval_it : intervals) {
+      for (const auto& interval_it : intervals) {
         reduce += ceil(static_cast<float>(
                            std::abs(interval_it.upper() - interval_it.lower()))
                        / track_space[layer - 1]);
@@ -656,8 +670,9 @@ NetRouteMap FastRouteCore::getRoutes()
 {
   NetRouteMap routes;
   for (int netID = 0; netID < netCount(); netID++) {
-    if (nets_[netID]->isRouted())
+    if (nets_[netID]->isRouted() || nets_[netID]->isDeleted()) {
       continue;
+    }
 
     nets_[netID]->setIsRouted(true);
     odb::dbNet* db_net = nets_[netID]->getDbNet();
@@ -691,6 +706,32 @@ NetRouteMap FastRouteCore::getRoutes()
             route.push_back(segment);
           }
         }
+      } else {
+        int num_terminals = sttrees_[netID].num_terminals;
+        const auto& nodes = sttrees_[netID].nodes;
+        int x1 = tile_size_ * (nodes[treeedge->n1].x + 0.5) + x_corner_;
+        int y1 = tile_size_ * (nodes[treeedge->n1].y + 0.5) + y_corner_;
+        int l1 = nodes[treeedge->n1].botL;
+        int x2 = tile_size_ * (nodes[treeedge->n2].x + 0.5) + x_corner_;
+        int y2 = tile_size_ * (nodes[treeedge->n2].y + 0.5) + y_corner_;
+        int l2 = nodes[treeedge->n2].botL;
+        GSegment segment(x1, y1, l1 + 1, x2, y2, l2 + 1);
+        // It is possible to have nodes that are not in adjacent layers if one
+        // of the nodes is steiner node, this check only adds the segment
+        // if the nodes are in adjacent layer
+        if (net_segs.find(segment) == net_segs.end()
+            && std::abs(l1 - l2) == 1) {
+          net_segs.insert(segment);
+          route.push_back(segment);
+        } else if (treeedge->n1 < num_terminals && treeedge->n2 < num_terminals
+                   && std::abs(l1 - l2) > 1) {
+          auto [bottom_layer, top_layer] = std::minmax(l1, l2);
+          for (int l = bottom_layer; l < top_layer; l++) {
+            GSegment segment(x1, y1, l + 1, x2, y2, l + 2);
+            net_segs.insert(segment);
+            route.push_back(segment);
+          }
+        }
       }
     }
   }
@@ -705,6 +746,10 @@ NetRouteMap FastRouteCore::getPlanarRoutes()
   // Get routes before layer assignment
 
   for (int netID = 0; netID < netCount(); netID++) {
+    if (nets_[netID]->isRouted() || nets_[netID]->isDeleted()) {
+      continue;
+    }
+
     auto fr_net = nets_[netID];
     odb::dbNet* db_net = fr_net->getDbNet();
     GRoute& route = routes[db_net];
@@ -1302,9 +1347,9 @@ void FastRouteCore::setVerbose(bool v)
   verbose_ = v;
 }
 
-void FastRouteCore::setUpdateSlack(int u)
+void FastRouteCore::setCriticalNetsPercentage(float u)
 {
-  update_slack_ = u;
+  critical_nets_percentage_ = u;
 }
 
 void FastRouteCore::setMakeWireParasiticsBuilder(
@@ -1518,6 +1563,7 @@ void FrNet::reset(odb::dbNet* db_net,
   db_net_ = db_net;
   is_routed_ = false;
   is_critical_ = false;
+  is_deleted_ = false;
   is_clock_ = is_clock;
   driver_idx_ = driver_idx;
   edge_cost_ = edge_cost;

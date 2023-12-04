@@ -36,6 +36,7 @@
 #include "ppl/IOPlacer.h"
 
 #include <algorithm>
+#include <fstream>
 #include <random>
 #include <sstream>
 
@@ -253,11 +254,6 @@ void IOPlacer::randomPlacement(std::vector<int> pin_indices,
   std::vector<int> io_pin_indices(num_i_os);
 
   std::vector<InstancePin> instPins;
-  if (sections_.empty()) {
-    Section s;
-    s.pos = {0, 0};
-    sections_.push_back(s);
-  }
 
   std::mt19937 g;
   g.seed(seed);
@@ -297,7 +293,6 @@ void IOPlacer::randomPlacement(std::vector<int> pin_indices,
       slots[slot_idx].blocked = true;
       io_pin.setLayer(slots[slot_idx].layer);
       assignment_.push_back(io_pin);
-      sections_[0].pin_indices.push_back(pin_idx);
       io_idx++;
 
       if (assign_mirrored
@@ -1313,18 +1308,22 @@ void IOPlacer::assignMirroredPin(IOPin& io_pin)
 
 void IOPlacer::printConfig(bool annealing)
 {
-  logger_->info(PPL, 1, "Number of slots          {}", slots_.size());
-  logger_->info(PPL, 2, "Number of I/O            {}", netlist_->numIOPins());
+  logger_->info(PPL, 1, "Number of slots           {}", slots_.size());
+  if (!top_layer_slots_.empty()) {
+    logger_->info(
+        PPL, 62, "Number of top layer slots {}", top_layer_slots_.size());
+  }
+  logger_->info(PPL, 2, "Number of I/O             {}", netlist_->numIOPins());
   logger_->metric("floorplan__design__io", netlist_->numIOPins());
   logger_->info(PPL,
                 3,
-                "Number of I/O w/sink     {}",
+                "Number of I/O w/sink      {}",
                 netlist_io_pins_->numIOPins() - zero_sink_ios_.size());
-  logger_->info(PPL, 4, "Number of I/O w/o sink   {}", zero_sink_ios_.size());
+  logger_->info(PPL, 4, "Number of I/O w/o sink    {}", zero_sink_ios_.size());
   if (!annealing) {
-    logger_->info(PPL, 5, "Slots per section        {}", slots_per_section_);
+    logger_->info(PPL, 5, "Slots per section         {}", slots_per_section_);
     logger_->info(
-        PPL, 6, "Slots increase factor    {:.1}", slots_increase_factor_);
+        PPL, 6, "Slots increase factor     {:.1}", slots_increase_factor_);
   }
 }
 
@@ -1566,6 +1565,39 @@ void IOPlacer::addNamesConstraint(PinSet* pins, Edge edge, int begin, int end)
 {
   Interval interval(edge, begin, end);
   bool inserted = false;
+  std::string pin_names;
+  int pin_cnt = 0;
+  for (odb::dbBTerm* pin : *pins) {
+    pin_names += pin->getName() + " ";
+    pin_cnt++;
+    if (pin_cnt >= pins_per_report_
+        && !logger_->debugCheck(utl::PPL, "report_pin_names", 1)) {
+      pin_names += "... ";
+      break;
+    }
+  }
+
+  if (logger_->debugCheck(utl::PPL, "report_pin_names", 1)) {
+    debugPrint(logger_,
+               utl::PPL,
+               "report_pin_names",
+               1,
+               "Restrict pins [ {}] to region {:.2f}u-{:.2f}u at the {} edge.",
+               pin_names,
+               dbuToMicrons(begin),
+               dbuToMicrons(end),
+               getEdgeString(edge));
+  } else {
+    logger_->info(
+        utl::PPL,
+        48,
+        "Restrict pins [ {}] to region {:.2f}u-{:.2f}u at the {} edge.",
+        pin_names,
+        dbuToMicrons(begin),
+        dbuToMicrons(end),
+        getEdgeString(edge));
+  }
+
   for (Constraint& constraint : constraints_) {
     if (constraint.interval == interval) {
       constraint.pin_list.insert(pins->begin(), pins->end());
@@ -1863,6 +1895,28 @@ Direction IOPlacer::getDirection(const std::string& direction)
 
 void IOPlacer::addPinGroup(PinList* group, bool order)
 {
+  std::string pin_names;
+  int pin_cnt = 0;
+  for (odb::dbBTerm* pin : *group) {
+    pin_names += pin->getName() + " ";
+    pin_cnt++;
+    if (pin_cnt >= pins_per_report_
+        && !logger_->debugCheck(utl::PPL, "report_pin_names", 1)) {
+      pin_names += "... ";
+      break;
+    }
+  }
+
+  if (logger_->debugCheck(utl::PPL, "report_pin_names", 1)) {
+    debugPrint(logger_,
+               utl::PPL,
+               "report_pin_names",
+               1,
+               "Pin group: [ {}]",
+               pin_names);
+  } else {
+    logger_->info(utl::PPL, 44, "Pin group: [ {}]", pin_names);
+  }
   pin_groups_.push_back({*group, order});
 }
 
@@ -1978,7 +2032,7 @@ void IOPlacer::run(bool random_mode)
           logger_->error(
               PPL,
               88,
-              "Cannot assign {} constrained pins to region {}u-{}u "
+              "Cannot assign {} constrained pins to region {:.2f}u-{:.2f}u "
               "at edge {}. Not "
               "enough space in the defined region.",
               constraint.pin_list.size(),
@@ -2195,14 +2249,15 @@ void IOPlacer::placePin(odb::dbBTerm* bterm,
 
   float pin_width = std::min(width, height);
   if (pin_width < layer->getWidth()) {
-    logger_->error(PPL,
-                   34,
-                   "Pin {} has dimension {}u which is less than the min width "
-                   "{}u of layer {}.",
-                   bterm->getName(),
-                   dbuToMicrons(pin_width),
-                   dbuToMicrons(layer->getWidth()),
-                   layer->getName());
+    logger_->error(
+        PPL,
+        34,
+        "Pin {} has dimension {:.2f}u which is less than the min width "
+        "{:.2f}u of layer {}.",
+        bterm->getName(),
+        dbuToMicrons(pin_width),
+        dbuToMicrons(layer->getWidth()),
+        layer->getName());
   }
 
   const int layer_level = layer->getRoutingLevel();

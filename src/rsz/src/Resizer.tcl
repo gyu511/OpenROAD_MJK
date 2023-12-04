@@ -312,6 +312,13 @@ proc remove_buffers { args } {
   rsz::remove_buffers_cmd
 }
 
+sta::define_cmd_args "balance_row_usage" {}
+
+proc balance_row_usage { args } {
+  sta::check_argc_eq0 "balance_row_usage" $args
+  rsz::balance_row_usage_cmd
+}
+
 sta::define_cmd_args "repair_design" {[-max_wire_length max_wire_length] \
                                       [-max_utilization util] \
                                       [-slew_margin slack_margin] \
@@ -519,8 +526,8 @@ proc report_floating_nets { args } {
     }
   }
 
-  utl::metric "timing__drv__floating__nets" $floating_net_count
-  utl::metric "timing__drv__floating__pins" $floating_pin_count
+  utl::metric_int "timing__drv__floating__nets" $floating_net_count
+  utl::metric_int "timing__drv__floating__pins" $floating_pin_count
 }
 
 sta::define_cmd_args "report_long_wires" {count}
