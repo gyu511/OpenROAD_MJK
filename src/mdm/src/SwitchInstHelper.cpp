@@ -74,10 +74,12 @@ std::pair<odb::dbBlock*, odb::dbLib*> SwitchInstanceHelper::findTargetDieAndLib(
   targetBlock = *blockIter;
 
   auto libIter = manager->db_->getLibs().begin();
+  libIter++;  // skip the top hier lib
   for (int i = 0; i < dieID; ++i) {
     libIter++;
   }
   targetLib = *libIter;
+  auto targetlibName = targetLib->getName();
 
   return {targetBlock, targetLib};
 }
