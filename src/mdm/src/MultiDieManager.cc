@@ -168,6 +168,7 @@ void MultiDieManager::makeInterconnections(odb::dbBlock* lowerBlock,
   // child block1 - top heir block - child block2
 
   auto topHeirBlock = db_->getChip()->getBlock();
+  int interconnectionNum = 0;
   // traverse the nets in the lower block
   for (auto lowerBlockNet : lowerBlock->getNets()) {
     auto netName = lowerBlockNet->getName();
@@ -191,7 +192,10 @@ void MultiDieManager::makeInterconnections(odb::dbBlock* lowerBlock,
     odb::dbBoolProperty::create(topHierNet, "intersected", true);
     odb::dbBoolProperty::create(lowerBlockNet, "intersected", true);
     odb::dbBoolProperty::create(upperBlockNet, "intersected", true);
+    interconnectionNum++;
   }
+  logger_->info(
+      utl::MDM, 12, "The interconnection number: {}", interconnectionNum);
 }
 
 }  // namespace mdm
