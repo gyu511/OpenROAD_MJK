@@ -47,7 +47,9 @@ using std::vector;
 RUDYCalculator::RUDYCalculator(dbBlock* block) : block_(block)
 {
   gridBlock_ = block_->getDieArea();
-  wireWidth_ = block_->getTech()->findRoutingLayer(1)->getWidth();
+  if (block_->getTech()->findRoutingLayer(1)) {
+    wireWidth_ = block_->getTech()->findRoutingLayer(1)->getWidth();
+  }
   makeGrid();
 }
 
