@@ -67,6 +67,7 @@ target_link_libraries(mdm
         dpl_lib
         par_lib
         dbSta_lib
+        dpo
 )
 
 messages(
