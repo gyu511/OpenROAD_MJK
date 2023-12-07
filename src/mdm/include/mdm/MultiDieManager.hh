@@ -115,6 +115,8 @@ class MultiDieManager
 
   void ICCADParse(const std::string& testCase);
 
+  void setPartitionFile(char* partitionFile);
+
  private:
   odb::dbTech* makeNewTech(const std::string& techName);
   void makeShrunkLib(const std::string& whichDie,
@@ -145,7 +147,7 @@ class MultiDieManager
    * Reading function for partitioning information in `par` is not work in
    * proper way. So make this function as temporal solution.
    * */
-  void readPartitionInfo(const std::string& fileName);
+  void readPartitionInfo(std::string fileName);
 
   /**
    * Below functions are for detail placement.
@@ -181,6 +183,7 @@ class MultiDieManager
   int numberOfDie_{};
   float shrinkAreaRatio_{};
   std::vector<float> shrinkLengthRatios_;
+  std::string partitionFile_;
 };
 
 }  // namespace mdm

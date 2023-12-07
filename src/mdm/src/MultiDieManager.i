@@ -84,10 +84,16 @@ timingTest()
   getMultiDieManager()->timingTest1();
 }
 
+
 void
 getHPWL()
 {
   getMultiDieManager()->getHPWL();
+}
+void
+setPartitionFile(char* partitionFile)
+{
+  getMultiDieManager()->setPartitionFile(partitionFile);
 }
 
 %} // inline

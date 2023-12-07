@@ -155,6 +155,7 @@ class TestCaseManager
     MEGA_BOOM
   };
 
+  void setMDM(MultiDieManager* mdm) { mdm_ = mdm; }
   void ICCADContest(TESTCASE testCase, MultiDieManager* mdManager);
 
  private:

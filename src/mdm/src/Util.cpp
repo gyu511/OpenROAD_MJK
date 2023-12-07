@@ -165,8 +165,11 @@ void MultiDieManager::makeShrunkLib(const string& whichDie,
   }
 }
 
-void MultiDieManager::readPartitionInfo(const std::string& fileName)
+void MultiDieManager::readPartitionInfo(std::string fileName)
 {
+  if (fileName.empty()) {
+    fileName = partitionFile_;
+  }
   // read partition file and apply it
   ifstream partitionFile(fileName);
   if (!partitionFile.is_open()) {
@@ -818,6 +821,11 @@ void MultiDieManager::getHPWL()
     hpwl += box1.dx() + box1.dy();
   }
   cout << "HPWL is: " << hpwl << endl;
+}
+
+void MultiDieManager::setPartitionFile(char* partitionFile)
+{
+  partitionFile_ = static_cast<std::string>(partitionFile);
 }
 
 }  // namespace mdm
