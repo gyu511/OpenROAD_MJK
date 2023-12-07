@@ -73,9 +73,9 @@ constructSimpleExample1()
 }
 
 void
-test()
+ICCADParse(char* testCase)
 {
-  getMultiDieManager()->test();
+  getMultiDieManager()->ICCADParse(testCase);
 }
 
 void

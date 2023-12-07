@@ -113,6 +113,8 @@ class MultiDieManager
    * */
   void timingTest1();
 
+  void ICCADParse(const std::string& testCase);
+
  private:
   odb::dbTech* makeNewTech(const std::string& techName);
   void makeShrunkLib(const std::string& whichDie,

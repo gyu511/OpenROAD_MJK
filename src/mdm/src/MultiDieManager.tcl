@@ -35,6 +35,16 @@ proc set_3D_IC { args } {
   mdm::set_3D_IC $die_number
 }
 
+sta::define_cmd_args "ICCADParse" {[-test_case test_case]}
+
+proc ICCADParse { args } {
+  sta::parse_key_args "ICCADParse" args \
+   keys {-test_case} flags {}
+
+  set test_case $keys(-test_case)
+  mdm::ICCADParse $test_case
+}
+
 proc mdm::two_die_detail_placement { } {
   mdm::twoDieDetailPlace
 }

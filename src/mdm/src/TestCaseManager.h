@@ -30,11 +30,14 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ///////////////////////////////////////////////////////////////////////////////
+#ifndef TEST_CASE_MANAGER_H
+#define TEST_CASE_MANAGER_H
 
 #include <iostream>
 #include <string>
 #include <utility>
 #include <vector>
+
 #include "odb/db.h"
 
 namespace mdm {
@@ -133,17 +136,23 @@ class TestCaseManager
     ICCAD2022_CASE2,
     ICCAD2022_CASE3,
     ICCAD2022_CASE4,
-    ICCAD2022_CASE2_HIDDEN,
-    ICCAD2022_CASE3_HIDDEN,
-    ICCAD2022_CASE4_HIDDEN,
+    ICCAD2022_CASE2_H,
+    ICCAD2022_CASE3_H,
+    ICCAD2022_CASE4_H,
 
     ICCAD2023_CASE1,
     ICCAD2023_CASE2,
     ICCAD2023_CASE3,
     ICCAD2023_CASE4,
-    ICCAD2023_CASE2_HIDDEN,
-    ICCAD2023_CASE3_HIDDEN,
-    ICCAD2023_CASE4_HIDDEN,
+    ICCAD2023_CASE2_H,
+    ICCAD2023_CASE3_H,
+    ICCAD2023_CASE4_H,
+
+    NA,
+
+    NET_CARD,
+    MP_GROUP,
+    MEGA_BOOM
   };
 
   void ICCADContest(TESTCASE testCase, MultiDieManager* mdManager);
@@ -158,13 +167,18 @@ class TestCaseManager
   /**
    * Get the input file name and the contest year of the input file
    * */
-  std::pair<std::string, int> getInputFileInfo(TESTCASE testCase) const;
+  std::pair<std::string, int> fetchInputFileInfo(TESTCASE testCase) const;
 
   BenchInformation benchInformation_;
   int instanceNumber_;
   int netNumber_;
   std::pair<RowInfo, RowInfo> rowInfos_;
   std::pair<int, int> maxUtils_;
+  MultiDieManager* mdm_ = nullptr;
+  TESTCASE testcase_;
+
 };
 
 }  // namespace mdm
+
+#endif  // TEST_CASE_MANAGER_H
