@@ -781,10 +781,9 @@ void MultiDieManager::rowConstruction(int dieWidth,
   }
   // row construction end //
 }
-
-void MultiDieManager::getHPWL()
+void MultiDieManager::get3DHPWL()
 {
-  int hpwl = 0;
+  int64_t hpwl = 0;
   for (auto block : db_->getChip()->getBlock()->getChildren()) {
     for (auto net : block->getNets()) {
       if (odb::dbBoolProperty::find(net, "intersected")) {
@@ -813,14 +812,85 @@ void MultiDieManager::getHPWL()
         }
       }
     }
-
     assert(intersectedNet2 != nullptr);
     box1 = intersectedNet1->getTermBBox();
     box2 = intersectedNet2->getTermBBox();
     box1.merge(box2);
-    hpwl += box1.dx() + box1.dy();
+    hpwl += (box1.dx() + box1.dy());
   }
-  cout << "HPWL is: " << hpwl << endl;
+
+  ostringstream stream;
+  stream.imbue(std::locale(""));
+  stream << std::fixed << std::setprecision(2) << hpwl;
+  string hpwl_scientific = stream.str();
+  logger_->report("HPWL is: {}", hpwl_scientific);
+}
+
+void MultiDieManager::getHPWL()
+{
+  int hpwl = 0;
+  for (auto net : db_->getChip()->getBlock()->getNets()) {
+    hpwl += net->getTermBBox().dx() + net->getTermBBox().dy();
+  }
+  ostringstream stream;
+  stream.imbue(std::locale(""));
+  stream << std::fixed << std::setprecision(2) << hpwl;
+  string hpwl_scientific = stream.str();
+  logger_->report("HPWL is: {}", hpwl_scientific);
+
+  auto block = db_->getChip()->getBlock();
+  auto dieArea = block->getDieArea().area();
+  int64_t cellAreaSum = 0;
+  for (auto inst : block->getInsts()) {
+    auto cellArea
+        = inst->getMaster()->getWidth() * inst->getMaster()->getHeight();
+    cellAreaSum += cellArea;
+  }
+  auto util = static_cast<double_t>(cellAreaSum)
+              / static_cast<double_t>(dieArea) * 100;
+  logger_->report(block->getName() + " Util is: {}%", util);
+}
+
+void MultiDieManager::getHPWL(char* dieInfo)
+{
+  string whichDie(dieInfo);
+  odb::dbBlock* block;
+
+  int targetIdx;
+  if (whichDie == "top") {
+    targetIdx = 1;
+  } else {
+    targetIdx = 2;
+  }
+  int idx = 0;
+  for (auto blockIter : db_->getChip()->getBlock()->getChildren()) {
+    idx++;
+    if (idx != targetIdx) {
+      continue;
+    }
+    block = blockIter;
+  }
+
+  int hpwl = 0;
+  for (auto net : block->getNets()) {
+    hpwl += net->getTermBBox().dx() + net->getTermBBox().dy();
+  }
+  ostringstream stream;
+  stream.imbue(std::locale(""));
+  stream << std::fixed << std::setprecision(2) << hpwl;
+  string hpwl_scientific = stream.str();
+  logger_->report(block->getName() + " HPWL is: {}", hpwl_scientific);
+
+  auto dieArea = block->getDieArea().area();
+  int64_t cellAreaSum = 0;
+  for (auto inst : block->getInsts()) {
+    auto cellArea
+        = inst->getMaster()->getWidth() * inst->getMaster()->getHeight();
+    cellAreaSum += cellArea;
+  }
+  auto util = static_cast<double_t>(cellAreaSum)
+              / static_cast<double_t>(dieArea) * 100;
+  logger_->report(block->getName() + " Util is: {}%", util);
 }
 
 void MultiDieManager::setPartitionFile(char* partitionFile)

@@ -84,12 +84,23 @@ timingTest()
   getMultiDieManager()->timingTest1();
 }
 
+void
+get3DHPWL()
+{
+  getMultiDieManager()->get3DHPWL();
+}
 
 void
 getHPWL()
 {
   getMultiDieManager()->getHPWL();
 }
+void
+getHPWLOneDie(char* dieInfo)
+{
+  getMultiDieManager()->getHPWL(dieInfo);
+}
+
 void
 setPartitionFile(char* partitionFile)
 {

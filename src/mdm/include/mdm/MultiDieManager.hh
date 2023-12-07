@@ -88,7 +88,11 @@ class MultiDieManager
             sta::dbSta* sta);
 
   void set3DIC(int numberOfDie, float areaRatio = 0.5);
+
+
+  void get3DHPWL();
   void getHPWL();
+  void getHPWL(char* dieInfo);
 
   /**
    * \brief
