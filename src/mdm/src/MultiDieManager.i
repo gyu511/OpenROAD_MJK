@@ -67,6 +67,13 @@ multiDieDetailPlace()
 }
 
 void
+multiDieDPO()
+{
+  getMultiDieManager()->multiDieDPO();
+}
+
+
+void
 constructSimpleExample1()
 {
   getMultiDieManager()->constructSimpleExample1();

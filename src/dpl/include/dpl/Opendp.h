@@ -293,14 +293,14 @@ class Opendp
   void initMacrosAndGrid();
 
   void init(dbDatabase* db, Logger* logger);
-  void initBlock();
+  void initBlock(dbBlock* block = nullptr);
   // legalize/report
   // max_displacment is in sites. use zero for defaults.
   void detailedPlacement(int max_displacement_x,
                          int max_displacement_y,
                          const std::string& report_file_name = std::string(""),
                          bool disallow_one_site_gaps = false,
-                         dbBlock* block=nullptr);
+                         dbBlock* block = nullptr);
   void reportLegalizationStats() const;
   void setPaddingGlobal(int left, int right);
   void setPadding(dbMaster* master, int left, int right);
@@ -345,7 +345,7 @@ class Opendp
 
  private:
   friend class OpendpTest_IsPlaced_Test;
-  void importDb(dbBlock* block= nullptr);
+  void importDb(dbBlock* block = nullptr);
   void importClear();
   Rect getBbox(dbInst* inst);
   void makeMacros();

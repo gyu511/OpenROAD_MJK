@@ -79,6 +79,7 @@ class Optdp
   void improvePlacement(int seed,
                         int max_displacement_x,
                         int max_displacement_y,
+                        odb::dbBlock* block = nullptr,
                         bool disallow_one_site_gaps = false);
 
  private:
@@ -119,6 +120,7 @@ class Optdp
 
   int64_t hpwlBefore_ = 0;
   int64_t hpwlAfter_ = 0;
+  odb::dbBlock* block_ = nullptr;
 };
 
 }  // namespace dpo

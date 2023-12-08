@@ -43,4 +43,15 @@ void MultiDieManager::multiDieDetailPlacement()
   }
 }
 
+void MultiDieManager::multiDieDPO()
+{
+  auto dpo = new dpo::Optdp;
+  auto odp = new dpl::Opendp();
+  odp->init(db_, logger_);
+  dpo->init(db_, logger_, odp);
+  for (auto block : db_->getChip()->getBlock()->getChildren()) {
+    dpo->improvePlacement(1, 0, 0, block, false);
+  }
+}
+
 }  // namespace mdm

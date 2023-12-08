@@ -92,11 +92,17 @@ void Optdp::init(odb::dbDatabase* db, utl::Logger* logger, dpl::Opendp* opendp)
 void Optdp::improvePlacement(int seed,
                              int max_displacement_x,
                              int max_displacement_y,
+                             dbBlock* block,
                              bool disallow_one_site_gaps)
 {
   logger_->report("Detailed placement improvement.");
 
-  opendp_->initBlock();
+  if (block == nullptr) {
+    block_ = db_->getChip()->getBlock();
+  } else {
+    block_ = block;
+  }
+  opendp_->initBlock(block);
   hpwlBefore_ = opendp_->hpwl();
 
   if (hpwlBefore_ != 0) {
@@ -162,7 +168,7 @@ void Optdp::improvePlacement(int seed,
     hpwlAfter_ = hpwlBefore_;
   }
 
-  double dbu_micron = db_->getTech()->getDbUnitsPerMicron();
+  double dbu_micron = block_->getDbUnitsPerMicron();
 
   // Statistics.
   logger_->report("Detailed Improvement Results");
@@ -202,7 +208,7 @@ void Optdp::import()
 void Optdp::updateDbInstLocations()
 {
   std::unordered_map<odb::dbInst*, Node*>::iterator it_n;
-  dbBlock* block = db_->getChip()->getBlock();
+  dbBlock* block = block_;
   dbSet<dbInst> insts = block->getInsts();
   for (dbInst* inst : insts) {
     if (!inst->getMaster()->isCoreAutoPlaceable() || inst->isFixed()) {
@@ -318,7 +324,7 @@ void Optdp::setupMasterPowers()
   // which one is on bottom.  I also record the layers
   // and use that information later when setting up the
   // row powers.
-  dbBlock* block = db_->getChip()->getBlock();
+  dbBlock* block = block_;
   std::vector<dbMaster*> masters;
   block->getMasters(masters);
 
@@ -380,7 +386,7 @@ void Optdp::createNetwork()
   std::unordered_map<odb::dbBTerm*, Node*>::iterator it_p;
   std::unordered_map<dbMaster*, std::pair<int, int>>::iterator it_m;
 
-  dbBlock* block = db_->getChip()->getBlock();
+  dbBlock* block = block_;
 
   pwrLayers_.clear();
   gndLayers_.clear();
@@ -682,7 +688,7 @@ void Optdp::createNetwork()
 ////////////////////////////////////////////////////////////////
 void Optdp::createArchitecture()
 {
-  dbBlock* block = db_->getChip()->getBlock();
+  dbBlock* block = block_;
 
   odb::Rect dieRect = block->getDieArea();
 
@@ -863,7 +869,7 @@ void Optdp::setUpPlacementRegions()
   int ymin = arch_->getMinY();
   int ymax = arch_->getMaxY();
 
-  dbBlock* block = db_->getChip()->getBlock();
+  dbBlock* block = block_;
 
   std::unordered_map<odb::dbInst*, Node*>::iterator it_n;
   Architecture::Region* rptr = nullptr;

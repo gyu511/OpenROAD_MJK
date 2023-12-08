@@ -46,6 +46,7 @@
 #include "dpl/Opendp.h"
 #include "gpl/Replace.h"
 #include "odb/db.h"
+#include "dpo/Optdp.h"
 #include "par/PartitionMgr.h"
 #include "utl/Logger.h"
 
@@ -107,6 +108,8 @@ class MultiDieManager
   void makeShrunkLefs();
 
   void multiDieDetailPlacement();
+
+  void multiDieDPO();
 
   void constructSimpleExample1();
 

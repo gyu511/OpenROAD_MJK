@@ -101,9 +101,13 @@ void Opendp::init(dbDatabase* db, Logger* logger)
   logger_ = logger;
 }
 
-void Opendp::initBlock()
+void Opendp::initBlock(odb::dbBlock* block)
 {
-  block_ = db_->getChip()->getBlock();
+  if (block == nullptr) {
+    block_ = db_->getChip()->getBlock();
+  } else {
+    block_ = block;
+  }
   core_ = block_->getCoreArea();
 }
 

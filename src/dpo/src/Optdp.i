@@ -50,7 +50,7 @@
   {
     dpo::Optdp* optdp = ord::OpenRoad::openRoad()->getOptdp();
     optdp->improvePlacement(
-        seed, max_displacement_x, max_displacement_y, disallow_one_site_gaps);
+        seed, max_displacement_x, max_displacement_y, nullptr, disallow_one_site_gaps);
   }
 
   }  // namespace dpo
