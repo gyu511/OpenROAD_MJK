@@ -72,6 +72,11 @@ multiDieDPO()
   getMultiDieManager()->multiDieDPO();
 }
 
+void
+runSemiLegalizer()
+{
+  getMultiDieManager()->runSemiLegalizer();
+}
 
 void
 constructSimpleExample1()

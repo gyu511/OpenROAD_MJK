@@ -41,6 +41,7 @@
 #include <vector>
 
 #include "TestCaseManager.h"
+#include "SemiLegalizer.h"
 #include "db_sta/dbNetwork.hh"
 #include "db_sta/dbSta.hh"
 #include "dpl/Opendp.h"
@@ -110,6 +111,8 @@ class MultiDieManager
   void multiDieDetailPlacement();
 
   void multiDieDPO();
+
+  void runSemiLegalizer();
 
   void constructSimpleExample1();
 
