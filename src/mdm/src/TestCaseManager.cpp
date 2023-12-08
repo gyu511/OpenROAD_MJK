@@ -35,12 +35,37 @@
 namespace mdm {
 using namespace std;
 using namespace odb;
+
+void MultiDieManager::ICCADParse(const std::string& testCase)
+{
+  // clang-format off
+  static const std::unordered_map<std::string, std::function<void()>> testCaseMap {
+      {"2022-test1", [this]() { testCaseManager_.ICCADContest(TestCaseManager::ICCAD2022_CASE1, this); }},
+      {"2022-test2", [this]() { testCaseManager_.ICCADContest(TestCaseManager::ICCAD2022_CASE2, this); }},
+      {"2022-test2-h", [this]() { testCaseManager_.ICCADContest(TestCaseManager::ICCAD2022_CASE2_H, this); }},
+      {"2022-test3", [this]() { testCaseManager_.ICCADContest(TestCaseManager::ICCAD2022_CASE3, this); }},
+      {"2022-test3-h", [this]() { testCaseManager_.ICCADContest(TestCaseManager::ICCAD2022_CASE3_H, this); }},
+      {"2022-test4", [this]() { testCaseManager_.ICCADContest(TestCaseManager::ICCAD2022_CASE4, this); }},
+      {"2022-test4-h", [this]() { testCaseManager_.ICCADContest(TestCaseManager::ICCAD2022_CASE4_H, this); }},
+  };
+  // clang-format on
+
+  auto it = testCaseMap.find(testCase);
+  if (it != testCaseMap.end()) {
+    it->second();
+    logger_->info(
+        utl::MDM, 10, "Successfully parsed the test case: {}", testCase);
+  } else {
+    logger_->error(utl::MDM, 9, "Cannot parse the test case: {}", testCase);
+  }
+}
+
 void TestCaseManager::ICCADContest(TESTCASE testCase,
                                    MultiDieManager* mdManager)
 {
   int year;
   string inputFileName;
-  tie(inputFileName, year) = getInputFileInfo(testCase);
+  tie(inputFileName, year) = fetchInputFileInfo(testCase);
 
   if (year == 2022) {
     ICCADContest2022(inputFileName, mdManager);
@@ -59,18 +84,19 @@ void TestCaseManager::constructDB(MultiDieManager* mdManager)
   dbTech* dbTechTopHier = dbTech::create(db_, "TopHierTech");
   dbTech* dbTechTop = dbTech::create(db_, "Die1Tech");
   dbTech* dbTechBottom = dbTech::create(db_, "Die2Tech");
-  dbTechLayer* dbTechLayerTopHier
-      = dbTechLayer::create(dbTechTopHier, "layer", dbTechLayerType::MASTERSLICE);
+  dbTechLayer* dbTechLayerTopHier = dbTechLayer::create(
+      dbTechTopHier, "layer", dbTechLayerType::MASTERSLICE);
   dbTechLayer* dbTechLayerTop
       = dbTechLayer::create(dbTechTop, "layer", dbTechLayerType::MASTERSLICE);
-  dbTechLayer* dbTechLayerBottom
-      = dbTechLayer::create(dbTechBottom, "layer", dbTechLayerType::MASTERSLICE);
+  dbTechLayer* dbTechLayerBottom = dbTechLayer::create(
+      dbTechBottom, "layer", dbTechLayerType::MASTERSLICE);
 
   dbLib* dbLibTopHier = dbLib::create(db_, "TopHierLib", dbTechTopHier);
   dbLib* dbLibTop = dbLib::create(db_, "TopLib", dbTechTop);
   dbLib* dbLibBottom = dbLib::create(db_, "BottomLib", dbTechBottom);
   dbChip* dbChip = dbChip::create(db_);
-  dbBlock* dbBlockTopHier = dbBlock::create(dbChip, "topHierBlock", dbTechTopHier);
+  dbBlock* dbBlockTopHier
+      = dbBlock::create(dbChip, "topHierBlock", dbTechTopHier);
   dbBlock* dbBlockTop = dbBlock::create(dbChip, "topBlock", dbTechTop);
   dbBlock* dbBlockBottom = dbBlock::create(dbChip, "bottomBlock", dbTechBottom);
 
@@ -229,7 +255,7 @@ void TestCaseManager::constructDB(MultiDieManager* mdManager)
 
   // Top hier and top die
   dbSite* site = dbSite::create(dbLibTopHier, "topDieSite");
-  uint site_width = INT_MAX; // get the site width and height
+  uint site_width = INT_MAX;  // get the site width and height
   for (auto inst : db_->getChip()->getBlock()->getInsts()) {
     if (site_width > inst->getMaster()->getWidth()) {
       site_width = inst->getMaster()->getWidth();
@@ -629,49 +655,28 @@ void TestCaseManager::ICCADContest2023(const string& inputFileName,
   input_file.close();
 }
 
-pair<string, int> TestCaseManager::getInputFileInfo(TESTCASE testCase) const
+pair<string, int> TestCaseManager::fetchInputFileInfo(TESTCASE testCase) const
 {
-  string inputFileName;
-  int contestYear;
-  if (testCase < ICCAD2023_CASE1) {
-    contestYear = 2022;
-    ;
-  } else {
-    contestYear = 2023;
+  std::map<TESTCASE, std::pair<std::string, int>> testCaseInfo;
+  testCaseInfo[ICCAD2022_CASE1] = {"ICCAD/2022/case1.txt", 2022};
+  testCaseInfo[ICCAD2022_CASE2] = {"ICCAD/2022/case2.txt", 2022};
+  testCaseInfo[ICCAD2022_CASE3] = {"ICCAD/2022/case3.txt", 2022};
+  testCaseInfo[ICCAD2022_CASE4] = {"ICCAD/2022/case4.txt", 2022};
+  testCaseInfo[ICCAD2022_CASE2_H] = {"ICCAD/2022/case2_h.txt", 2022};
+  testCaseInfo[ICCAD2022_CASE3_H] = {"ICCAD/2022/case3_h.txt", 2022};
+  testCaseInfo[ICCAD2022_CASE4_H] = {"ICCAD/2022/case4_h.txt", 2022};
+  testCaseInfo[ICCAD2023_CASE1] = {"ICCAD/2023/case1.txt", 2023};
+  testCaseInfo[ICCAD2023_CASE2] = {"ICCAD/2023/case2.txt", 2023};
+  testCaseInfo[ICCAD2023_CASE3] = {"ICCAD/2023/case3.txt", 2023};
+  testCaseInfo[ICCAD2023_CASE4] = {"ICCAD/2023/case4.txt", 2023};
+  testCaseInfo[ICCAD2023_CASE2_H] = {"ICCAD/2023/case2_h.txt", 2023};
+  testCaseInfo[ICCAD2023_CASE3_H] = {"ICCAD/2023/case3_h.txt", 2023};
+  testCaseInfo[ICCAD2023_CASE4_H] = {"ICCAD/2023/case4_h.txt", 2023};
+  auto it = testCaseInfo.find(testCase);
+  if (it != testCaseInfo.end()) {
+    return it->second;
   }
-
-  if (testCase == ICCAD2022_CASE1) {
-    inputFileName = "ICCAD/2022/case1.txt";
-  } else if (testCase == ICCAD2022_CASE2) {
-    inputFileName = "ICCAD/2022/case2.txt";
-  } else if (testCase == ICCAD2022_CASE3) {
-    inputFileName = "ICCAD/2022/case3.txt";
-  } else if (testCase == ICCAD2022_CASE4) {
-    inputFileName = "ICCAD/2022/case4.txt";
-  } else if (testCase == ICCAD2022_CASE2_HIDDEN) {
-    inputFileName = "ICCAD/2022/case2_h.txt";
-  } else if (testCase == ICCAD2022_CASE3_HIDDEN) {
-    inputFileName = "ICCAD/2022/case3_h.txt";
-  } else if (testCase == ICCAD2022_CASE4_HIDDEN) {
-    inputFileName = "ICCAD/2022/case4_h.txt";
-  } else if (testCase == ICCAD2023_CASE1) {
-    inputFileName = "ICCAD/2023/case1.txt";
-  } else if (testCase == ICCAD2023_CASE2) {
-    inputFileName = "ICCAD/2023/case2.txt";
-  } else if (testCase == ICCAD2023_CASE3) {
-    inputFileName = "ICCAD/2023/case3.txt";
-  } else if (testCase == ICCAD2023_CASE4) {
-    inputFileName = "ICCAD/2023/case4.txt";
-  } else if (testCase == ICCAD2023_CASE2_HIDDEN) {
-    inputFileName = "ICCAD/2023/case2_h.txt";
-  } else if (testCase == ICCAD2023_CASE3_HIDDEN) {
-    inputFileName = "ICCAD/2023/case3_h.txt";
-  } else if (testCase == ICCAD2023_CASE4_HIDDEN) {
-    inputFileName = "ICCAD/2023/case4_h.txt";
-  } else {
-    assert(false);
-  }
-  return {inputFileName, contestYear};
+  assert(false);
 }
 
 }  // namespace mdm

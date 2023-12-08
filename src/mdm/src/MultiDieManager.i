@@ -73,9 +73,9 @@ constructSimpleExample1()
 }
 
 void
-test()
+ICCADParse(char* testCase)
 {
-  getMultiDieManager()->test();
+  getMultiDieManager()->ICCADParse(testCase);
 }
 
 void
@@ -85,9 +85,26 @@ timingTest()
 }
 
 void
+get3DHPWL()
+{
+  getMultiDieManager()->get3DHPWL();
+}
+
+void
 getHPWL()
 {
   getMultiDieManager()->getHPWL();
+}
+void
+getHPWLOneDie(char* dieInfo)
+{
+  getMultiDieManager()->getHPWL(dieInfo);
+}
+
+void
+setPartitionFile(char* partitionFile)
+{
+  getMultiDieManager()->setPartitionFile(partitionFile);
 }
 
 %} // inline

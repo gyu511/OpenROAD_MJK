@@ -53,6 +53,8 @@ void MultiDieManager::init(odb::dbDatabase* db,
   replace_ = replace;
   opendp_ = opendp;
   sta_ = sta;
+
+  testCaseManager_.setMDM(this);
 }
 
 void MultiDieManager::set3DIC(int numberOfDie, float areaRatio)
@@ -67,9 +69,7 @@ void MultiDieManager::set3DIC(int numberOfDie, float areaRatio)
 
 void MultiDieManager::splitInstances()
 {
-  // TODO: We need to make the partitioning part be in the TCL command.
-  string partitionFile = "partitionInfo/ispd18_test3.par";
-  readPartitionInfo(partitionFile);
+  readPartitionInfo(partitionFile_);
   makeSubBlocks();
 
   switchInstancesToAssignedDie();
