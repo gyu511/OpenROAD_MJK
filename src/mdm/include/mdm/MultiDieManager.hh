@@ -40,14 +40,14 @@
 #include <string>
 #include <vector>
 
-#include "TestCaseManager.h"
 #include "SemiLegalizer.h"
+#include "TestCaseManager.h"
 #include "db_sta/dbNetwork.hh"
 #include "db_sta/dbSta.hh"
 #include "dpl/Opendp.h"
+#include "dpo/Optdp.h"
 #include "gpl/Replace.h"
 #include "odb/db.h"
-#include "dpo/Optdp.h"
 #include "par/PartitionMgr.h"
 #include "utl/Logger.h"
 
@@ -90,7 +90,6 @@ class MultiDieManager
             sta::dbSta* sta);
 
   void set3DIC(int numberOfDie, float areaRatio = 0.5);
-
 
   void get3DHPWL();
   void getHPWL();
