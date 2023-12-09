@@ -285,6 +285,8 @@ add_subdirectory(mdm)
 add_executable(openroad
   ${OPENROAD_SOURCE}
 )
+set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fuse-ld=lld")
+set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -fuse-ld=lld")
 
 target_compile_options(openroad
   PRIVATE
