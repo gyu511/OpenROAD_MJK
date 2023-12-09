@@ -49,6 +49,7 @@ class SemiLegalizer
  private:
   void doSemiLegalize()
   {
+    doSemiLegalize(db_->getChip()->getBlock());
     for (auto block : db_->getChip()->getBlock()->getChildren()) {
       doSemiLegalize(block);
     }

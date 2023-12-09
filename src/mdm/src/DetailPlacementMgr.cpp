@@ -38,6 +38,7 @@ void MultiDieManager::multiDieDetailPlacement()
 {
   auto odp = new dpl::Opendp();
   odp->init(db_, logger_);
+  odp->detailedPlacement(0, 0, "", false, db_->getChip()->getBlock());
   for (auto block : db_->getChip()->getBlock()->getChildren()) {
     odp->detailedPlacement(0, 0, "", false, block);
   }
@@ -49,6 +50,7 @@ void MultiDieManager::multiDieDPO()
   auto odp = new dpl::Opendp();
   odp->init(db_, logger_);
   dpo->init(db_, logger_, odp);
+  dpo->improvePlacement(1, 0, 0, db_->getChip()->getBlock(), false);
   for (auto block : db_->getChip()->getBlock()->getChildren()) {
     dpo->improvePlacement(1, 0, 0, block, false);
   }
