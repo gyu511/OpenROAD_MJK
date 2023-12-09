@@ -132,6 +132,18 @@ importInstanceCoordinates(char* fileName)
 }
 
 void
+destroyOneDie(char* DIE)
+{
+  getMultiDieManager()->destroyOneDie(DIE);
+}
+
+void
+readPartitionInfo(char* partitionFile)
+{
+  getMultiDieManager()->readPartitionInfo(partitionFile);
+}
+
+void
 setICCADScale(int scale)
 {
   getMultiDieManager()->setICCADScale(scale);

@@ -69,7 +69,8 @@ void MultiDieManager::set3DIC(int numberOfDie, float areaRatio)
 
 void MultiDieManager::splitInstances()
 {
-  readPartitionInfo(partitionFile_);
+  const char* partitionFileName = partitionFile_.c_str();
+  readPartitionInfo(partitionFileName);
   makeSubBlocks();
 
   switchInstancesToAssignedDie();

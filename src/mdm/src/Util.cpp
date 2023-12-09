@@ -165,8 +165,9 @@ void MultiDieManager::makeShrunkLib(const string& whichDie,
   }
 }
 
-void MultiDieManager::readPartitionInfo(std::string fileName)
+void MultiDieManager::readPartitionInfo(const char* fileNameChar)
 {
+  string fileName{fileNameChar};
   if (fileName.empty()) {
     fileName = partitionFile_;
   }
@@ -936,6 +937,22 @@ void MultiDieManager::importCoordinates(char* fileName)
     }
   }
   inputFile.close();
+}
+void MultiDieManager::destroyOneDie(char* DIE)
+{
+  int dieID;
+  if (DIE == "TOP") {
+    dieID = 0;
+  } else {
+    dieID = 1;
+  }
+  for (auto inst : db_->getChip()->getBlock()->getInsts()) {
+    if (odb::dbIntProperty::find(inst, "partition_id")) {
+      if (odb::dbIntProperty::find(inst, "partition_id")->getValue() == dieID) {
+        odb::dbInst::destroy(inst);
+      }
+    }
+  }
 }
 
 }  // namespace mdm
