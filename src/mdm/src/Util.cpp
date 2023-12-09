@@ -897,5 +897,21 @@ void MultiDieManager::setPartitionFile(char* partitionFile)
 {
   partitionFile_ = static_cast<std::string>(partitionFile);
 }
+void MultiDieManager::exportCoordinates(char* fileName)
+{
+  ofstream outputFile(fileName);
+  for (auto block : db_->getChip()->getBlock()->getChildren()) {
+    for (auto inst : block->getInsts()) {
+      if (inst->getPlacementStatus() != odb::dbPlacementStatus::PLACED) {
+        continue;
+      }
+      outputFile << inst->getName() << " " << inst->getLocation().getX() << " "
+                 << inst->getLocation().getY() << "\n";
+    }
+  }
+  outputFile.close();
+}
+
+
 
 }  // namespace mdm

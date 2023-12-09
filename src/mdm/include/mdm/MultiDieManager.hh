@@ -128,6 +128,8 @@ class MultiDieManager
 
   void setICCADScale(int scale) { testCaseManager_.setScale(scale); }
 
+  void exportCoordinates(char* fileName);
+
  private:
   odb::dbTech* makeNewTech(const std::string& techName);
   void makeShrunkLib(const std::string& whichDie,

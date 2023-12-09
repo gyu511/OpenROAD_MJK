@@ -120,6 +120,12 @@ setPartitionFile(char* partitionFile)
 }
 
 void
+exportInstCoordinates(char* fileName)
+{
+  getMultiDieManager()->exportCoordinates(fileName);
+}
+
+void
 setICCADScale(int scale)
 {
   getMultiDieManager()->setICCADScale(scale);
