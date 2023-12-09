@@ -126,6 +126,12 @@ exportInstCoordinates(char* fileName)
 }
 
 void
+importInstanceCoordinates(char* fileName)
+{
+  getMultiDieManager()->importCoordinates(fileName);
+}
+
+void
 setICCADScale(int scale)
 {
   getMultiDieManager()->setICCADScale(scale);

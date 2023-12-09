@@ -130,6 +130,8 @@ class MultiDieManager
 
   void exportCoordinates(char* fileName);
 
+  void importCoordinates(char* fileName);
+
  private:
   odb::dbTech* makeNewTech(const std::string& techName);
   void makeShrunkLib(const std::string& whichDie,

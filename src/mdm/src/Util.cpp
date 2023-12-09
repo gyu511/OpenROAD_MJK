@@ -911,7 +911,31 @@ void MultiDieManager::exportCoordinates(char* fileName)
   }
   outputFile.close();
 }
-
-
+void MultiDieManager::importCoordinates(char* fileName)
+{
+  ifstream inputFile(fileName);
+  string line;
+  while (getline(inputFile, line)) {
+    istringstream iss(line);
+    string instName;
+    int x, y;
+    iss >> instName >> x >> y;
+    auto topBlock = db_->getChip()->getBlock();
+    auto inst = topBlock->findInst(instName.c_str());
+    if (inst != nullptr) {
+      inst->setLocation(x, y);
+      inst->setPlacementStatus(odb::dbPlacementStatus::PLACED);
+    }
+    for (auto block : db_->getChip()->getBlock()->getChildren()) {
+      auto inst = block->findInst(instName.c_str());
+      if (inst == nullptr) {
+        continue;
+      }
+      inst->setLocation(x, y);
+      inst->setPlacementStatus(odb::dbPlacementStatus::PLACED);
+    }
+  }
+  inputFile.close();
+}
 
 }  // namespace mdm
