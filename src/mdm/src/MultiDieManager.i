@@ -119,4 +119,10 @@ setPartitionFile(char* partitionFile)
   getMultiDieManager()->setPartitionFile(partitionFile);
 }
 
+void
+setICCADScale(int scale)
+{
+  getMultiDieManager()->setICCADScale(scale);
+}
+
 %} // inline
