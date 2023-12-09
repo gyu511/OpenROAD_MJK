@@ -97,8 +97,6 @@ void TestCaseManager::constructDB(MultiDieManager* mdManager)
   dbChip* dbChip = dbChip::create(db_);
   dbBlock* dbBlockTopHier
       = dbBlock::create(dbChip, "topHierBlock", dbTechTopHier);
-  dbBlock* dbBlockTop = dbBlock::create(dbChip, "topBlock", dbTechTop);
-  dbBlock* dbBlockBottom = dbBlock::create(dbChip, "bottomBlock", dbTechBottom);
 
   DieInfo* topDieInfo = &benchInformation_.dieInfos.at(0);
   DieInfo* bottomDieInfo = &benchInformation_.dieInfos.at(1);
@@ -114,6 +112,34 @@ void TestCaseManager::constructDB(MultiDieManager* mdManager)
   Point upperRight = Point(upperRightX, upperRightY);
   Rect dieArea(lowerLeft, upperRight);
   db_->getChip()->getBlock()->setDieArea(dieArea);
+
+  // Row construction
+
+  // Top hier and top die
+  dbSite* site = dbSite::create(dbLibTopHier, "Site");
+  uint site_width = scale_;
+  int siteHeight = rowInfos_.first.rowHeight * scale_;
+
+  site->setWidth(site_width);
+  site->setHeight(siteHeight);
+
+  int numOfSites = floor(rowInfos_.first.rowWidth * scale_ / site_width);
+  int numOfRow = rowInfos_.first.repeatCount;
+  while (numOfRow * siteHeight > topDieInfo->upperRightY * scale_) {
+    numOfRow--;
+  }
+  for (int i = 0; i < numOfRow; ++i) {
+    dbRow::create(dbBlockTopHier,
+                  ("row" + to_string(i)).c_str(),
+                  site,
+                  0,
+                  i * siteHeight,
+                  dbOrientType::MX,
+                  dbRowDir::HORIZONTAL,
+                  numOfSites,
+                  site_width);
+  }
+
 
   // LibCell Construction //
   assert(topDieInfo->techInfo->libCellNum
@@ -155,6 +181,7 @@ void TestCaseManager::constructDB(MultiDieManager* mdManager)
     } else {
       dbMasterTop->setType(dbMasterType::CORE);
       dbMasterTopHier->setType(dbMasterType::CORE);
+      dbMasterTopHier->setSite(site);
     }
     if (libCellInfoBottom->isMacro) {
       dbMasterBottom->setType(dbMasterType::BLOCK);
@@ -245,37 +272,6 @@ void TestCaseManager::constructDB(MultiDieManager* mdManager)
     }
   }
 
-  // Row construction
-
-  // Top hier and top die
-  dbSite* site = dbSite::create(dbLibTopHier, "topDieSite");
-  uint site_width = INT_MAX;  // get the site width and height
-  for (auto inst : db_->getChip()->getBlock()->getInsts()) {
-    if (site_width > inst->getMaster()->getWidth()) {
-      site_width = inst->getMaster()->getWidth();
-    }
-  }
-  int siteHeight = rowInfos_.first.rowHeight * scale_;
-
-  site->setWidth(site_width);
-  site->setHeight(siteHeight);
-
-  int numOfSites = floor(rowInfos_.first.rowWidth * scale_ / site_width);
-  int numOfRow = rowInfos_.first.repeatCount;
-  while (numOfRow * siteHeight > topDieInfo->upperRightY * scale_) {
-    numOfRow--;
-  }
-  for (int i = 0; i < numOfRow; ++i) {
-    dbRow::create(dbBlockTopHier,
-                  ("row" + to_string(i)).c_str(),
-                  site,
-                  0,
-                  i * siteHeight,
-                  dbOrientType::MX,
-                  dbRowDir::HORIZONTAL,
-                  numOfSites,
-                  site_width);
-  }
 }
 
 void TestCaseManager::ICCADContest2022(const string& inputFileName,

@@ -43,6 +43,10 @@ void SwitchInstanceHelper::switchInstanceToAssignedDie(
   auto targetMaster
       = targetLib->findMaster(originalInst->getMaster()->getName().c_str());
 
+  if (!targetMaster->getSite()) {
+    targetMaster->setSite((*targetBlock->getRows().begin())->getSite());
+  }
+
   auto newInst = odb::dbInst::create(
       targetBlock, targetMaster, originalInst->getName().c_str());
   inheritPlacementInfo(originalInst, newInst);

@@ -230,7 +230,7 @@ void MultiDieManager::inheritRows(odb::dbBlock* parentBlock,
     int rowOriginX, rowOriginY;
     row->getOrigin(rowOriginX, rowOriginY);
     odb::dbRow::create(childBlock,
-                       row->getName().c_str(),
+                       (childBlock->getName()+"Site").c_str(),
                        row->getSite(),
                        rowOriginX,
                        rowOriginY,
