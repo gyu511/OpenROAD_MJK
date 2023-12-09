@@ -40,14 +40,14 @@
 #include <string>
 #include <vector>
 
-#include "TestCaseManager.h"
 #include "SemiLegalizer.h"
+#include "TestCaseManager.h"
 #include "db_sta/dbNetwork.hh"
 #include "db_sta/dbSta.hh"
 #include "dpl/Opendp.h"
+#include "dpo/Optdp.h"
 #include "gpl/Replace.h"
 #include "odb/db.h"
-#include "dpo/Optdp.h"
 #include "par/PartitionMgr.h"
 #include "utl/Logger.h"
 
@@ -91,7 +91,6 @@ class MultiDieManager
 
   void set3DIC(int numberOfDie, float areaRatio = 0.5);
 
-
   void get3DHPWL();
   void getHPWL();
   void getHPWL(char* dieInfo);
@@ -127,6 +126,27 @@ class MultiDieManager
 
   void setPartitionFile(char* partitionFile);
 
+  void setICCADScale(int scale) { testCaseManager_.setScale(scale); }
+
+  void exportCoordinates(char* fileName);
+
+  void importCoordinates(char* fileName);
+
+  /**
+   * This is Experiment utilization.
+   * You need not to call set_3D_IC command before calling this function.
+   * \pre readPartitionInfo()
+   * \arg TOP || BOTTOM
+   * This function will be removed.
+   * */
+  void destroyOneDie(char* DIE);
+
+  /**
+   * Reading function for partitioning information in `par` is not work in
+   * proper way. So make this function as temporal solution.
+   * */
+  void readPartitionInfo(const char* fileNameChar);
+
  private:
   odb::dbTech* makeNewTech(const std::string& techName);
   void makeShrunkLib(const std::string& whichDie,
@@ -152,12 +172,6 @@ class MultiDieManager
    * at the TCL level, is skipped.
    */
   void makeSubBlocks();
-
-  /**
-   * Reading function for partitioning information in `par` is not work in
-   * proper way. So make this function as temporal solution.
-   * */
-  void readPartitionInfo(std::string fileName);
 
   /**
    * Below functions are for detail placement.

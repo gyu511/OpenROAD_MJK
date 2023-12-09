@@ -106,10 +106,10 @@ void TestCaseManager::constructDB(MultiDieManager* mdManager)
   // Die Area Construction //
   int lowerLeftX, lowerLeftY, upperRightX, upperRightY;
   // the size of top die and the one of bottom die are same each other.
-  lowerLeftX = topDieInfo->lowerLeftX;
-  lowerLeftY = topDieInfo->lowerLeftY;
-  upperRightX = topDieInfo->upperRightX;
-  upperRightY = topDieInfo->upperRightY;
+  lowerLeftX = topDieInfo->lowerLeftX * scale_;
+  lowerLeftY = topDieInfo->lowerLeftY * scale_;
+  upperRightX = topDieInfo->upperRightX * scale_;
+  upperRightY = topDieInfo->upperRightY * scale_;
   Point lowerLeft = Point(lowerLeftX, lowerLeftY);
   Point upperRight = Point(upperRightX, upperRightY);
   Rect dieArea(lowerLeft, upperRight);
@@ -126,10 +126,10 @@ void TestCaseManager::constructDB(MultiDieManager* mdManager)
     string libCellNameTop = libCellInfoTop->name;
     string libCellNameBottom = libCellInfoBottom->name;
     assert(libCellInfoTop->name == libCellInfoBottom->name);
-    int widthTop = libCellInfoTop->width;
-    int widthBottom = libCellInfoBottom->width;
-    int heightTop = libCellInfoTop->height;
-    int heightBottom = libCellInfoBottom->height;
+    int widthTop = libCellInfoTop->width * scale_;
+    int widthBottom = libCellInfoBottom->width * scale_;
+    int heightTop = libCellInfoTop->height * scale_;
+    int heightBottom = libCellInfoBottom->height * scale_;
     int pinNumTop = libCellInfoTop->pinNumber;
     int pinNumBottom = libCellInfoBottom->pinNumber;
     assert(pinNumTop == pinNumBottom);
@@ -169,16 +169,10 @@ void TestCaseManager::constructDB(MultiDieManager* mdManager)
       string pinNameTop = pinInfoTop->pinName;
       string pinNameBottom = pinInfoBottom->pinName;
       assert(pinNameTop == pinNameBottom);
-      int pinLocationXTop = pinInfoTop->pinLocationX;
-      int pinLocationYTop = pinInfoTop->pinLocationY;
-      int pinLocationXBottom = pinInfoBottom->pinLocationX;
-      int pinLocationYBottom = pinInfoBottom->pinLocationY;
-      /*
-            assert(widthTop >= pinLocationXTop
-                   && heightTop >= pinLocationYTop);
-            assert(widthBottom >= pinLocationXBottom
-                   && heightBottom >= pinLocationYBottom);
-      */
+      int pinLocationXTop = pinInfoTop->pinLocationX * scale_;
+      int pinLocationYTop = pinInfoTop->pinLocationY * scale_;
+      int pinLocationXBottom = pinInfoBottom->pinLocationX * scale_;
+      int pinLocationYBottom = pinInfoBottom->pinLocationY * scale_;
 
       // There's no information in this contest benchmarks.
       // assume that the cell has only one output port.
@@ -203,20 +197,20 @@ void TestCaseManager::constructDB(MultiDieManager* mdManager)
                     dbTechLayerTopHier,
                     pinLocationXTop,
                     pinLocationYTop,
-                    pinLocationXTop + 1,
-                    pinLocationYTop + 1);
+                    pinLocationXTop + 1 * scale_,
+                    pinLocationYTop + 1 * scale_);
       dbBox::create(master_pin_top,
                     dbTechLayerTop,
                     pinLocationXTop,
                     pinLocationYTop,
-                    pinLocationXTop + 1,
-                    pinLocationYTop + 1);
+                    pinLocationXTop + 1 * scale_,
+                    pinLocationYTop + 1 * scale_);
       dbBox::create(master_pin_bottom,
                     dbTechLayerBottom,
                     pinLocationXBottom,
                     pinLocationYBottom,
-                    pinLocationXBottom + 1,
-                    pinLocationYBottom + 1);
+                    pinLocationXBottom + 1 * scale_,
+                    pinLocationYBottom + 1 * scale_);
     }
     dbMasterTopHier->setFrozen();
     dbMasterTop->setFrozen();
@@ -261,14 +255,14 @@ void TestCaseManager::constructDB(MultiDieManager* mdManager)
       site_width = inst->getMaster()->getWidth();
     }
   }
-  int siteHeight = rowInfos_.first.rowHeight;
+  int siteHeight = rowInfos_.first.rowHeight * scale_;
 
   site->setWidth(site_width);
   site->setHeight(siteHeight);
 
-  int numOfSites = floor(rowInfos_.first.rowWidth / site_width);
+  int numOfSites = floor(rowInfos_.first.rowWidth * scale_ / site_width);
   int numOfRow = rowInfos_.first.repeatCount;
-  while (numOfRow * siteHeight > topDieInfo->upperRightY) {
+  while (numOfRow * siteHeight > topDieInfo->upperRightY * scale_) {
     numOfRow--;
   }
   for (int i = 0; i < numOfRow; ++i) {

@@ -119,4 +119,34 @@ setPartitionFile(char* partitionFile)
   getMultiDieManager()->setPartitionFile(partitionFile);
 }
 
+void
+exportInstCoordinates(char* fileName)
+{
+  getMultiDieManager()->exportCoordinates(fileName);
+}
+
+void
+importInstanceCoordinates(char* fileName)
+{
+  getMultiDieManager()->importCoordinates(fileName);
+}
+
+void
+destroyOneDie(char* DIE)
+{
+  getMultiDieManager()->destroyOneDie(DIE);
+}
+
+void
+readPartitionInfo(char* partitionFile)
+{
+  getMultiDieManager()->readPartitionInfo(partitionFile);
+}
+
+void
+setICCADScale(int scale)
+{
+  getMultiDieManager()->setICCADScale(scale);
+}
+
 %} // inline

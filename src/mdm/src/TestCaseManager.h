@@ -157,6 +157,7 @@ class TestCaseManager
 
   void setMDM(MultiDieManager* mdm) { mdm_ = mdm; }
   void ICCADContest(TESTCASE testCase, MultiDieManager* mdManager);
+  void setScale(int scale) { scale_ = scale; };
 
  private:
   void ICCADContest2022(const std::string& inputFileName,
@@ -177,7 +178,7 @@ class TestCaseManager
   std::pair<int, int> maxUtils_;
   MultiDieManager* mdm_ = nullptr;
   TESTCASE testcase_;
-
+  int scale_ = 1;
 };
 
 }  // namespace mdm
