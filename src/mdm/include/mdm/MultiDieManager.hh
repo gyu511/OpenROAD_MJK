@@ -91,6 +91,8 @@ class MultiDieManager
 
   void set3DIC(int numberOfDie, float areaRatio = 0.5);
 
+  odb::dbDatabase* getDB() { return db_; }
+
   void get3DHPWL();
   void getHPWL();
   void getHPWL(char* dieInfo);
@@ -126,7 +128,7 @@ class MultiDieManager
 
   void setPartitionFile(char* partitionFile);
 
-  void setICCADScale(int scale) { testCaseManager_.setScale(scale); }
+  void setICCADScale(int scale);
 
   void exportCoordinates(char* fileName);
 
@@ -146,6 +148,8 @@ class MultiDieManager
    * proper way. So make this function as temporal solution.
    * */
   void readPartitionInfo(const char* fileNameChar);
+
+  void parseICCADOutput(char* filenameChar);
 
  private:
   odb::dbTech* makeNewTech(const std::string& techName);

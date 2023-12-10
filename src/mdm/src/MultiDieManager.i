@@ -144,6 +144,12 @@ readPartitionInfo(char* partitionFile)
 }
 
 void
+parseICCADOutput(char* filename)
+{
+  getMultiDieManager()->parseICCADOutput(filename);
+}
+
+void
 setICCADScale(int scale)
 {
   getMultiDieManager()->setICCADScale(scale);

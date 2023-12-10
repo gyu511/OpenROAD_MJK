@@ -677,4 +677,104 @@ pair<string, int> TestCaseManager::fetchInputFileInfo(TESTCASE testCase) const
   assert(false);
 }
 
+void TestCaseManager::setScale(int scale)
+{
+  scale_ = scale;
+  iccadOutputParser_.setScale(scale);
+}
+
+void TestCaseManager::parseICCADOutput(const std::string& fileName)
+{
+  ifstream inputFile(fileName);
+  if (!inputFile.is_open()) {
+    mdm_->logger_->warn(
+        utl::MDM, 11, "Cannot open the input file: {}", fileName);
+  }
+  iccadOutputParser_.parseOutput(inputFile);
+  iccadOutputParser_.applyCoordinates();
+  iccadOutputParser_.makePartitionFile(fileName + ".par");
+  inputFile.close();
+}
+void TestCaseManager::setMDM(MultiDieManager* mdm)
+{
+  mdm_ = mdm;
+  iccadOutputParser_.setDb(mdm_->getDB());
+}
+
+void ICCADOutputParser::parseOutput(ifstream& outputFile)
+{
+  string info, name;
+  int n1;
+  // TopDiePlacement <instance #>
+  outputFile >> info >> n1;
+  assert(info == "TopDiePlacement");
+  for (int i = 0; i < n1; ++i) {
+    int x, y;
+    // Inst <instance name> <instance coordinate: X, Y>
+    outputFile >> info >> name >> x >> y;
+    assert(info == "Inst");
+    instList_.push_back(name);
+    instPartitionMap_[name] = TOP;
+    instCoordinateMap_[name] = {x, y};
+  }
+
+  // BottomDiePlacement <instance #>
+  outputFile >> info >> n1;
+  assert(info == "BottomDiePlacement");
+  for (int i = 0; i < n1; ++i) {
+    int x, y;
+    // Inst <instance name> <instance coordinate: X, Y>
+    outputFile >> info >> name >> x >> y;
+    assert(info == "Inst");
+    instList_.push_back(name);
+    instPartitionMap_[name] = BOTTOM;
+    instCoordinateMap_[name] = {x, y};
+  }
+
+  // NumTerminals <terminal #>
+  outputFile >> info >> n1;
+  assert(info == "NumTerminals");
+  for (int i = 0; i < n1; ++i) {
+    int x, y;
+    // Inst <instance name> <instance coordinate: X, Y>
+    outputFile >> info >> name >> x >> y;
+    assert(info == "Terminal");
+    terminalList_.push_back(name);
+    terminalCoordinateMap_[name] = {x, y};
+  }
+
+  parsed_ = true;
+  applyCoordinates();
+}
+void ICCADOutputParser::applyCoordinates()
+{  // apply the parsed coordinate to the database
+  vector<odb::dbBlock*> blockSet;
+  blockSet.push_back(db_->getChip()->getBlock());
+  for (auto block : db_->getChip()->getBlock()->getChildren()) {
+    blockSet.push_back(block);
+  }
+  for (auto block : blockSet) {
+    for (auto instance : block->getInsts()) {
+      string instName = instance->getName();
+      auto coordinate = getCellCoordinate(instName);
+      instance->setLocation(coordinate.first * scale_,
+                            coordinate.second * scale_);
+      instance->setPlacementStatus(dbPlacementStatus::PLACED);
+    }
+  }
+}
+
+void ICCADOutputParser::makePartitionFile(const string& fileName)
+{
+  if (!parsed_) {
+    return;
+  }
+  std::ofstream outFile(fileName);
+  if (outFile.is_open()) {
+    for (const auto& instName : instList_) {
+      outFile << instName << "  " << instPartitionMap_[instName] << "\n";
+    }
+  }
+}
+
 }  // namespace mdm

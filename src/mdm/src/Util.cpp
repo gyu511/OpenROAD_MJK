@@ -230,7 +230,7 @@ void MultiDieManager::inheritRows(odb::dbBlock* parentBlock,
     int rowOriginX, rowOriginY;
     row->getOrigin(rowOriginX, rowOriginY);
     odb::dbRow::create(childBlock,
-                       (childBlock->getName()+"Site").c_str(),
+                       (childBlock->getName() + "Site").c_str(),
                        row->getSite(),
                        rowOriginX,
                        rowOriginY,
@@ -953,6 +953,15 @@ void MultiDieManager::destroyOneDie(char* DIE)
       }
     }
   }
+}
+void MultiDieManager::parseICCADOutput(char* filenameChar)
+{
+  std::string filename{filenameChar};
+  testCaseManager_.parseICCADOutput(filename);
+}
+void MultiDieManager::setICCADScale(int scale)
+{
+  testCaseManager_.setScale(scale);
 }
 
 }  // namespace mdm
