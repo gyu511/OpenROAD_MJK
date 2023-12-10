@@ -140,7 +140,6 @@ void TestCaseManager::constructDB(MultiDieManager* mdManager)
                   site_width);
   }
 
-
   // LibCell Construction //
   assert(topDieInfo->techInfo->libCellNum
          == bottomDieInfo->techInfo->libCellNum);
@@ -272,6 +271,15 @@ void TestCaseManager::constructDB(MultiDieManager* mdManager)
     }
   }
 
+  // hybrid bond info
+  int x = benchInformation_.terminalInfo.sizeX * scale_;
+  int y = benchInformation_.terminalInfo.sizeY * scale_;
+  int space = benchInformation_.terminalInfo.spacing_size * scale_;
+  int cost = benchInformation_.terminalInfo.cost;
+  odb::dbIntProperty::create(db_->getChip(), "hybridBondX", x);
+  odb::dbIntProperty::create(db_->getChip(), "hybridBondY", y);
+  odb::dbIntProperty::create(db_->getChip(), "hybridBondSpacing", space);
+  odb::dbIntProperty::create(db_->getChip(), "hybridBondCost", cost);
 }
 
 void TestCaseManager::ICCADContest2022(const string& inputFileName,
