@@ -72,6 +72,73 @@ class SemiLegalizer
   }
 
   /**
+   * \deprecated
+   * This function attaches the instances in the same row tightly together, considering the wire length force
+   * */
+  void clingingRow()
+  {
+    std::vector<RowCluster> rowClusters;
+    auto numRows = targetBlock_->getRows().size();
+    auto rowHeight = (*targetBlock_->getRows().begin())->getBBox().dy();
+
+    rowClusters.resize(numRows);
+    auto instSet = targetBlock_->getInsts();
+
+    int yMin = (*targetBlock_->getRows().begin())->getBBox().yMin();
+    for (auto inst : instSet) {
+      auto instY = inst->getLocation().y();
+      int rowIdx = (instY - yMin) / rowHeight;
+      inst->setLocation(inst->getLocation().x(), rowIdx * rowHeight + yMin);
+      if (rowIdx >= 0 && rowIdx < numRows) {
+        rowClusters[rowIdx].push_back(inst);
+      } else {
+        assert(0);
+      }
+    }
+
+    for (auto& rowCluster : rowClusters) {
+      if(rowCluster.empty()){
+        continue;
+      }
+      std::sort(rowCluster.begin(),
+                rowCluster.end(),
+                [](const odb::dbInst* a, const odb::dbInst* b) {
+                  return a->getLocation().x() < b->getLocation().x();
+                });
+
+      // set the start point
+
+      auto dieWidth = db_->getChip()->getBlock()->getDieArea().dx();
+      int powerDirection = 0;
+      int powerFactors = 0;
+      int widthSum = 0;
+
+      for(auto inst: rowCluster){
+        widthSum += inst->getMaster()->getWidth();
+        for(auto term: inst->getITerms()){
+          if(!term->getNet()){
+            continue;
+          }
+          auto net = term->getNet();
+           powerDirection = net->getTermBBox().xCenter() -term->getBBox().xCenter();
+           powerFactors += 1;
+        }
+      }
+      powerDirection /= powerFactors;
+      auto powerRatio = powerDirection / dieWidth;
+
+      auto margin = dieWidth-widthSum;
+      auto marginHalf = margin/2;
+      int startPoint = marginHalf - marginHalf*powerRatio;
+      int cursor = startPoint;
+      for(auto inst: rowCluster){
+        inst->setLocation(cursor, inst->getLocation().y());
+        cursor += inst->getMaster()->getWidth();
+      }
+    }
+  }
+
+  /**
    * 1. Place cells from left to right considering overlap
    * 2. If the cell over the die, then shift the cell cluster to left.
    * */
