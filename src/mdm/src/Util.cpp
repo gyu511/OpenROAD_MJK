@@ -782,7 +782,7 @@ void MultiDieManager::rowConstruction(int dieWidth,
   }
   // row construction end //
 }
-void MultiDieManager::get3DHPWL()
+void MultiDieManager::get3DHPWL(bool approximate)
 {
   int64_t hpwl = 0;
   for (auto block : db_->getChip()->getBlock()->getChildren()) {
@@ -800,8 +800,7 @@ void MultiDieManager::get3DHPWL()
       continue;
     }
     odb::dbNet* intersectedNet2 = nullptr;
-    odb::Rect box1;
-    odb::Rect box2;
+    odb::Rect box1, box2, box3;
     for (auto bterm : intersectedNet1->getBTerms()) {
       if (bterm->getITerm()) {
         for (auto iterm : bterm->getITerm()->getNet()->getITerms()) {
@@ -816,10 +815,35 @@ void MultiDieManager::get3DHPWL()
     assert(intersectedNet2 != nullptr);
     box1 = intersectedNet1->getTermBBox();
     box2 = intersectedNet2->getTermBBox();
-    box1.merge(box2);
+    if (approximate) {
+      if (box1.intersects(box2)) {
+        box3 = box1.intersect(box2);
+      } else {
+        vector<int> xCandidates
+            = {box1.xMin(), box1.xMax(), box2.xMin(), box2.xMax()};
+        vector<int> yCandidates
+            = {box1.yMin(), box1.yMax(), box2.yMin(), box2.yMax()};
+
+        // sort by the value
+        std::sort(xCandidates.begin(), xCandidates.end());
+        std::sort(yCandidates.begin(), yCandidates.end());
+
+        box3.init(xCandidates.at(1),
+                  yCandidates.at(1),
+                  xCandidates.at(2),
+                  yCandidates.at(2));
+      }
+      odb::Rect center{
+          box3.xCenter(), box3.yCenter(), box3.xCenter(), box3.yCenter()};
+
+      box1.merge(center);
+      box2.merge(center);
+    }
     hpwl += (box1.dx() + box1.dy());
+    hpwl += (box2.dx() + box2.dy());
   }
 
+  hpwl /= testCaseManager_.getScale();
   ostringstream stream;
   stream.imbue(std::locale(""));
   stream << std::fixed << std::setprecision(2) << hpwl;

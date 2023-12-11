@@ -196,6 +196,7 @@ class TestCaseManager
   // Belows are utils
   void parseICCADOutput(const std::string& fileName);
   void setScale(int scale);
+  int getScale() { return scale_; }
 
  private:
   void ICCADContest2022(const std::string& inputFileName,
