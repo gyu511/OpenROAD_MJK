@@ -925,7 +925,13 @@ void MultiDieManager::setPartitionFile(char* partitionFile)
 void MultiDieManager::exportCoordinates(char* fileName)
 {
   ofstream outputFile(fileName);
+  vector<odb::dbBlock*> blockSet;
+  blockSet.push_back(db_->getChip()->getBlock());
   for (auto block : db_->getChip()->getBlock()->getChildren()) {
+    blockSet.push_back(block);
+  }
+
+  for (auto block : blockSet) {
     for (auto inst : block->getInsts()) {
       if (inst->getPlacementStatus() != odb::dbPlacementStatus::PLACED) {
         continue;
@@ -940,24 +946,23 @@ void MultiDieManager::importCoordinates(char* fileName)
 {
   ifstream inputFile(fileName);
   string line;
+  vector<odb::dbBlock*> blockSet;
+  blockSet.push_back(db_->getChip()->getBlock());
+  for (auto block : db_->getChip()->getBlock()->getChildren()) {
+    blockSet.push_back(block);
+  }
+
   while (getline(inputFile, line)) {
     istringstream iss(line);
     string instName;
     int x, y;
     iss >> instName >> x >> y;
-    auto topBlock = db_->getChip()->getBlock();
-    auto inst = topBlock->findInst(instName.c_str());
-    if (inst != nullptr) {
-      inst->setLocation(x, y);
-      inst->setPlacementStatus(odb::dbPlacementStatus::PLACED);
-    }
-    for (auto block : db_->getChip()->getBlock()->getChildren()) {
+    for (auto block : blockSet) {
       auto inst = block->findInst(instName.c_str());
-      if (inst == nullptr) {
-        continue;
+      if (inst != nullptr) {
+        inst->setLocation(x, y);
+        inst->setPlacementStatus(odb::dbPlacementStatus::PLACED);
       }
-      inst->setLocation(x, y);
-      inst->setPlacementStatus(odb::dbPlacementStatus::PLACED);
     }
   }
   inputFile.close();
