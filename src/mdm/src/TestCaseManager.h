@@ -42,6 +42,41 @@
 
 namespace mdm {
 class MultiDieManager;
+class ICCADOutputParser
+{
+  enum DIE
+  {
+    TOP,
+    BOTTOM
+  };
+
+ public:
+  void setDb(odb::dbDatabase* db) { db_ = db; }
+  void parseOutput(std::ifstream& outputFile);
+  void applyCoordinates();
+  void makePartitionFile(const std::string& fileName);
+  void setScale(int scale) { scale_ = scale; }
+
+ private:
+  std::pair<int, int> getTerminalCoordinate(const std::string& terminalName)
+  {
+    return terminalCoordinateMap_[terminalName];
+  }
+
+  std::pair<int, int> getCellCoordinate(const std::string& terminalName)
+  {
+    return instCoordinateMap_[terminalName];
+  }
+
+  bool parsed_ = false;
+  std::vector<std::string> instList_;
+  std::vector<std::string> terminalList_;
+  std::unordered_map<std::string, DIE> instPartitionMap_;
+  std::unordered_map<std::string, std::pair<int, int>> instCoordinateMap_;
+  std::unordered_map<std::string, std::pair<int, int>> terminalCoordinateMap_;
+  odb::dbDatabase* db_;
+  int scale_ = 1;
+};
 class TestCaseManager
 {
   struct LibPinInfo
@@ -155,9 +190,13 @@ class TestCaseManager
     MEGA_BOOM
   };
 
-  void setMDM(MultiDieManager* mdm) { mdm_ = mdm; }
-  void ICCADContest(TESTCASE testCase, MultiDieManager* mdManager);
-  void setScale(int scale) { scale_ = scale; };
+  void setMDM(MultiDieManager* mdm);
+  void ICCADContest(TESTCASE testCase, MultiDieManager* mdmPtr);
+
+  // Belows are utils
+  void parseICCADOutput(const std::string& fileName);
+  void setScale(int scale);
+  int getScale() { return scale_; }
 
  private:
   void ICCADContest2022(const std::string& inputFileName,
@@ -171,6 +210,7 @@ class TestCaseManager
    * */
   std::pair<std::string, int> fetchInputFileInfo(TESTCASE testCase) const;
 
+  ICCADOutputParser iccadOutputParser_;
   BenchInformation benchInformation_;
   int instanceNumber_;
   int netNumber_;

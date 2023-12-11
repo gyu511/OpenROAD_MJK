@@ -42,6 +42,8 @@ namespace mdm {
 class MultiDieManager;
 class SemiLegalizer
 {
+  using RowCluster = std::vector<odb::dbInst*>;
+
  public:
   void setDb(odb::dbDatabase* db) { db_ = db; }
   void run() { doSemiLegalize(); }
@@ -62,13 +64,182 @@ class SemiLegalizer
   void doSemiLegalize(odb::dbBlock* block)
   {
     targetBlock_ = block;
+    if (!utilCheck()) {
+      return;
+    }
     adjustRowCapacity();
+    shiftLegalize();
+  }
+
+  /**
+   * \deprecated
+   * This function attaches the instances in the same row tightly together, considering the wire length force
+   * */
+  void clingingRow()
+  {
+    std::vector<RowCluster> rowClusters;
+    auto numRows = targetBlock_->getRows().size();
+    auto rowHeight = (*targetBlock_->getRows().begin())->getBBox().dy();
+
+    rowClusters.resize(numRows);
+    auto instSet = targetBlock_->getInsts();
+
+    int yMin = (*targetBlock_->getRows().begin())->getBBox().yMin();
+    for (auto inst : instSet) {
+      auto instY = inst->getLocation().y();
+      int rowIdx = (instY - yMin) / rowHeight;
+      inst->setLocation(inst->getLocation().x(), rowIdx * rowHeight + yMin);
+      if (rowIdx >= 0 && rowIdx < numRows) {
+        rowClusters[rowIdx].push_back(inst);
+      } else {
+        assert(0);
+      }
+    }
+
+    for (auto& rowCluster : rowClusters) {
+      if(rowCluster.empty()){
+        continue;
+      }
+      std::sort(rowCluster.begin(),
+                rowCluster.end(),
+                [](const odb::dbInst* a, const odb::dbInst* b) {
+                  return a->getLocation().x() < b->getLocation().x();
+                });
+
+      // set the start point
+
+      auto dieWidth = db_->getChip()->getBlock()->getDieArea().dx();
+      int powerDirection = 0;
+      int powerFactors = 0;
+      int widthSum = 0;
+
+      for(auto inst: rowCluster){
+        widthSum += inst->getMaster()->getWidth();
+        for(auto term: inst->getITerms()){
+          if(!term->getNet()){
+            continue;
+          }
+          auto net = term->getNet();
+           powerDirection = net->getTermBBox().xCenter() -term->getBBox().xCenter();
+           powerFactors += 1;
+        }
+      }
+      powerDirection /= powerFactors;
+      auto powerRatio = powerDirection / dieWidth;
+
+      auto margin = dieWidth-widthSum;
+      auto marginHalf = margin/2;
+      int startPoint = marginHalf - marginHalf*powerRatio;
+      int cursor = startPoint;
+      for(auto inst: rowCluster){
+        inst->setLocation(cursor, inst->getLocation().y());
+        cursor += inst->getMaster()->getWidth();
+      }
+    }
+  }
+
+  /**
+   * 1. Place cells from left to right considering overlap
+   * 2. If the cell over the die, then shift the cell cluster to left.
+   * */
+  void shiftLegalize()
+  {
+    std::vector<RowCluster> rowClusters;
+    auto numRows = targetBlock_->getRows().size();
+    auto rowHeight = (*targetBlock_->getRows().begin())->getBBox().dy();
+
+    rowClusters.resize(numRows);
+    auto instSet = targetBlock_->getInsts();
+
+    int yMin = (*targetBlock_->getRows().begin())->getBBox().yMin();
+    for (auto inst : instSet) {
+      auto instY = inst->getLocation().y();
+      int rowIdx = (instY - yMin) / rowHeight;
+      inst->setLocation(inst->getLocation().x(), rowIdx * rowHeight + yMin);
+      if (rowIdx >= 0 && rowIdx < numRows) {
+        rowClusters[rowIdx].push_back(inst);
+      } else {
+        assert(0);
+      }
+    }
+
+    for (auto& rowCluster : rowClusters) {
+      std::sort(rowCluster.begin(),
+                rowCluster.end(),
+                [](const odb::dbInst* a, const odb::dbInst* b) {
+                  return a->getLocation().x() < b->getLocation().x();
+                });
+      int cursor = targetBlock_->getDieArea().xMin();
+      int cellRowIdx = 0;
+      for (auto inst : rowCluster) {
+        if (cursor > inst->getLocation().x()) {
+          // the target cell is overlapped -> shift until not overlapped
+          inst->setLocation(cursor, inst->getLocation().y());
+        }
+        cursor = inst->getBBox()->xMax();
+
+        /* If the cell over the row, then shift the cell cluster to left. */
+        if (cursor > targetBlock_->getDieArea().xMax()) {
+          // current instance is out from the die
+          shiftCellsToLeft(rowCluster, inst, cellRowIdx);
+        }
+        cellRowIdx++;
+      }
+    }
+  }
+
+  void shiftCellsToLeft(RowCluster& cellRow, odb::dbInst* inst, int idx)
+  {
+    /* Get the shift candidates
+     * `candidates` means,
+     * ---------------------------------------------------------
+     * ... ┌─────┐      ┌─────┐------┌─────┐-----┌─────┐---┌──────────────┐
+     * ... │     │      │ c3  │      │ c2  │     │ c1  │   │              │
+     * ... └─────┘      └─────┘------└─────┘-----└─────┘---└──────────────┘
+     *                         <---->       <--->       <->    <---------->
+     *                        spacing3     spacing2   spacing1 stickOutWidth
+     *                                <------------------->
+     *                                 c1, c2 are candidates
+     *                         because Σ spacing_i < stickOutWidth until c3
+     * ---------------------------------------------------------
+     *                                                         |
+     *                                                    Die end point
+     * */
+    std::vector<odb::dbInst*> candidates;
+    int stickOutWidth
+        = inst->getBBox()->xMax() - targetBlock_->getDieArea().xMax();
+    int sumOfSpace = 0;
+    int spacing;
+    int cursor = inst->getLocation().x();
+    candidates.push_back(inst);
+    while (sumOfSpace < stickOutWidth) {
+      idx -= 1;
+      if (idx == -1) {
+        spacing = cursor - 0;
+        candidates.push_back(nullptr);
+      } else {
+        inst = cellRow.at(idx);
+        spacing = cursor - inst->getBBox()->xMax();
+        candidates.push_back(inst);
+        cursor = inst->getLocation().x();
+      }
+      sumOfSpace += spacing;
+    }
+    candidates.pop_back();
+
+    // Place candidates cells from right to left
+    cursor = targetBlock_->getDieArea().xMax();
+    for (auto inst : candidates) {
+      int cellWidth = inst->getMaster()->getWidth();
+      int placePoint = cursor - cellWidth;
+      inst->setLocation(placePoint, inst->getLocation().y());
+      cursor = inst->getLocation().x();
+    }
   }
 
   void adjustRowCapacity()
   {
     // [.] Setting the Row Clusters
-    using RowCluster = std::vector<odb::dbInst*>;
     std::vector<RowCluster> rowClusters;
     auto numRows = targetBlock_->getRows().size();
     auto rowHeight = (*targetBlock_->getRows().begin())->getBBox().dy();
@@ -163,6 +334,18 @@ class SemiLegalizer
       return totalWidth - rowWidth;
     }
     return 0;
+  }
+
+  bool utilCheck()
+  {
+    int64_t sumArea = 0;
+    for (auto inst : targetBlock_->getInsts()) {
+      sumArea += inst->getMaster()->getWidth() * inst->getMaster()->getHeight();
+    }
+    if (sumArea > targetBlock_->getDieArea().area()) {
+      return false;
+    }
+    return true;
   }
 
   odb::dbDatabase* db_;

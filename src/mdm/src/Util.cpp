@@ -230,7 +230,7 @@ void MultiDieManager::inheritRows(odb::dbBlock* parentBlock,
     int rowOriginX, rowOriginY;
     row->getOrigin(rowOriginX, rowOriginY);
     odb::dbRow::create(childBlock,
-                       (childBlock->getName()+"Site").c_str(),
+                       (childBlock->getName() + "Site").c_str(),
                        row->getSite(),
                        rowOriginX,
                        rowOriginY,
@@ -782,7 +782,7 @@ void MultiDieManager::rowConstruction(int dieWidth,
   }
   // row construction end //
 }
-void MultiDieManager::get3DHPWL()
+void MultiDieManager::get3DHPWL(bool approximate)
 {
   int64_t hpwl = 0;
   for (auto block : db_->getChip()->getBlock()->getChildren()) {
@@ -800,8 +800,7 @@ void MultiDieManager::get3DHPWL()
       continue;
     }
     odb::dbNet* intersectedNet2 = nullptr;
-    odb::Rect box1;
-    odb::Rect box2;
+    odb::Rect box1, box2, box3;
     for (auto bterm : intersectedNet1->getBTerms()) {
       if (bterm->getITerm()) {
         for (auto iterm : bterm->getITerm()->getNet()->getITerms()) {
@@ -816,10 +815,35 @@ void MultiDieManager::get3DHPWL()
     assert(intersectedNet2 != nullptr);
     box1 = intersectedNet1->getTermBBox();
     box2 = intersectedNet2->getTermBBox();
-    box1.merge(box2);
+    if (approximate) {
+      if (box1.intersects(box2)) {
+        box3 = box1.intersect(box2);
+      } else {
+        vector<int> xCandidates
+            = {box1.xMin(), box1.xMax(), box2.xMin(), box2.xMax()};
+        vector<int> yCandidates
+            = {box1.yMin(), box1.yMax(), box2.yMin(), box2.yMax()};
+
+        // sort by the value
+        std::sort(xCandidates.begin(), xCandidates.end());
+        std::sort(yCandidates.begin(), yCandidates.end());
+
+        box3.init(xCandidates.at(1),
+                  yCandidates.at(1),
+                  xCandidates.at(2),
+                  yCandidates.at(2));
+      }
+      odb::Rect center{
+          box3.xCenter(), box3.yCenter(), box3.xCenter(), box3.yCenter()};
+
+      box1.merge(center);
+      box2.merge(center);
+    }
     hpwl += (box1.dx() + box1.dy());
+    hpwl += (box2.dx() + box2.dy());
   }
 
+  hpwl /= testCaseManager_.getScale();
   ostringstream stream;
   stream.imbue(std::locale(""));
   stream << std::fixed << std::setprecision(2) << hpwl;
@@ -901,7 +925,13 @@ void MultiDieManager::setPartitionFile(char* partitionFile)
 void MultiDieManager::exportCoordinates(char* fileName)
 {
   ofstream outputFile(fileName);
+  vector<odb::dbBlock*> blockSet;
+  blockSet.push_back(db_->getChip()->getBlock());
   for (auto block : db_->getChip()->getBlock()->getChildren()) {
+    blockSet.push_back(block);
+  }
+
+  for (auto block : blockSet) {
     for (auto inst : block->getInsts()) {
       if (inst->getPlacementStatus() != odb::dbPlacementStatus::PLACED) {
         continue;
@@ -916,24 +946,23 @@ void MultiDieManager::importCoordinates(char* fileName)
 {
   ifstream inputFile(fileName);
   string line;
+  vector<odb::dbBlock*> blockSet;
+  blockSet.push_back(db_->getChip()->getBlock());
+  for (auto block : db_->getChip()->getBlock()->getChildren()) {
+    blockSet.push_back(block);
+  }
+
   while (getline(inputFile, line)) {
     istringstream iss(line);
     string instName;
     int x, y;
     iss >> instName >> x >> y;
-    auto topBlock = db_->getChip()->getBlock();
-    auto inst = topBlock->findInst(instName.c_str());
-    if (inst != nullptr) {
-      inst->setLocation(x, y);
-      inst->setPlacementStatus(odb::dbPlacementStatus::PLACED);
-    }
-    for (auto block : db_->getChip()->getBlock()->getChildren()) {
+    for (auto block : blockSet) {
       auto inst = block->findInst(instName.c_str());
-      if (inst == nullptr) {
-        continue;
+      if (inst != nullptr) {
+        inst->setLocation(x, y);
+        inst->setPlacementStatus(odb::dbPlacementStatus::PLACED);
       }
-      inst->setLocation(x, y);
-      inst->setPlacementStatus(odb::dbPlacementStatus::PLACED);
     }
   }
   inputFile.close();
@@ -953,6 +982,15 @@ void MultiDieManager::destroyOneDie(char* DIE)
       }
     }
   }
+}
+void MultiDieManager::parseICCADOutput(char* filenameChar)
+{
+  std::string filename{filenameChar};
+  testCaseManager_.parseICCADOutput(filename);
+}
+void MultiDieManager::setICCADScale(int scale)
+{
+  testCaseManager_.setScale(scale);
 }
 
 }  // namespace mdm
