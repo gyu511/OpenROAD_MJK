@@ -85,11 +85,11 @@ void Opendp::detailedPlacement()
   // y axis dummycell insertion
   groupInitPixels();
 
-/*
-  if (!groups_.empty()) {
-    placeGroups();
-  }
-*/
+  /*
+    if (!groups_.empty()) {
+      placeGroups();
+    }
+  */
   place();
 
   if (debug_observer_) {
@@ -798,14 +798,15 @@ PixelPt Opendp::diamondSearch(const Cell* cell,
     return avail_pt;
   }
 
+  int aspectRatio = row_height / site_width;
   for (int i = 1; i < std::max(scaled_max_displacement_y_, max_displacement_x_);
        i++) {
     PixelPt best_pt;
     int best_dist = 0;
     // left side
-    for (int j = 1; j < i * 2; j++) {
+    for (int j = 1; j < i * 2 * aspectRatio; j++) {
       int x_offset = -((j + 1) / 2);
-      int y_offset = (i * 2 - j) / 2;
+      int y_offset = (i * 2 - j / aspectRatio) / 2;
       if (abs(x_offset) < max_displacement_x_
           && abs(y_offset) < scaled_max_displacement_y_) {
         if (j % 2 == 1) {
@@ -826,9 +827,9 @@ PixelPt Opendp::diamondSearch(const Cell* cell,
     }
 
     // right side
-    for (int j = 1; j < (i + 1) * 2; j++) {
+    for (int j = 1; j < (i + 1) * 2 * aspectRatio; j++) {
       int x_offset = (j - 1) / 2;
-      int y_offset = ((i + 1) * 2 - j) / 2;
+      int y_offset = ((i + 1) * 2 - j / aspectRatio) / 2;
       if (abs(x_offset) < max_displacement_x_
           && abs(y_offset) < scaled_max_displacement_y_) {
         if (j % 2 == 1) {
