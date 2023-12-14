@@ -1,7 +1,7 @@
 ///////////////////////////////////////////////////////////////////////////////
 // BSD 3-Clause License
 //
-// Copyright (c) 2023, The Regents of the University of California
+// Copyright (c) 2018-2020, The Regents of the University of California
 // All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
@@ -46,9 +46,18 @@ class SemiLegalizer
 
  public:
   void setDb(odb::dbDatabase* db) { db_ = db; }
-  void run() { doSemiLegalize(); }
+  void run(bool abacus = true);
 
  private:
+  /**
+   * \Refer:
+   * [Abacus] Fast Legalization of Standard Cell Circuits with Minimal Movement
+   * [DREAMPlace] https://github.com/limbo018/DREAMPlace/tree/master/dreamplace/ops/abacus_legalize
+   * This is the simple and fast legalizer
+   * */
+  void runAbacus();
+  void runAbacus(odb::dbBlock* block);
+
   void doSemiLegalize();
 
   /**

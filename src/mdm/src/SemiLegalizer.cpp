@@ -34,6 +34,26 @@
 #include "SemiLegalizer.h"
 namespace mdm {
 
+void SemiLegalizer::run(bool abacus)
+{
+  if (abacus) {
+    runAbacus();
+  } else {
+    doSemiLegalize();
+  }
+}
+void SemiLegalizer::runAbacus()
+{
+  runAbacus(db_->getChip()->getBlock());
+  for (auto block : db_->getChip()->getBlock()->getChildren()) {
+    runAbacus(block);
+  }
+}
+void SemiLegalizer::runAbacus(odb::dbBlock* block)
+{
+
+
+}
 void SemiLegalizer::doSemiLegalize()
 {
   doSemiLegalize(db_->getChip()->getBlock());
