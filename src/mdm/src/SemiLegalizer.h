@@ -73,7 +73,8 @@ class SemiLegalizer
 
   /**
    * \deprecated
-   * This function attaches the instances in the same row tightly together, considering the wire length force
+   * This function attaches the instances in the same row tightly together,
+   * considering the wire length force
    * */
   void clingingRow()
   {
@@ -97,7 +98,7 @@ class SemiLegalizer
     }
 
     for (auto& rowCluster : rowClusters) {
-      if(rowCluster.empty()){
+      if (rowCluster.empty()) {
         continue;
       }
       std::sort(rowCluster.begin(),
@@ -113,25 +114,26 @@ class SemiLegalizer
       int powerFactors = 0;
       int widthSum = 0;
 
-      for(auto inst: rowCluster){
+      for (auto inst : rowCluster) {
         widthSum += inst->getMaster()->getWidth();
-        for(auto term: inst->getITerms()){
-          if(!term->getNet()){
+        for (auto term : inst->getITerms()) {
+          if (!term->getNet()) {
             continue;
           }
           auto net = term->getNet();
-           powerDirection = net->getTermBBox().xCenter() -term->getBBox().xCenter();
-           powerFactors += 1;
+          powerDirection
+              = net->getTermBBox().xCenter() - term->getBBox().xCenter();
+          powerFactors += 1;
         }
       }
       powerDirection /= powerFactors;
       auto powerRatio = powerDirection / dieWidth;
 
-      auto margin = dieWidth-widthSum;
-      auto marginHalf = margin/2;
-      int startPoint = marginHalf - marginHalf*powerRatio;
+      auto margin = dieWidth - widthSum;
+      auto marginHalf = margin / 2;
+      int startPoint = marginHalf - marginHalf * powerRatio;
       int cursor = startPoint;
-      for(auto inst: rowCluster){
+      for (auto inst : rowCluster) {
         inst->setLocation(cursor, inst->getLocation().y());
         cursor += inst->getMaster()->getWidth();
       }
