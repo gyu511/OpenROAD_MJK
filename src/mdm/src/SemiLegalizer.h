@@ -42,7 +42,19 @@ namespace mdm {
 class MultiDieManager;
 class SemiLegalizer
 {
+  struct AbacusCluster
+  {
+    std::vector<odb::dbInst*> instSet;
+    SemiLegalizer::AbacusCluster* predecessor;
+    SemiLegalizer::AbacusCluster* successor;
+
+    double e;  // weight of displacement in the objective
+    double q;  // x = q/e
+    double w;  // cluster width
+    double x;  // optimal location (cluster's left edge coordinate)
+  };
   using RowCluster = std::vector<odb::dbInst*>;
+  using instInRow = std::vector<odb::dbInst*>;
 
  public:
   void setDb(odb::dbDatabase* db) { db_ = db; }
@@ -52,17 +64,29 @@ class SemiLegalizer
   /**
    * \Refer:
    * [Abacus] Fast Legalization of Standard Cell Circuits with Minimal Movement
-   * [DREAMPlace] https://github.com/limbo018/DREAMPlace/tree/master/dreamplace/ops/abacus_legalize
+   * [DREAMPlace]
+   * https://github.com/limbo018/DREAMPlace/tree/master/dreamplace/ops/abacus_legalize
    * This is the simple and fast legalizer
    * */
-  void runAbacus();
+  void runAbacus(bool topHierDie = false);
+  /**
+   *  Here, we do not implement this considering fixed objects
+   *  All object will be considered as movable.
+   *  Considering fixed object will be remained as to-do thing.
+   * */
   void runAbacus(odb::dbBlock* block);
+
+  void initRows(std::vector<instInRow>* rowSet);
+  void placeRow(instInRow row);
+  void addCell(AbacusCluster* cluster, odb::dbInst* inst);
+  void collapse(SemiLegalizer::AbacusCluster* cluster,
+                 std::vector<AbacusCluster>& predecessor);
 
   /**
    * Assume it has single height rows
    * This will adjust the row capacity
    * */
-  void doSimpleLegalize();
+  void doSimpleLegalize(bool topHierDie = false);
   void doSimpleLegalize(odb::dbBlock* block);
 
   /**
@@ -101,5 +125,7 @@ class SemiLegalizer
 
   odb::dbDatabase* db_;
   odb::dbBlock* targetBlock_;
+  void addCluster(SemiLegalizer::AbacusCluster* predecessor,
+                  SemiLegalizer::AbacusCluster* cluster);
 };
 }  // namespace mdm

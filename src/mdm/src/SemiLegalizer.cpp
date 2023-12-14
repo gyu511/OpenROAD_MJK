@@ -42,21 +42,138 @@ void SemiLegalizer::run(bool abacus)
     doSimpleLegalize();
   }
 }
-void SemiLegalizer::runAbacus()
+void SemiLegalizer::runAbacus(bool topHierDie)
 {
-  runAbacus(db_->getChip()->getBlock());
+  if (topHierDie) {
+    runAbacus(db_->getChip()->getBlock());
+  }
   for (auto block : db_->getChip()->getBlock()->getChildren()) {
     runAbacus(block);
   }
 }
 void SemiLegalizer::runAbacus(odb::dbBlock* block)
 {
+  targetBlock_ = block;
+  std::vector<instInRow> rowSet;
 
+  initRows(&rowSet);
 
+  for (const auto& row : rowSet) {
+    placeRow(row);
+  }
 }
-void SemiLegalizer::doSimpleLegalize()
+void SemiLegalizer::initRows(std::vector<instInRow>* rowSet)
 {
-  doSimpleLegalize(db_->getChip()->getBlock());
+  auto numRows = targetBlock_->getRows().size();
+  auto rowHeight = (*targetBlock_->getRows().begin())->getBBox().dy();
+  rowSet->resize(numRows);
+  int yMin = (*targetBlock_->getRows().begin())->getBBox().yMin();
+  for (auto inst : targetBlock_->getInsts()) {
+    auto instY = inst->getLocation().y() + inst->getMaster()->getHeight() / 2;
+    int rowIdx = (instY - yMin) / rowHeight;
+    if (rowIdx >= 0 && rowIdx < numRows) {
+      rowSet->at(rowIdx).push_back(inst);
+    }
+    inst->setLocation(inst->getLocation().x(), rowIdx * rowHeight);
+  }
+  for (auto& row : *rowSet) {
+    std::sort(
+        row.begin(), row.end(), [](const odb::dbInst* a, const odb::dbInst* b) {
+          return a->getLocation().x() < b->getLocation().x();
+        });
+  }
+}
+
+void SemiLegalizer::placeRow(SemiLegalizer::instInRow row)
+{
+  // init cluster
+  std::vector<AbacusCluster> abacusClusters;
+  abacusClusters.reserve(row.size());
+  auto numIntsInRow = row.size();
+  // kernel algorithm for placeRow
+  for (int i = 0; i < numIntsInRow; ++i) {
+    auto inst = row.at(i);
+    double instX = static_cast<double>(inst->getLocation().x());
+    if (abacusClusters.empty()
+        || abacusClusters.back().x + abacusClusters.back().w <= instX) {
+      AbacusCluster cluster;  // create new cluster
+      cluster.e = 0;
+      cluster.w = 0;
+      cluster.q = 0;
+      cluster.x = instX;
+      addCell(&cluster, inst);
+      abacusClusters.push_back(cluster);
+    } else {
+      auto& lastCluster = abacusClusters.back();
+      addCell(&lastCluster, inst);
+      collapse(&lastCluster, abacusClusters);
+    }
+  }
+
+  // transform cluster positions x_c(c) to cell positions x(i)
+  for (const auto& cluster : abacusClusters) {
+    int x = static_cast<int>(cluster.x);
+    for (auto inst : cluster.instSet) {
+      inst->setLocation(x, inst->getLocation().y());
+      x += static_cast<int>(inst->getMaster()->getWidth());
+    }
+  }
+}
+
+void SemiLegalizer::addCell(SemiLegalizer::AbacusCluster* cluster,
+                            odb::dbInst* inst)
+{
+  auto instX = static_cast<double>(inst->getLocation().x());
+  auto instWidth = static_cast<double>(inst->getMaster()->getWidth());
+  double instE = 1;  // we do not consider the fixed objects
+  cluster->instSet.push_back(inst);
+  cluster->e += instE;
+  cluster->q += instE * (instX - cluster->w);
+  cluster->w += instWidth;
+}
+
+void SemiLegalizer::addCluster(SemiLegalizer::AbacusCluster* predecessor,
+                               SemiLegalizer::AbacusCluster* cluster)
+{
+  predecessor->instSet.insert(predecessor->instSet.end(),
+                              cluster->instSet.begin(),
+                              cluster->instSet.end());
+  predecessor->e += cluster->e;
+  predecessor->q += cluster->q - cluster->e * predecessor->w;
+  predecessor->w += cluster->w;
+}
+
+void SemiLegalizer::collapse(SemiLegalizer::AbacusCluster* cluster,
+                             std::vector<AbacusCluster>& abacusClusters)
+{
+  auto xMin = (*targetBlock_->getRows().begin())->getBBox().xMin();
+  auto xMax = (*targetBlock_->getRows().begin())->getBBox().xMax();
+
+  cluster->x = cluster->q / cluster->e;  // place cluster c
+  // limit position between x min and x max - w_c(c)
+  if (cluster->x < xMin) {
+    cluster->x = xMin;
+  } else if (cluster->x > xMax - cluster->w) {
+    cluster->x = xMax - cluster->w;
+  }
+
+  if (abacusClusters.size() > 1) {
+    // if predecessor exists,
+    auto predecessor = &*(abacusClusters.end() - 2);
+    if (predecessor->x + predecessor->w > cluster->x) {
+      // merge cluster c to c'
+      addCluster(predecessor, cluster);
+      abacusClusters.erase(abacusClusters.end() - 1);  // remove cluster c
+      collapse(predecessor, abacusClusters);
+    }
+  }
+}
+
+void SemiLegalizer::doSimpleLegalize(bool topHierDie)
+{
+  if (topHierDie) {
+    doSimpleLegalize(db_->getChip()->getBlock());
+  }
   for (auto block : db_->getChip()->getBlock()->getChildren()) {
     doSimpleLegalize(block);
   }
