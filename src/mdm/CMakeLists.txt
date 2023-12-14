@@ -51,6 +51,7 @@ target_sources(mdm
         src/DetailPlacementMgr.cpp
         src/Util.cpp
         src/TestCaseManager.cpp
+        src/SemiLegalizer.cpp
 )
 
 target_include_directories(mdm
