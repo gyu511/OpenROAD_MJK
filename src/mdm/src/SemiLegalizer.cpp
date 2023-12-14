@@ -39,7 +39,7 @@ void SemiLegalizer::run(bool abacus)
   if (abacus) {
     runAbacus();
   } else {
-    doSemiLegalize();
+    doSimpleLegalize();
   }
 }
 void SemiLegalizer::runAbacus()
@@ -54,14 +54,14 @@ void SemiLegalizer::runAbacus(odb::dbBlock* block)
 
 
 }
-void SemiLegalizer::doSemiLegalize()
+void SemiLegalizer::doSimpleLegalize()
 {
-  doSemiLegalize(db_->getChip()->getBlock());
+  doSimpleLegalize(db_->getChip()->getBlock());
   for (auto block : db_->getChip()->getBlock()->getChildren()) {
-    doSemiLegalize(block);
+    doSimpleLegalize(block);
   }
 }
-void SemiLegalizer::doSemiLegalize(odb::dbBlock* block)
+void SemiLegalizer::doSimpleLegalize(odb::dbBlock* block)
 {
   targetBlock_ = block;
   if (!utilCheck()) {
@@ -135,6 +135,10 @@ void SemiLegalizer::clingingRow()
 }
 void SemiLegalizer::shiftLegalize()
 {
+  /**
+   * 1. Place cells from left to right considering overlap
+   * 2. If the cell over the die, then shift the cell cluster to left.
+   * */
   std::vector<RowCluster> rowClusters;
   auto numRows = targetBlock_->getRows().size();
   auto rowHeight = (*targetBlock_->getRows().begin())->getBBox().dy();

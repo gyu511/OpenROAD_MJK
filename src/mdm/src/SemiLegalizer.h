@@ -58,13 +58,39 @@ class SemiLegalizer
   void runAbacus();
   void runAbacus(odb::dbBlock* block);
 
-  void doSemiLegalize();
-
   /**
    * Assume it has single height rows
    * This will adjust the row capacity
    * */
-  void doSemiLegalize(odb::dbBlock* block);
+  void doSimpleLegalize();
+  void doSimpleLegalize(odb::dbBlock* block);
+
+  /**
+   * 1. Place cells from left to right considering overlap
+   * 2. If the cell over the die, then shift the cell cluster to left.
+   * */
+  void shiftLegalize();
+  /**
+   * Get the shift candidates
+   * `candidates` means,
+   * ---------------------------------------------------------
+   * ... ┌─────┐      ┌─────┐------┌─────┐-----┌─────┐---┌──────────────┐
+   * ... │     │      │ c3  │      │ c2  │     │ c1  │   │              │
+   * ... └─────┘      └─────┘------└─────┘-----└─────┘---└──────────────┘
+   *                         <---->       <--->       <->    <---------->
+   *                        spacing3     spacing2   spacing1 stickOutWidth
+   *                                <------------------->
+   *                                 c1, c2 are candidates
+   *                         because Σ spacing_i < stickOutWidth until c3
+   * ---------------------------------------------------------
+   *                                                         |
+   *                                                    Die end point
+   * */
+  void shiftCellsToLeft(RowCluster& cellRow, odb::dbInst* inst, int idx);
+  int degreeOfExcess(const std::vector<odb::dbInst*>& row);
+
+  bool utilCheck();
+  void adjustRowCapacity();
 
   /**
    * \deprecated
@@ -72,17 +98,6 @@ class SemiLegalizer
    * considering the wire length force
    * */
   void clingingRow();
-
-  /**
-   * 1. Place cells from left to right considering overlap
-   * 2. If the cell over the die, then shift the cell cluster to left.
-   * */
-  void shiftLegalize();
-  void shiftCellsToLeft(RowCluster& cellRow, odb::dbInst* inst, int idx);
-  void adjustRowCapacity();
-  int degreeOfExcess(const std::vector<odb::dbInst*>& row);
-
-  bool utilCheck();
 
   odb::dbDatabase* db_;
   odb::dbBlock* targetBlock_;
