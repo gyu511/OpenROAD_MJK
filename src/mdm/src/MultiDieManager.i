@@ -73,9 +73,9 @@ multiDieDPO()
 }
 
 void
-runSemiLegalizer()
+runSemiLegalizer(char* targetDie="")
 {
-  getMultiDieManager()->runSemiLegalizer();
+  getMultiDieManager()->runSemiLegalizer(targetDie);
 }
 
 void

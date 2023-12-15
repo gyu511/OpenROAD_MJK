@@ -58,7 +58,7 @@ class SemiLegalizer
 
  public:
   void setDb(odb::dbDatabase* db) { db_ = db; }
-  void run(bool abacus = true);
+  void run(bool useAbacus = true, char* targetDie="");
 
  private:
   /**
@@ -68,7 +68,7 @@ class SemiLegalizer
    * https://github.com/limbo018/DREAMPlace/tree/master/dreamplace/ops/abacus_legalize
    * This is the simple and fast legalizer
    * */
-  void runAbacus(bool topHierDie = false);
+  void runAbacus(char* targetDieChar ="", bool topHierDie = false);
   /**
    *  Here, we do not implement this considering fixed objects
    *  All object will be considered as movable.

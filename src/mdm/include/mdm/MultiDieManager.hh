@@ -113,7 +113,7 @@ class MultiDieManager
 
   void multiDieDPO();
 
-  void runSemiLegalizer();
+  void runSemiLegalizer(char* targetDie="");
 
   void constructSimpleExample1();
 

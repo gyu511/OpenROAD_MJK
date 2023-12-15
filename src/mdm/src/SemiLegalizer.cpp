@@ -34,21 +34,31 @@
 #include "SemiLegalizer.h"
 namespace mdm {
 
-void SemiLegalizer::run(bool abacus)
+void SemiLegalizer::run(bool useAbacus, char* targetDie)
 {
-  if (abacus) {
-    runAbacus();
+  if (useAbacus) {
+    runAbacus(targetDie);
   } else {
     doSimpleLegalize();
   }
 }
-void SemiLegalizer::runAbacus(bool topHierDie)
+void SemiLegalizer::runAbacus(char* targetDieChar, bool topHierDie)
 {
-  if (topHierDie) {
-    runAbacus(db_->getChip()->getBlock());
-  }
-  for (auto block : db_->getChip()->getBlock()->getChildren()) {
+  std::string targetDie{targetDieChar};
+  if (targetDie == "top") {
+    auto block = *db_->getChip()->getBlock()->getChildren().begin();
     runAbacus(block);
+  } else if (targetDie == "bottom") {
+    auto blockIter = db_->getChip()->getBlock()->getChildren().begin();
+    std::advance(blockIter, 1);
+    runAbacus(*blockIter);
+  } else {
+    if (topHierDie) {
+      runAbacus(db_->getChip()->getBlock());
+    }
+    for (auto block : db_->getChip()->getBlock()->getChildren()) {
+      runAbacus(block);
+    }
   }
 }
 void SemiLegalizer::runAbacus(odb::dbBlock* block)
