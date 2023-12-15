@@ -293,14 +293,16 @@ void TestCaseManager::rowConstruction()
     auto lib = *libIter;
     auto block = *blockIter;
 
-    dbSite* site = dbSite::create(lib, "Site");
+    dbSite* site;
     uint site_width = scale_;
     int siteHeight, numOfSites, numOfRow;
     if (i == 0) {
+      site = dbSite::create(lib, "TopSite");
       siteHeight = rowInfos_.first.rowHeight * scale_;
       numOfSites = floor(rowInfos_.first.rowWidth * scale_ / site_width);
       numOfRow = rowInfos_.first.repeatCount;
     } else {
+      site = dbSite::create(lib, "BottomSite");
       siteHeight = rowInfos_.second.rowHeight * scale_;
       numOfSites = floor(rowInfos_.second.rowWidth * scale_ / site_width);
       numOfRow = rowInfos_.second.repeatCount;
