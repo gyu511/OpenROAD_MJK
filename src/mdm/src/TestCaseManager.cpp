@@ -76,6 +76,7 @@ void TestCaseManager::ICCADContest(TESTCASE testCase,
   }
 
   constructDB(mdManager);
+  isICCADParsed_ = true;
 }
 
 void TestCaseManager::constructDB(MultiDieManager* mdManager)
@@ -280,6 +281,49 @@ void TestCaseManager::constructDB(MultiDieManager* mdManager)
   odb::dbIntProperty::create(db_->getChip(), "hybridBondY", y);
   odb::dbIntProperty::create(db_->getChip(), "hybridBondSpacing", space);
   odb::dbIntProperty::create(db_->getChip(), "hybridBondCost", cost);
+}
+
+void TestCaseManager::rowConstruction()
+{
+  auto libIter = mdm_->db_->getLibs().begin();
+  auto blockIter = mdm_->db_->getChip()->getBlock()->getChildren().begin();
+  std::advance(libIter, 1);
+
+  for (int i = 0; i < 2; ++i) {
+    auto lib = *libIter;
+    auto block = *blockIter;
+
+    dbSite* site = dbSite::create(lib, "Site");
+    uint site_width = scale_;
+    int siteHeight, numOfSites, numOfRow;
+    if (i == 0) {
+      siteHeight = rowInfos_.first.rowHeight * scale_;
+      numOfSites = floor(rowInfos_.first.rowWidth * scale_ / site_width);
+      numOfRow = rowInfos_.first.repeatCount;
+    } else {
+      siteHeight = rowInfos_.second.rowHeight * scale_;
+      numOfSites = floor(rowInfos_.second.rowWidth * scale_ / site_width);
+      numOfRow = rowInfos_.second.repeatCount;
+    }
+
+    site->setWidth(site_width);
+    site->setHeight(siteHeight);
+
+    for (int j = 0; j < numOfRow; ++j) {
+      dbRow::create(block,
+                    ("row" + to_string(j)).c_str(),
+                    site,
+                    0,
+                    j * siteHeight,
+                    dbOrientType::MX,
+                    dbRowDir::HORIZONTAL,
+                    numOfSites,
+                    site_width);
+    }
+
+    std::advance(libIter, 1);
+    std::advance(blockIter, 1);
+  }
 }
 
 void TestCaseManager::ICCADContest2022(const string& inputFileName,
