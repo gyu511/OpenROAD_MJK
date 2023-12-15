@@ -683,15 +683,27 @@ void TestCaseManager::setScale(int scale)
   iccadOutputParser_.setScale(scale);
 }
 
-void TestCaseManager::parseICCADOutput(const std::string& fileName)
+void TestCaseManager::parseICCADOutput(const std::string& fileName,
+                                       const char* whichDieChar)
 {
   ifstream inputFile(fileName);
+  string whichDie{whichDieChar};
   if (!inputFile.is_open()) {
     mdm_->logger_->warn(
         utl::MDM, 11, "Cannot open the input file: {}", fileName);
   }
   iccadOutputParser_.parseOutput(inputFile);
-  iccadOutputParser_.applyCoordinates();
+  if (whichDie == "top") {
+    iccadOutputParser_.applyCoordinates(
+        *mdm_->db_->getChip()->getBlock()->getChildren().begin());
+  } else if (whichDie == "bottom") {
+    auto it = mdm_->db_->getChip()->getBlock()->getChildren().begin();
+    std::advance(it, 1);
+    iccadOutputParser_.applyCoordinates(*it);
+  } else {
+    iccadOutputParser_.applyCoordinates();
+  }
+
   iccadOutputParser_.makePartitionFile(fileName + ".par");
   inputFile.close();
 }
@@ -744,14 +756,17 @@ void ICCADOutputParser::parseOutput(ifstream& outputFile)
   }
 
   parsed_ = true;
-  applyCoordinates();
 }
-void ICCADOutputParser::applyCoordinates()
+void ICCADOutputParser::applyCoordinates(odb::dbBlock* targetBlock)
 {  // apply the parsed coordinate to the database
   vector<odb::dbBlock*> blockSet;
-  blockSet.push_back(db_->getChip()->getBlock());
-  for (auto block : db_->getChip()->getBlock()->getChildren()) {
-    blockSet.push_back(block);
+  if (targetBlock == nullptr) {
+    blockSet.push_back(db_->getChip()->getBlock());
+    for (auto block : db_->getChip()->getBlock()->getChildren()) {
+      blockSet.push_back(block);
+    }
+  } else {
+    blockSet.push_back(targetBlock);
   }
   for (auto block : blockSet) {
     for (auto instance : block->getInsts()) {

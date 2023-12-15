@@ -53,7 +53,7 @@ class ICCADOutputParser
  public:
   void setDb(odb::dbDatabase* db) { db_ = db; }
   void parseOutput(std::ifstream& outputFile);
-  void applyCoordinates();
+  void applyCoordinates(odb::dbBlock* targetBlock = nullptr);
   void makePartitionFile(const std::string& fileName);
   void setScale(int scale) { scale_ = scale; }
 
@@ -194,7 +194,7 @@ class TestCaseManager
   void ICCADContest(TESTCASE testCase, MultiDieManager* mdmPtr);
 
   // Belows are utils
-  void parseICCADOutput(const std::string& fileName);
+  void parseICCADOutput(const std::string& fileName, const char* whichDieChar ="");
   void setScale(int scale);
   int getScale() { return scale_; }
 

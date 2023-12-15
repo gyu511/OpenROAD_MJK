@@ -149,7 +149,7 @@ class MultiDieManager
    * */
   void readPartitionInfo(const char* fileNameChar);
 
-  void parseICCADOutput(char* filenameChar);
+  void parseICCADOutput(char* filenameChar, char* whichDie="");
 
  private:
   odb::dbTech* makeNewTech(const std::string& techName);
