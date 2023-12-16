@@ -53,7 +53,7 @@ class ICCADOutputParser
  public:
   void setDb(odb::dbDatabase* db) { db_ = db; }
   void parseOutput(std::ifstream& outputFile);
-  void applyCoordinates();
+  void applyCoordinates(odb::dbBlock* targetBlock = nullptr);
   void makePartitionFile(const std::string& fileName);
   void setScale(int scale) { scale_ = scale; }
 
@@ -194,9 +194,12 @@ class TestCaseManager
   void ICCADContest(TESTCASE testCase, MultiDieManager* mdmPtr);
 
   // Belows are utils
-  void parseICCADOutput(const std::string& fileName);
+  void parseICCADOutput(const std::string& fileName,
+                        const char* whichDieChar = "");
   void setScale(int scale);
   int getScale() { return scale_; }
+  bool isICCADParsed() { return isICCADParsed_; };
+  void rowConstruction();
 
  private:
   void ICCADContest2022(const std::string& inputFileName,
@@ -211,6 +214,7 @@ class TestCaseManager
   std::pair<std::string, int> fetchInputFileInfo(TESTCASE testCase) const;
 
   ICCADOutputParser iccadOutputParser_;
+  bool isICCADParsed_ = false;
   BenchInformation benchInformation_;
   int instanceNumber_;
   int netNumber_;

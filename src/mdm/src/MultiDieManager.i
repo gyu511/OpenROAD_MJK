@@ -73,9 +73,9 @@ multiDieDPO()
 }
 
 void
-runSemiLegalizer()
+runSemiLegalizer(char* targetDie="")
 {
-  getMultiDieManager()->runSemiLegalizer();
+  getMultiDieManager()->runSemiLegalizer(targetDie);
 }
 
 void
@@ -144,9 +144,9 @@ readPartitionInfo(char* partitionFile)
 }
 
 void
-parseICCADOutput(char* filename)
+parseICCADOutput(char* filename, char* whichDie="")
 {
-  getMultiDieManager()->parseICCADOutput(filename);
+  getMultiDieManager()->parseICCADOutput(filename, whichDie);
 }
 
 void

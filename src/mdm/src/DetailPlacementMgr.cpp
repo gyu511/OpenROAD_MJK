@@ -56,11 +56,11 @@ void MultiDieManager::multiDieDPO()
   }
 }
 
-void MultiDieManager::runSemiLegalizer()
+void MultiDieManager::runSemiLegalizer(char* targetDie)
 {
   SemiLegalizer semiLegalizer{};
   semiLegalizer.setDb(db_);
-  semiLegalizer.run();
+  semiLegalizer.run(true, targetDie);
 }
 
 }  // namespace mdm

@@ -983,10 +983,10 @@ void MultiDieManager::destroyOneDie(char* DIE)
     }
   }
 }
-void MultiDieManager::parseICCADOutput(char* filenameChar)
+void MultiDieManager::parseICCADOutput(char* filenameChar, char* whichDie)
 {
   std::string filename{filenameChar};
-  testCaseManager_.parseICCADOutput(filename);
+  testCaseManager_.parseICCADOutput(filename, whichDie);
 }
 void MultiDieManager::setICCADScale(int scale)
 {

@@ -76,6 +76,7 @@ void TestCaseManager::ICCADContest(TESTCASE testCase,
   }
 
   constructDB(mdManager);
+  isICCADParsed_ = true;
 }
 
 void TestCaseManager::constructDB(MultiDieManager* mdManager)
@@ -280,6 +281,51 @@ void TestCaseManager::constructDB(MultiDieManager* mdManager)
   odb::dbIntProperty::create(db_->getChip(), "hybridBondY", y);
   odb::dbIntProperty::create(db_->getChip(), "hybridBondSpacing", space);
   odb::dbIntProperty::create(db_->getChip(), "hybridBondCost", cost);
+}
+
+void TestCaseManager::rowConstruction()
+{
+  auto libIter = mdm_->db_->getLibs().begin();
+  auto blockIter = mdm_->db_->getChip()->getBlock()->getChildren().begin();
+  std::advance(libIter, 1);
+
+  for (int i = 0; i < 2; ++i) {
+    auto lib = *libIter;
+    auto block = *blockIter;
+
+    dbSite* site;
+    uint site_width = scale_;
+    int siteHeight, numOfSites, numOfRow;
+    if (i == 0) {
+      site = dbSite::create(lib, "TopSite");
+      siteHeight = rowInfos_.first.rowHeight * scale_;
+      numOfSites = floor(rowInfos_.first.rowWidth * scale_ / site_width);
+      numOfRow = rowInfos_.first.repeatCount;
+    } else {
+      site = dbSite::create(lib, "BottomSite");
+      siteHeight = rowInfos_.second.rowHeight * scale_;
+      numOfSites = floor(rowInfos_.second.rowWidth * scale_ / site_width);
+      numOfRow = rowInfos_.second.repeatCount;
+    }
+
+    site->setWidth(site_width);
+    site->setHeight(siteHeight);
+
+    for (int j = 0; j < numOfRow; ++j) {
+      dbRow::create(block,
+                    ("row" + to_string(j)).c_str(),
+                    site,
+                    0,
+                    j * siteHeight,
+                    dbOrientType::MX,
+                    dbRowDir::HORIZONTAL,
+                    numOfSites,
+                    site_width);
+    }
+
+    std::advance(libIter, 1);
+    std::advance(blockIter, 1);
+  }
 }
 
 void TestCaseManager::ICCADContest2022(const string& inputFileName,
@@ -683,15 +729,27 @@ void TestCaseManager::setScale(int scale)
   iccadOutputParser_.setScale(scale);
 }
 
-void TestCaseManager::parseICCADOutput(const std::string& fileName)
+void TestCaseManager::parseICCADOutput(const std::string& fileName,
+                                       const char* whichDieChar)
 {
   ifstream inputFile(fileName);
+  string whichDie{whichDieChar};
   if (!inputFile.is_open()) {
     mdm_->logger_->warn(
         utl::MDM, 11, "Cannot open the input file: {}", fileName);
   }
   iccadOutputParser_.parseOutput(inputFile);
-  iccadOutputParser_.applyCoordinates();
+  if (whichDie == "top") {
+    iccadOutputParser_.applyCoordinates(
+        *mdm_->db_->getChip()->getBlock()->getChildren().begin());
+  } else if (whichDie == "bottom") {
+    auto it = mdm_->db_->getChip()->getBlock()->getChildren().begin();
+    std::advance(it, 1);
+    iccadOutputParser_.applyCoordinates(*it);
+  } else {
+    iccadOutputParser_.applyCoordinates();
+  }
+
   iccadOutputParser_.makePartitionFile(fileName + ".par");
   inputFile.close();
 }
@@ -744,14 +802,17 @@ void ICCADOutputParser::parseOutput(ifstream& outputFile)
   }
 
   parsed_ = true;
-  applyCoordinates();
 }
-void ICCADOutputParser::applyCoordinates()
+void ICCADOutputParser::applyCoordinates(odb::dbBlock* targetBlock)
 {  // apply the parsed coordinate to the database
   vector<odb::dbBlock*> blockSet;
-  blockSet.push_back(db_->getChip()->getBlock());
-  for (auto block : db_->getChip()->getBlock()->getChildren()) {
-    blockSet.push_back(block);
+  if (targetBlock == nullptr) {
+    blockSet.push_back(db_->getChip()->getBlock());
+    for (auto block : db_->getChip()->getBlock()->getChildren()) {
+      blockSet.push_back(block);
+    }
+  } else {
+    blockSet.push_back(targetBlock);
   }
   for (auto block : blockSet) {
     for (auto instance : block->getInsts()) {
