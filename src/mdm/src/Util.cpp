@@ -440,16 +440,15 @@ void MultiDieManager::timingTest1()
   auto topHeirBlock = db_->getChip()->getBlock();
   topHeirBlock->setDieArea(dieBox);
 
-  auto techLayerTopHier = odb::dbTechLayer::create(
-      db_->findTech("topHierTech"), "M2", odb::dbTechLayerType::ROUTING);
+  auto techLayerTopHier = db_->findTech("example1")->findLayer("metal2");
 
   auto lib1 = db_->findLib("example1-1");
   auto tech1 = db_->findTech("childLef1");
-  auto techLayer1 = tech1->findLayer("M2");
+  auto techLayer1 = tech1->findLayer("metal2");
 
   auto lib2 = db_->findLib("example1-2");
   auto tech2 = db_->findTech("childLef2");
-  auto techLayer2 = tech1->findLayer("M2");
+  auto techLayer2 = tech1->findLayer("metal2");
 
   auto childBlock1 = odb::dbBlock::create(topHeirBlock, "childBlock1", tech1);
   auto childBlock2 = odb::dbBlock::create(topHeirBlock, "childBlock2", tech2);
@@ -706,12 +705,10 @@ void MultiDieManager::timingTest1()
   flipFlop2->findITerm("Q")->connect(outputNetChild);
 
   clkBTermTopHier->setIoType(odb::dbIoType::INPUT);
-
 }
 
 void MultiDieManager::timingTestOneDie()
 {
-
   numberOfDie_ = 2;
   auto dbUnit = db_->getChip()->getBlock()->getDbUnitsPerMicron();
   int dieWidth = 1000 * dbUnit;
@@ -723,13 +720,11 @@ void MultiDieManager::timingTestOneDie()
   auto topHeirBlock = db_->getChip()->getBlock();
   topHeirBlock->setDieArea(dieBox);
 
-  auto techLayerTopHier = odb::dbTechLayer::create(
-      db_->findTech("tech"), "M2", odb::dbTechLayerType::ROUTING);
+  auto techLayerTopHier = db_->findTech("example1")->findLayer("metal2");
 
   auto lib1 = db_->findLib("example1");
-  auto tech1 = db_->findTech("tech");
-  auto techLayer1 = tech1->findLayer("M2");
-
+  auto tech1 = db_->findTech("example1");
+  auto techLayer1 = tech1->findLayer("metal2");
 
   odb::dbMaster* master1 = nullptr;
   odb::dbMaster* master2 = nullptr;
@@ -746,7 +741,6 @@ void MultiDieManager::timingTestOneDie()
   auto flipFlop1 = odb::dbInst::create(topHeirBlock, masterFF1, "flipFlop1");
   auto flipFlop2 = odb::dbInst::create(topHeirBlock, masterFF1, "flipFlop2");
 
-
   // set the position of instances
   inst1->setLocation(ur.x() * 4 / 10, ur.y() / 2);
   inst2->setLocation(ur.x() * 6 / 10, ur.y() / 2);
@@ -759,7 +753,6 @@ void MultiDieManager::timingTestOneDie()
   flipFlop2->setPlacementStatus(odb::dbPlacementStatus::PLACED);
 
   auto net1 = odb::dbNet::create(topHeirBlock, "net1");
-
 
   // connect the net to the instance
   inst1->findITerm("ZN")->connect(net1);
@@ -788,7 +781,6 @@ void MultiDieManager::timingTestOneDie()
                      inputPinX2,
                      inputPinY2);
 
-
   ////////////////output port/////////////
   auto outputNetTopHier = odb::dbNet::create(topHeirBlock, "outputNetTopHier");
   auto outputBTermTopHier
@@ -801,10 +793,8 @@ void MultiDieManager::timingTestOneDie()
                      outputPinX2,
                      outputPinY2);
 
-
   inputBTermTopHier->setIoType(odb::dbIoType::INPUT);
   outputBTermTopHier->setIoType(odb::dbIoType::OUTPUT);
-
 
   //////////////////////////clock construction////////////////////////////
   int clkPinX1 = ur.x() / 2;
@@ -818,7 +808,6 @@ void MultiDieManager::timingTestOneDie()
   auto clkBPinTopHier = odb::dbBPin::create(clkBTermTopHier);
   odb::dbBox::create(
       clkBPinTopHier, techLayerTopHier, clkPinX1, clkPinY1, clkPinX2, clkPinY2);
-
 
   // connect clk pin in child block and flip-flops
   flipFlop1->findITerm("CK")->connect(clkNetTopHier);
