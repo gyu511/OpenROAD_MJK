@@ -97,6 +97,12 @@ timingTest()
 }
 
 void
+timingTestOneDie()
+{
+  getMultiDieManager()->timingTestOneDie();
+}
+
+void
 get3DHPWL()
 {
   getMultiDieManager()->get3DHPWL();
