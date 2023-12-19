@@ -26,10 +26,10 @@ LAYER M2
   AREA 0.052 ;
 END M2
 
-SITE site1
+SITE site2
   CLASS CORE ;
   SIZE 50 BY 20 ;
-END site1
+END site2
 
 MACRO BUF_X1
  SIZE 50 BY 20 ;

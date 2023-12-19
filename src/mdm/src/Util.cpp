@@ -730,7 +730,7 @@ void MultiDieManager::rowConstruction(int dieWidth,
                                       const odb::dbInst* inst2) const
 {  // row construction //
   auto site1 = lib1->findSite("site1");
-  auto site2 = lib2->findSite("site1");
+  auto site2 = lib2->findSite("site2");
   auto site_width1 = inst1->getMaster()->getWidth();
   auto site_height1 = inst1->getMaster()->getHeight();
   auto site_width2 = inst2->getMaster()->getWidth();
