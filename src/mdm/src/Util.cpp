@@ -707,16 +707,6 @@ void MultiDieManager::timingTest1()
 
   clkBTermTopHier->setIoType(odb::dbIoType::INPUT);
 
-  // row construction
-  rowConstruction(dieWidth,
-                  dieHeight,
-                  topHeirBlock,
-                  childBlock1,
-                  childBlock2,
-                  lib1,
-                  lib2,
-                  inst1,
-                  inst2);
 }
 
 void MultiDieManager::timingTestOneDie()
