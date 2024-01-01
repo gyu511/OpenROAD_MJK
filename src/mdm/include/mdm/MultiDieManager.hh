@@ -124,6 +124,8 @@ class MultiDieManager
    * */
   void timingTest1();
 
+  void timingTestOneDie();
+
   void ICCADParse(const std::string& testCase);
 
   void setPartitionFile(char* partitionFile);

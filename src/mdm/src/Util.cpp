@@ -440,16 +440,15 @@ void MultiDieManager::timingTest1()
   auto topHeirBlock = db_->getChip()->getBlock();
   topHeirBlock->setDieArea(dieBox);
 
-  auto techLayerTopHier = odb::dbTechLayer::create(
-      db_->findTech("topHierTech"), "M2", odb::dbTechLayerType::ROUTING);
+  auto techLayerTopHier = db_->findTech("example1")->findLayer("metal2");
 
   auto lib1 = db_->findLib("example1-1");
   auto tech1 = db_->findTech("childLef1");
-  auto techLayer1 = tech1->findLayer("M2");
+  auto techLayer1 = tech1->findLayer("metal2");
 
   auto lib2 = db_->findLib("example1-2");
   auto tech2 = db_->findTech("childLef2");
-  auto techLayer2 = tech1->findLayer("M2");
+  auto techLayer2 = tech1->findLayer("metal2");
 
   auto childBlock1 = odb::dbBlock::create(topHeirBlock, "childBlock1", tech1);
   auto childBlock2 = odb::dbBlock::create(topHeirBlock, "childBlock2", tech2);
@@ -706,17 +705,134 @@ void MultiDieManager::timingTest1()
   flipFlop2->findITerm("Q")->connect(outputNetChild);
 
   clkBTermTopHier->setIoType(odb::dbIoType::INPUT);
+}
 
-  // row construction
-  rowConstruction(dieWidth,
-                  dieHeight,
-                  topHeirBlock,
-                  childBlock1,
-                  childBlock2,
-                  lib1,
-                  lib2,
-                  inst1,
-                  inst2);
+void MultiDieManager::timingTestOneDie()
+{
+  numberOfDie_ = 2;
+  auto dbUnit = db_->getChip()->getBlock()->getDbUnitsPerMicron();
+  int dieWidth = 1000 * dbUnit;
+  int dieHeight = 1000 * dbUnit;
+  odb::Point ll = odb::Point(0, 0);
+  odb::Point ur = odb::Point(dieWidth, dieHeight);
+  odb::Rect dieBox(ll, ur);
+
+  auto topHeirBlock = db_->getChip()->getBlock();
+  topHeirBlock->setDieArea(dieBox);
+
+  auto techLayerTopHier = db_->findTech("example1")->findLayer("metal2");
+
+  auto lib1 = db_->findLib("example1");
+  auto tech1 = db_->findTech("example1");
+  auto techLayer1 = tech1->findLayer("metal2");
+
+  odb::dbMaster* master1 = nullptr;
+  odb::dbMaster* master2 = nullptr;
+  if (lib1) {
+    master1 = lib1->findMaster("INV_X1");
+    master2 = lib1->findMaster("AND2_X1");
+  }
+  odb::dbMaster* masterFF1 = nullptr;
+  if (lib1) {
+    masterFF1 = lib1->findMaster("DFF_X1");
+  }
+  auto inst1 = odb::dbInst::create(topHeirBlock, master1, "inst1");
+  auto inst2 = odb::dbInst::create(topHeirBlock, master2, "inst2");
+  auto flipFlop1 = odb::dbInst::create(topHeirBlock, masterFF1, "flipFlop1");
+  auto flipFlop2 = odb::dbInst::create(topHeirBlock, masterFF1, "flipFlop2");
+
+  // set the position of instances
+  inst1->setLocation(ur.x() * 4 / 10, ur.y() / 2);
+  inst2->setLocation(ur.x() * 6 / 10, ur.y() / 2);
+  flipFlop1->setLocation(ur.x() * 2 / 10, ur.y() / 2);
+  flipFlop2->setLocation(ur.x() * 8 / 10, ur.y() / 2);
+
+  inst1->setPlacementStatus(odb::dbPlacementStatus::PLACED);
+  inst2->setPlacementStatus(odb::dbPlacementStatus::PLACED);
+  flipFlop1->setPlacementStatus(odb::dbPlacementStatus::PLACED);
+  flipFlop2->setPlacementStatus(odb::dbPlacementStatus::PLACED);
+
+  auto net1 = odb::dbNet::create(topHeirBlock, "net1");
+
+  // connect the net to the instance
+  inst1->findITerm("ZN")->connect(net1);
+  inst2->findITerm("A1")->connect(net1);
+
+  ///////////// I/O construction ////////////////
+  //////////////input port/////////////
+  int inputPinX1 = 0;
+  int inputPinX2 = 5 * dbUnit;
+  int inputPinY1 = ur.y() / 2;
+  int inputPinY2 = ur.y() / 2 + 5 * dbUnit;
+  int outputPinX1 = ur.x() - 5 * dbUnit;
+  int outputPinX2 = ur.x();
+  int outputPinY1 = ur.y() / 2 + 5 * dbUnit;
+  int outputPinY2 = ur.y() / 2;
+
+  auto inputNetTopHier = odb::dbNet::create(topHeirBlock, "inputNetTopHier");
+  auto inputBTermTopHier
+      = odb::dbBTerm::create(inputNetTopHier, "inputTopHier");
+  auto inputBPinTopHier = odb::dbBPin::create(inputBTermTopHier);
+
+  odb::dbBox::create(inputBPinTopHier,
+                     techLayerTopHier,
+                     inputPinX1,
+                     inputPinY1,
+                     inputPinX2,
+                     inputPinY2);
+
+  ////////////////output port/////////////
+  auto outputNetTopHier = odb::dbNet::create(topHeirBlock, "outputNetTopHier");
+  auto outputBTermTopHier
+      = odb::dbBTerm::create(outputNetTopHier, "outputTopHier");
+  auto outputPinTopHier = odb::dbBPin::create(outputBTermTopHier);
+  odb::dbBox::create(outputPinTopHier,
+                     techLayerTopHier,
+                     outputPinX1,
+                     outputPinY1,
+                     outputPinX2,
+                     outputPinY2);
+
+  inputBTermTopHier->setIoType(odb::dbIoType::INPUT);
+  outputBTermTopHier->setIoType(odb::dbIoType::OUTPUT);
+
+  //////////////////////////clock construction////////////////////////////
+  int clkPinX1 = ur.x() / 2;
+  int clkPinX2 = ur.x() / 2 + 5 * dbUnit;
+  int clkPinY1 = 0;
+  int clkPinY2 = 5 * dbUnit;
+
+  // construct clk input pin & clk net
+  auto clkNetTopHier = odb::dbNet::create(topHeirBlock, "clkNetTopHier");
+  auto clkBTermTopHier = odb::dbBTerm::create(clkNetTopHier, "clkPort");
+  auto clkBPinTopHier = odb::dbBPin::create(clkBTermTopHier);
+  odb::dbBox::create(
+      clkBPinTopHier, techLayerTopHier, clkPinX1, clkPinY1, clkPinX2, clkPinY2);
+
+  // connect clk pin in child block and flip-flops
+  flipFlop1->findITerm("CK")->connect(clkNetTopHier);
+  flipFlop2->findITerm("CK")->connect(clkNetTopHier);
+
+  // input signal to output signal
+  // input signal
+  // connect input pin in child block and flip-flop input
+  flipFlop1->findITerm("D")->connect(inputNetTopHier);
+
+  // connect the output of flip-flop and input of and gate
+  auto fToInv1 = odb::dbNet::create(topHeirBlock, "fToInv1");
+  flipFlop1->findITerm("Q")->connect(fToInv1);
+  inst1->findITerm("A")->connect(fToInv1);
+
+  // output signal,
+  // connect the output of and gate and input of flip-flop
+  auto andToF2 = odb::dbNet::create(topHeirBlock, "andToF2");
+  inst2->findITerm("ZN")->connect(andToF2);
+  flipFlop2->findITerm("D")->connect(andToF2);
+
+  // coonect output pin in the child block and flip-flop output
+  flipFlop2->findITerm("Q")->connect(outputNetTopHier);
+
+  clkBTermTopHier->setIoType(odb::dbIoType::INPUT);
 }
 
 void MultiDieManager::rowConstruction(int dieWidth,
@@ -730,7 +846,7 @@ void MultiDieManager::rowConstruction(int dieWidth,
                                       const odb::dbInst* inst2) const
 {  // row construction //
   auto site1 = lib1->findSite("site1");
-  auto site2 = lib2->findSite("site1");
+  auto site2 = lib2->findSite("site2");
   auto site_width1 = inst1->getMaster()->getWidth();
   auto site_height1 = inst1->getMaster()->getHeight();
   auto site_width2 = inst2->getMaster()->getWidth();

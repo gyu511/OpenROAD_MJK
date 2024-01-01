@@ -263,6 +263,7 @@ DbInstanceNetIterator::DbInstanceNetIterator(const Instance* instance,
     dbSet<dbNet> nets = current_block_->getNets();
     net_iter_ = nets.begin();
     net_end_ = nets.end();
+    block_stack.push(current_block_);
   }
 }
 
@@ -963,8 +964,11 @@ bool dbNetwork::isPlaced(const Pin* pin) const
   if (iterm) {
     dbInst* inst = iterm->getInst();
     status = inst->getPlacementStatus();
+    auto instName = inst->getName();
+    auto mTermName = iterm->getMTerm()->getName();
   }
   if (bterm) {
+    auto bTermName = bterm->getName();
     status = bterm->getFirstPinPlacementStatus();
   }
   return status.isPlaced();

@@ -3,16 +3,18 @@ cd ../../src/mdm/test
 puts "tclCmd: set db"
 set db [ord::get_db]
 
+puts "tclCmd: set chip"
 set chip [odb::dbChip_create $db]
-read_lef -tech -lib timing/example1.lef
-set top_block [odb::dbBlock_create $chip topHierBlock]
 
-read_lef -tech_name childLef1 -tech -lib timing/example1-1.lef
-read_lef -tech_name childLef2 -tech -lib timing/example1-2.lef
+read_lef -tech -lib timing/example1.lef
+
+set top_block [odb::dbBlock_create $chip block]
 
 read_liberty timing/example1_slow.lib
 
-mdm::timingTest
+
+# Make def data
+mdm::timingTestOneDie
 
 gui::design_created
 
