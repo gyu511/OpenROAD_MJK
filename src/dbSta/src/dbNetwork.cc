@@ -343,7 +343,7 @@ class DbInstancePinIterator : public InstancePinIterator
   dbSet<dbITerm>::iterator iitr_end_;
   dbSet<dbBTerm>::iterator bitr_;
   dbSet<dbBTerm>::iterator bitr_end_;
-  Pin* next_;
+  Pin* next_ = nullptr;;
 
   std::stack<dbBlock*> block_stack_;
 };
@@ -942,9 +942,7 @@ Point dbNetwork::location(const Pin* pin) const
     if (iterm->getAvgXY(&x, &y)) {
       return Point(x, y);
     }
-    dbInst* inst = iterm->getInst();
-    inst->getOrigin(x, y);
-    return Point(x, y);
+    return iterm->getInst()->getOrigin();
   }
   if (bterm) {
     int x, y;
@@ -1578,7 +1576,7 @@ void dbNetwork::staToDb(const Instance* instance,
                         dbInst*& db_inst,
                         dbModInst*& mod_inst) const
 {
-  if (instance) {
+  if (instance && instance != top_instance_) {
     dbObject* obj
         = reinterpret_cast<dbObject*>(const_cast<Instance*>(instance));
     dbObjectType type = obj->getObjectType();

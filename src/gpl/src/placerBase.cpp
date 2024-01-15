@@ -44,11 +44,24 @@
 
 namespace gpl {
 
-using namespace odb;
-using namespace std;
+using odb::dbBlock;
+using odb::dbBlockage;
+using odb::dbBox;
+using odb::dbBPin;
+using odb::dbBTerm;
+using odb::dbInst;
+using odb::dbITerm;
+using odb::dbMPin;
+using odb::dbNet;
+using odb::dbPlacementStatus;
+using odb::dbPowerDomain;
+using odb::dbRow;
+using odb::dbSet;
+using odb::dbSigType;
+using odb::Rect;
 using utl::GPL;
 
-static int fastModulo(const int input, const int ceil);
+static int fastModulo(int input, int ceil);
 
 static std::pair<int, int> getMinMaxIdx(int ll,
                                         int uu,
@@ -68,17 +81,7 @@ bool isNetIntersected(dbNet* net);
 ////////////////////////////////////////////////////////
 // Instance
 
-Instance::Instance()
-    : inst_(nullptr),
-      lx_(0),
-      ly_(0),
-      ux_(0),
-      uy_(0),
-      extId_(INT_MIN),
-      is_macro_(false),
-      is_locked_(false)
-{
-}
+Instance::Instance() = default;
 
 // for movable real instances
 Instance::Instance(odb::dbInst* inst,
@@ -140,20 +143,7 @@ bool Instance::isFixed() const
     return true;
   }
 
-  switch (inst_->getPlacementStatus()) {
-    case dbPlacementStatus::NONE:
-    case dbPlacementStatus::UNPLACED:
-    case dbPlacementStatus::SUGGESTED:
-    case dbPlacementStatus::PLACED:
-      return false;
-      break;
-    case dbPlacementStatus::LOCKED:
-    case dbPlacementStatus::FIRM:
-    case dbPlacementStatus::COVER:
-      return true;
-      break;
-  }
-  return false;
+  return inst_->getPlacementStatus().isFixed();
 }
 
 bool Instance::isInstance() const
@@ -205,7 +195,7 @@ void Instance::dbSetPlaced()
   inst_->setPlacementStatus(dbPlacementStatus::PLACED);
 }
 
-void Instance::dbSetPlacementStatus(dbPlacementStatus ps)
+void Instance::dbSetPlacementStatus(const dbPlacementStatus& ps)
 {
   inst_->setPlacementStatus(ps);
 }
@@ -324,14 +314,7 @@ void Instance::snapOutward(const odb::Point& origin, int step_x, int step_y)
 // Pin
 
 Pin::Pin()
-    : term_(nullptr),
-      inst_(nullptr),
-      net_(nullptr),
-      cx_(0),
-      cy_(0),
-      offsetCx_(0),
-      offsetCy_(0),
-      iTermField_(0),
+    : iTermField_(0),
       bTermField_(0),
       minPinXField_(0),
       minPinYField_(0),
@@ -360,11 +343,9 @@ std::string Pin::name() const
     return "DUMMY";
   }
   if (isITerm()) {
-    return dbITerm()->getInst()->getName() + '/'
-           + dbITerm()->getMTerm()->getName();
-  } else {
-    return dbBTerm()->getName();
+    return dbITerm()->getName();
   }
+  return dbBTerm()->getName();
 }
 
 void Pin::setITerm()
@@ -541,9 +522,9 @@ void Pin::updateCoordi(odb::dbBTerm* bTerm)
   }
 
   if (lx == INT_MAX || ly == INT_MAX || ux == INT_MIN || uy == INT_MIN) {
-    string msg
-        = string(bTerm->getConstName()) + " toplevel port is not placed!\n";
-    msg += "       Replace will regard " + string(bTerm->getConstName())
+    std::string msg = std::string(bTerm->getConstName())
+                      + " toplevel port is not placed!\n";
+    msg += "       Replace will regard " + std::string(bTerm->getConstName())
            + " is placed in (0, 0)";
     slog_->warn(GPL, 1, msg);
   }
@@ -589,9 +570,8 @@ Pin::~Pin()
 ////////////////////////////////////////////////////////
 // Net
 
-Net::Net() : net_(nullptr), lx_(0), ly_(0), ux_(0), uy_(0)
-{
-}
+Net::Net() = default;
+
 Net::Net(odb::dbNet* net, bool skipIoMode, bool intersected) : Net()
 {
   net_ = net;
@@ -640,7 +620,7 @@ int64_t Net::hpwl() const
   if (ux_ < lx_) {  // dangling net
     return 0;
   }
-  return static_cast<int64_t>((ux_ - lx_) + (uy_ - ly_));
+  return static_cast<int64_t>(ux_ - lx_) + (uy_ - ly_);
 }
 
 void Net::updateBox(bool skipIoMode)
@@ -687,17 +667,7 @@ bool Net::isIntersected() const
 ////////////////////////////////////////////////////////
 // Die
 
-Die::Die()
-    : dieLx_(0),
-      dieLy_(0),
-      dieUx_(0),
-      dieUy_(0),
-      coreLx_(0),
-      coreLy_(0),
-      coreUx_(0),
-      coreUy_(0)
-{
-}
+Die::Die() = default;
 
 Die::Die(const odb::Rect& dieRect, const odb::Rect& coreRect) : Die()
 {
@@ -791,15 +761,7 @@ void PlacerBaseVars::reset()
 ////////////////////////////////////////////////////////
 // PlacerBaseCommon
 
-PlacerBaseCommon::PlacerBaseCommon()
-    : db_(nullptr),
-      log_(nullptr),
-      pbVars_(),
-      siteSizeX_(0),
-      siteSizeY_(0),
-      macroInstsArea_(0)
-{
-}
+PlacerBaseCommon::PlacerBaseCommon() = default;
 
 PlacerBaseCommon::PlacerBaseCommon(odb::dbDatabase* db,
                                    PlacerBaseVars pbVars,
@@ -873,7 +835,7 @@ void PlacerBaseCommon::init()
     instCnt += childBlock->getInsts().size();
   }
 
-  vector<dbInst*> insts;
+  std::vector<dbInst*> insts;
   insts.reserve(instCnt);
   for (auto inst : block->getInsts()) {
     insts.push_back(inst);
@@ -919,12 +881,14 @@ void PlacerBaseCommon::init()
     }
 
     dbBox* bbox = inst->getBBox();
-    if (bbox->getDY() > die_.coreDy())
+    if (bbox->getDY() > die_.coreDy()) {
       log_->error(
           GPL, 119, "instance {} height is larger than core.", inst->getName());
-    if (bbox->getDX() > die_.coreDx())
+    }
+    if (bbox->getDX() > die_.coreDx()) {
       log_->error(
           GPL, 120, "instance {} width is larger than core.", inst->getName());
+    }
   }
 
   insts_.reserve(instStor_.size());
@@ -944,7 +908,7 @@ void PlacerBaseCommon::init()
     netCnt += childBlock->getNets().size();
   }
 
-  vector<dbNet*> nets;
+  std::vector<dbNet*> nets;
   nets.reserve(netCnt);
   for (auto net : block->getNets()) {
     nets.push_back(net);
@@ -1143,20 +1107,7 @@ int PlacerBaseCommon::siteSizeY(odb::dbBlock* block)
 ////////////////////////////////////////////////////////
 // PlacerBase
 
-PlacerBase::PlacerBase()
-    : db_(nullptr),
-      log_(nullptr),
-      siteSizeX_(0),
-      siteSizeY_(0),
-      placeInstsArea_(0),
-      nonPlaceInstsArea_(0),
-      macroInstsArea_(0),
-      stdInstsArea_(0),
-      pbCommon_(nullptr),
-      group_(nullptr),
-      block_(nullptr)
-{
-}
+PlacerBase::PlacerBase() = default;
 
 PlacerBase::PlacerBase(odb::dbDatabase* db,
                        std::shared_ptr<PlacerBaseCommon> pbCommon,
@@ -1188,7 +1139,7 @@ void PlacerBase::init()
   siteSizeX_ = pbCommon_->siteSizeX(block_);
   siteSizeY_ = pbCommon_->siteSizeY(block_);
 
-  vector<Instance*> validInsts;
+  std::vector<Instance*> validInsts;
   // for examine the overlap pushback
   std::unordered_set<Instance*> validInstSet;
 
@@ -1276,8 +1227,8 @@ void PlacerBase::initInstsForUnusableSites()
 
   // check if this belongs to a group
   // if there is a group, only mark the sites that belong to the group as Row
-  // if there is no group, then mark all as Row, and then for each power domain,
-  // mark the sites that belong to the power domain as Empty
+  // if there is no group, then mark all as Row, and then for each power
+  // domain, mark the sites that belong to the power domain as Empty
 
   if (group_ != nullptr) {
     for (auto boundary : group_->getRegion()->getBoundaries()) {
@@ -1318,7 +1269,7 @@ void PlacerBase::initInstsForUnusableSites()
   for (dbBlockage* blockage : block_->getBlockages()) {
     dbInst* inst = blockage->getInstance();
     if (inst && !inst->isFixed()) {
-      string msg
+      std::string msg
           = "Blockages associated with moveable instances "
             " are unsupported and ignored [inst: "
             + inst->getName() + "]\n";
@@ -1499,26 +1450,26 @@ static std::pair<int, int> getMinMaxIdx(int ll,
 
 static bool isCoreAreaOverlap(Die& die, Instance& inst)
 {
-  int rectLx = max(die.coreLx(), inst.lx()),
-      rectLy = max(die.coreLy(), inst.ly()),
-      rectUx = min(die.coreUx(), inst.ux()),
-      rectUy = min(die.coreUy(), inst.uy());
+  int rectLx = std::max(die.coreLx(), inst.lx()),
+      rectLy = std::max(die.coreLy(), inst.ly()),
+      rectUx = std::min(die.coreUx(), inst.ux()),
+      rectUy = std::min(die.coreUy(), inst.uy());
   return !(rectLx >= rectUx || rectLy >= rectUy);
 }
 
 static int64_t getOverlapWithCoreArea(Die& die, Instance& inst)
 {
-  int rectLx = max(die.coreLx(), inst.lx()),
-      rectLy = max(die.coreLy(), inst.ly()),
-      rectUx = min(die.coreUx(), inst.ux()),
-      rectUy = min(die.coreUy(), inst.uy());
+  int rectLx = std::max(die.coreLx(), inst.lx()),
+      rectLy = std::max(die.coreLy(), inst.ly()),
+      rectUx = std::min(die.coreUx(), inst.ux()),
+      rectUy = std::min(die.coreUy(), inst.uy());
   return static_cast<int64_t>(rectUx - rectLx)
          * static_cast<int64_t>(rectUy - rectLy);
 }
 
 bool isNetIntersected(dbNet* net)
 {
-  auto property = dbBoolProperty::find(net, "intersected");
+  auto property = odb::dbBoolProperty::find(net, "intersected");
   return property != nullptr && property->getValue();
 }
 

@@ -277,7 +277,7 @@ class Logger
       key = metric;
     else
       key = fmt::format(FMT_RUNTIME(metrics_stages_.top()), metric);
-    metrics_entries_.push_back({key, value});
+    metrics_entries_.push_back({std::move(key), value});
   }
 
   void flushMetrics();
@@ -348,7 +348,7 @@ struct test_ostream
 
 template <class T,
           class = std::enable_if_t<decltype(test_ostream::test<T>(0))::value>>
-auto format_as(T t)
+auto format_as(const T& t)
 {
   return fmt::streamed(t);
 }

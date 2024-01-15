@@ -33,6 +33,7 @@
 
 #pragma once
 
+#include <climits>
 #include <memory>
 #include <unordered_map>
 #include <vector>
@@ -107,7 +108,7 @@ class Instance
   void setCenterLocation(int x, int y);
 
   void dbSetPlaced();
-  void dbSetPlacementStatus(odb::dbPlacementStatus ps);
+  void dbSetPlacementStatus(const odb::dbPlacementStatus& ps);
   void dbSetLocation();
   void dbSetLocation(int x, int y);
   void dbSetCenterLocation(int x, int y);
@@ -130,15 +131,15 @@ class Instance
   void snapOutward(const odb::Point& origin, int step_x, int step_y);
 
  private:
-  odb::dbInst* inst_;
+  odb::dbInst* inst_ = nullptr;
   std::vector<Pin*> pins_;
-  int lx_;
-  int ly_;
-  int ux_;
-  int uy_;
-  int extId_;
-  bool is_macro_;
-  bool is_locked_;
+  int lx_ = 0;
+  int ly_ = 0;
+  int ux_ = 0;
+  int uy_ = 0;
+  int extId_ = INT_MIN;
+  bool is_macro_ = false;
+  bool is_locked_ = false;
 };
 
 class Pin
@@ -188,21 +189,21 @@ class Pin
   std::string name() const;
 
  private:
-  void* term_;
-  Instance* inst_;
-  Net* net_;
+  void* term_ = nullptr;
+  Instance* inst_ = nullptr;
+  Net* net_ = nullptr;
 
   // pin center coordinate is enough
   // Pins' placed location.
-  int cx_;
-  int cy_;
+  int cx_ = 0;
+  int cy_ = 0;
 
   // offset coordinates inside instance.
   // origin point is center point of instance.
   // (e.g. (DX/2,DY/2) )
   // This will increase efficiency for bloating
-  int offsetCx_;
-  int offsetCy_;
+  int offsetCx_ = 0;
+  int offsetCy_ = 0;
 
   unsigned char iTermField_ : 1;
   unsigned char bTermField_ : 1;
@@ -244,12 +245,12 @@ class Net
   bool isIntersected() const;
 
  private:
-  odb::dbNet* net_;
+  odb::dbNet* net_ = nullptr;
   std::vector<Pin*> pins_;
-  int lx_;
-  int ly_;
-  int ux_;
-  int uy_;
+  int lx_ = 0;
+  int ly_ = 0;
+  int ux_ = 0;
+  int uy_ = 0;
   bool intersected_;
 };
 
@@ -257,11 +258,11 @@ class Die
 {
  public:
   Die();
-  Die(const odb::Rect& dieBox, const odb::Rect& coreRect);
+  Die(const odb::Rect& dieRect, const odb::Rect& coreRect);
   ~Die();
 
-  void setDieBox(const odb::Rect& dieBox);
-  void setCoreBox(const odb::Rect& coreBox);
+  void setDieBox(const odb::Rect& dieRect);
+  void setCoreBox(const odb::Rect& coreRect);
 
   int dieLx() const { return dieLx_; }
   int dieLy() const { return dieLy_; }
@@ -286,14 +287,14 @@ class Die
   int64_t coreArea() const;
 
  private:
-  int dieLx_;
-  int dieLy_;
-  int dieUx_;
-  int dieUy_;
-  int coreLx_;
-  int coreLy_;
-  int coreUx_;
-  int coreUy_;
+  int dieLx_ = 0;
+  int dieLy_ = 0;
+  int dieUx_ = 0;
+  int dieUy_ = 0;
+  int coreLx_ = 0;
+  int coreLy_ = 0;
+  int coreUx_ = 0;
+  int coreUy_ = 0;
 };
 
 class PlacerBaseVars
@@ -347,8 +348,8 @@ class PlacerBaseCommon
   void unlockAll();
 
  private:
-  odb::dbDatabase* db_;
-  utl::Logger* log_;
+  odb::dbDatabase* db_ = nullptr;
+  utl::Logger* log_ = nullptr;
 
   PlacerBaseVars pbVars_;
 
@@ -369,10 +370,10 @@ class PlacerBaseCommon
   std::unordered_map<odb::dbNet*, Net*> netMap_;
 
   std::unordered_map<odb::dbBlock*, odb::dbSite*> blockSiteMap_;
-  int siteSizeX_;
-  int siteSizeY_;
+  int siteSizeX_ = 0;
+  int siteSizeY_ = 0;
 
-  int64_t macroInstsArea_;
+  int64_t macroInstsArea_ = 0;
 
   void init();
   void reset();
@@ -424,8 +425,8 @@ class PlacerBase
   void unlockAll();
 
  private:
-  odb::dbDatabase* db_;
-  utl::Logger* log_;
+  odb::dbDatabase* db_ = nullptr;
+  utl::Logger* log_ = nullptr;
 
   Die die_;
 
@@ -438,20 +439,20 @@ class PlacerBase
   std::vector<Instance*> dummyInsts_;
   std::vector<Instance*> nonPlaceInsts_;
 
-  int siteSizeX_;
-  int siteSizeY_;
+  int siteSizeX_ = 0;
+  int siteSizeY_ = 9;
 
-  int64_t placeInstsArea_;
-  int64_t nonPlaceInstsArea_;
+  int64_t placeInstsArea_ = 0;
+  int64_t nonPlaceInstsArea_ = 0;
 
   // macroInstsArea_ + stdInstsArea_ = placeInstsArea_;
   // macroInstsArea_ should be separated
   // because of target_density tuning
-  int64_t macroInstsArea_;
-  int64_t stdInstsArea_;
+  int64_t macroInstsArea_ = 0;
+  int64_t stdInstsArea_ = 0;
 
   std::shared_ptr<PlacerBaseCommon> pbCommon_;
-  odb::dbGroup* group_;
+  odb::dbGroup* group_ = nullptr;
 
   odb::dbBlock* block_;
 

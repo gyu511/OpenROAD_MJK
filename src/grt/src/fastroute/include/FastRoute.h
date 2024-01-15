@@ -405,9 +405,7 @@ class FastRouteCore
   void newrouteZ_edge(int netID, int edgeID);
   void newrouteLAll(bool firstTime, bool viaGuided);
   void newrouteZAll(int threshold);
-  void routeMonotonicAll(int threshold);
-  void routeMonotonic(int netID, int edgeID, int threshold);
-  void routeLVAll(int threshold, int expand, float logis_cof);
+  void routeMonotonicAll(int threshold, int expand, float logis_cof);
   void spiralRouteAll();
   void newrouteLInMaze(int netID);
   void estimateOneSeg(Segment* seg);
@@ -415,12 +413,12 @@ class FastRouteCore
   void routeSegH(Segment* seg);
   void routeSegLFirstTime(Segment* seg);
   void spiralRoute(int netID, int edgeID);
-  void routeLVEnew(int netID,
-                   int edgeID,
-                   multi_array<float, 2>& d1,
-                   multi_array<float, 2>& d2,
-                   int threshold,
-                   int enlarge);
+  void routeMonotonic(int netID,
+                      int edgeID,
+                      multi_array<float, 2>& d1,
+                      multi_array<float, 2>& d2,
+                      int threshold,
+                      int enlarge);
 
   // ripup functions
   void ripupSegL(const Segment* seg);
@@ -458,6 +456,10 @@ class FastRouteCore
   void printEdge(const int netID, const int edgeID);
   void ConvertToFull3DType2();
   void fillVIA();
+  void getViaStackRange(int netID,
+                        int nodeID,
+                        int16_t& bot_pin_l,
+                        int16_t& top_pin_l);
   int threeDVIA();
   void fixEdgeAssignment(int& net_layer,
                          multi_array<Edge3D, 3>& edges_3D,
