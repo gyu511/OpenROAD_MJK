@@ -109,12 +109,7 @@ get3DHPWL()
 }
 
 void
-getHPWL()
-{
-  getMultiDieManager()->getHPWL();
-}
-void
-getHPWLOneDie(char* dieInfo)
+getHPWL(char* dieInfo=nullptr)
 {
   getMultiDieManager()->getHPWL(dieInfo);
 }

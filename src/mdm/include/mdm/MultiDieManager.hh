@@ -94,8 +94,7 @@ class MultiDieManager
   odb::dbDatabase* getDB() { return db_; }
 
   void get3DHPWL(bool approximate=true);
-  void getHPWL();
-  void getHPWL(char* dieInfo);
+  void getHPWL(const char* dieInfo=nullptr);
 
   /**
    * \brief

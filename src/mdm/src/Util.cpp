@@ -972,49 +972,27 @@ void MultiDieManager::get3DHPWL(bool approximate)
   logger_->report("HPWL is: {}", hpwl_scientific);
 }
 
-void MultiDieManager::getHPWL()
+void MultiDieManager::getHPWL(const char* dieInfo)
 {
-  int hpwl = 0;
-  for (auto net : db_->getChip()->getBlock()->getNets()) {
-    hpwl += net->getTermBBox().dx() + net->getTermBBox().dy();
-  }
-  ostringstream stream;
-  stream.imbue(std::locale(""));
-  stream << std::fixed << std::setprecision(2) << hpwl;
-  string hpwl_scientific = stream.str();
-  logger_->report("HPWL is: {}", hpwl_scientific);
-
-  auto block = db_->getChip()->getBlock();
-  auto dieArea = block->getDieArea().area();
-  int64_t cellAreaSum = 0;
-  for (auto inst : block->getInsts()) {
-    auto cellArea
-        = inst->getMaster()->getWidth() * inst->getMaster()->getHeight();
-    cellAreaSum += cellArea;
-  }
-  auto util = static_cast<double_t>(cellAreaSum)
-              / static_cast<double_t>(dieArea) * 100;
-  logger_->report(block->getName() + " Util is: {}%", util);
-}
-
-void MultiDieManager::getHPWL(char* dieInfo)
-{
-  string whichDie(dieInfo);
-  odb::dbBlock* block;
-
-  int targetIdx;
-  if (whichDie == "top") {
-    targetIdx = 1;
-  } else {
-    targetIdx = 2;
-  }
-  int idx = 0;
-  for (auto blockIter : db_->getChip()->getBlock()->getChildren()) {
-    idx++;
-    if (idx != targetIdx) {
-      continue;
+  string whichDie = dieInfo ? string(dieInfo) : "";
+  odb::dbBlock* block = nullptr;
+  if (!whichDie.empty()) {
+    int targetIdx = (whichDie == "top") ? 1 : 2;
+    int idx = 0;
+    for (auto blockIter : db_->getChip()->getBlock()->getChildren()) {
+      idx++;
+      if (idx == targetIdx) {
+        block = blockIter;
+        break;
+      }
     }
-    block = blockIter;
+  } else {
+    block = db_->getChip()->getBlock();
+  }
+
+  if (!block) {
+    logger_->error(utl::MDM, 13, "Invalid die information or block not found.");
+    return;
   }
 
   int hpwl = 0;
