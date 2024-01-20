@@ -132,8 +132,20 @@ class MultiDieManager
 
   void setICCADScale(int scale);
 
+  /**
+   * This is Experiment utilization.
+   * \brief
+   * Exports instance coordinates for debugging.
+   * These are parsed by another function to obtain die coordinates temporarily.
+   * */
   void exportCoordinates(char* fileName);
 
+  /**
+   * This is Experiment utilization.
+   * \brief
+   * This is Experiment utilization.
+   * Imports and parses exported file to temporarily retrieve die coordinates for debugging.
+   * */
   void importCoordinates(char* fileName);
 
   /**
