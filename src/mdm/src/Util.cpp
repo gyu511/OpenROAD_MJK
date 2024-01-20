@@ -111,7 +111,10 @@ void MultiDieManager::makeShrunkLib(const string& whichDie,
       master->setHeight(height);
 
       int masterOriginX, masterOriginY;
-      originalMaster->getOrigin(masterOriginX, masterOriginY);
+      auto point = originalMaster->getOrigin();
+      masterOriginX = point.x();
+      masterOriginY = point.y();
+
       masterOriginX
           = static_cast<int>(static_cast<float>(masterOriginX) * shrunkRatio);
       masterOriginY
@@ -228,7 +231,9 @@ void MultiDieManager::inheritRows(odb::dbBlock* parentBlock,
 {
   for (auto row : parentBlock->getRows()) {
     int rowOriginX, rowOriginY;
-    row->getOrigin(rowOriginX, rowOriginY);
+    auto point = row->getOrigin();
+    rowOriginX = point.x();
+    rowOriginY = point.y();
     odb::dbRow::create(childBlock,
                        (childBlock->getName() + "Site").c_str(),
                        row->getSite(),
