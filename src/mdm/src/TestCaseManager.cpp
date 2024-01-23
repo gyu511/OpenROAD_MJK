@@ -92,6 +92,25 @@ void TestCaseManager::constructDB(MultiDieManager* mdManager)
   dbTechLayer* dbTechLayerBottom = dbTechLayer::create(
       dbTechBottom, "layer", dbTechLayerType::MASTERSLICE);
 
+  // make M2 layer
+  // the width and spacing is arbitrarily decided.
+  dbTechLayer* dbTechLayerTopHierM2
+      = dbTechLayer::create(dbTechTopHier, "M2", dbTechLayerType::ROUTING);
+  dbTechLayerTopHierM2->setWidth(10);
+  dbTechLayerTopHierM2->setSpacing(10);
+  dbTechLayerTopHierM2->setDirection(dbTechLayerDir::HORIZONTAL);
+  dbTechLayer* dbTechLayerTopM2
+      = dbTechLayer::create(dbTechTop, "M2", dbTechLayerType::ROUTING);
+  dbTechLayerTopM2->setWidth(10);
+  dbTechLayerTopM2->setSpacing(10);
+  dbTechLayerTopM2->setDirection(dbTechLayerDir::HORIZONTAL);
+  dbTechLayer* dbTechLayerBottomM2
+      = dbTechLayer::create(dbTechBottom, "M2", dbTechLayerType::ROUTING);
+  dbTechLayerBottomM2->setWidth(10);
+  dbTechLayerBottomM2->setSpacing(10);
+  dbTechLayerBottomM2->setDirection(dbTechLayerDir::HORIZONTAL);
+
+
   dbLib* dbLibTopHier = dbLib::create(db_, "TopHierLib", dbTechTopHier);
   dbLib* dbLibTop = dbLib::create(db_, "TopLib", dbTechTop);
   dbLib* dbLibBottom = dbLib::create(db_, "BottomLib", dbTechBottom);
