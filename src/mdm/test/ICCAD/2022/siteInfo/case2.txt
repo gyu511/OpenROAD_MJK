@@ -1,0 +1,2 @@
+[2024-01-17 17:33:20.023] [file_logger] [info] The GCD of TA is 21
+[2024-01-17 17:33:20.065] [file_logger] [info] The GCD of TB is 30

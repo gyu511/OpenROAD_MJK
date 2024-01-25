@@ -1,0 +1,1 @@
+[2024-01-17 17:33:34.366] [file_logger] [info] The GCD of TA is 14

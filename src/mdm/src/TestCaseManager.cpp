@@ -36,8 +36,9 @@ namespace mdm {
 using namespace std;
 using namespace odb;
 
-void MultiDieManager::ICCADParse(const std::string& testCase)
+void MultiDieManager::ICCADParse(const std::string& testCase, bool siteDefined)
 {
+  testCaseManager_.setSiteDefined(siteDefined);
   // clang-format off
   static const std::unordered_map<std::string, std::function<void()>> testCaseMap {
       {"2022-test1", [this]() { testCaseManager_.ICCADContest(TestCaseManager::ICCAD2022_CASE1, this); }},
@@ -109,7 +110,6 @@ void TestCaseManager::constructDB(MultiDieManager* mdManager)
   dbTechLayerBottomM2->setWidth(10);
   dbTechLayerBottomM2->setSpacing(10);
   dbTechLayerBottomM2->setDirection(dbTechLayerDir::HORIZONTAL);
-
 
   dbLib* dbLibTopHier = dbLib::create(db_, "TopHierLib", dbTechTopHier);
   dbLib* dbLibTop = dbLib::create(db_, "TopLib", dbTechTop);
@@ -313,15 +313,17 @@ void TestCaseManager::rowConstruction()
     auto block = *blockIter;
 
     dbSite* site;
-    uint site_width = scale_;
+    uint site_width;
     int siteHeight, numOfSites, numOfRow;
     if (i == 0) {
       site = dbSite::create(lib, "TopSite");
+      site_width = getSiteWidth().first * scale_;
       siteHeight = rowInfos_.first.rowHeight * scale_;
       numOfSites = floor(rowInfos_.first.rowWidth * scale_ / site_width);
       numOfRow = rowInfos_.first.repeatCount;
     } else {
       site = dbSite::create(lib, "BottomSite");
+      site_width = getSiteWidth().second * scale_;
       siteHeight = rowInfos_.second.rowHeight * scale_;
       numOfSites = floor(rowInfos_.second.rowWidth * scale_ / site_width);
       numOfRow = rowInfos_.second.repeatCount;
@@ -718,28 +720,73 @@ void TestCaseManager::ICCADContest2023(const string& inputFileName,
   input_file.close();
 }
 
-pair<string, int> TestCaseManager::fetchInputFileInfo(TESTCASE testCase) const
+pair<string, int> TestCaseManager::fetchInputFileInfo(TESTCASE testCase)
 {
-  std::map<TESTCASE, std::pair<std::string, int>> testCaseInfo;
-  testCaseInfo[ICCAD2022_CASE1] = {"ICCAD/2022/case1.txt", 2022};
-  testCaseInfo[ICCAD2022_CASE2] = {"ICCAD/2022/case2.txt", 2022};
-  testCaseInfo[ICCAD2022_CASE3] = {"ICCAD/2022/case3.txt", 2022};
-  testCaseInfo[ICCAD2022_CASE4] = {"ICCAD/2022/case4.txt", 2022};
-  testCaseInfo[ICCAD2022_CASE2_H] = {"ICCAD/2022/case2_h.txt", 2022};
-  testCaseInfo[ICCAD2022_CASE3_H] = {"ICCAD/2022/case3_h.txt", 2022};
-  testCaseInfo[ICCAD2022_CASE4_H] = {"ICCAD/2022/case4_h.txt", 2022};
-  testCaseInfo[ICCAD2023_CASE1] = {"ICCAD/2023/case1.txt", 2023};
-  testCaseInfo[ICCAD2023_CASE2] = {"ICCAD/2023/case2.txt", 2023};
-  testCaseInfo[ICCAD2023_CASE3] = {"ICCAD/2023/case3.txt", 2023};
-  testCaseInfo[ICCAD2023_CASE4] = {"ICCAD/2023/case4.txt", 2023};
-  testCaseInfo[ICCAD2023_CASE2_H] = {"ICCAD/2023/case2_h.txt", 2023};
-  testCaseInfo[ICCAD2023_CASE3_H] = {"ICCAD/2023/case3_h.txt", 2023};
-  testCaseInfo[ICCAD2023_CASE4_H] = {"ICCAD/2023/case4_h.txt", 2023};
-  auto it = testCaseInfo.find(testCase);
-  if (it != testCaseInfo.end()) {
+  std::map<TESTCASE, std::pair<std::string, int>> testCaseFileName;
+  // clang-format off
+  if (siteDefined_) {
+    testCaseFileName[ICCAD2022_CASE1] = {"ICCAD/2022/case1.txt", 2022};
+    testCaseFileName[ICCAD2022_CASE2] = {"ICCAD/2022/case2.txt", 2022};
+    testCaseFileName[ICCAD2022_CASE3] = {"ICCAD/2022/case3.txt", 2022};
+    testCaseFileName[ICCAD2022_CASE4] = {"ICCAD/2022/case4.txt", 2022};
+    testCaseFileName[ICCAD2022_CASE2_H] = {"ICCAD/2022/case2_h.txt", 2022};
+    testCaseFileName[ICCAD2022_CASE3_H] = {"ICCAD/2022/case3_h.txt", 2022};
+    testCaseFileName[ICCAD2022_CASE4_H] = {"ICCAD/2022/case4_h.txt", 2022};
+    testCaseFileName[ICCAD2023_CASE1] = {"ICCAD/2023/case1.txt", 2023};
+    testCaseFileName[ICCAD2023_CASE2] = {"ICCAD/2023/case2.txt", 2023};
+    testCaseFileName[ICCAD2023_CASE3] = {"ICCAD/2023/case3.txt", 2023};
+    testCaseFileName[ICCAD2023_CASE4] = {"ICCAD/2023/case4.txt", 2023};
+    testCaseFileName[ICCAD2023_CASE2_H] = {"ICCAD/2023/case2_h.txt", 2023};
+    testCaseFileName[ICCAD2023_CASE3_H] = {"ICCAD/2023/case3_h.txt", 2023};
+    testCaseFileName[ICCAD2023_CASE4_H] = {"ICCAD/2023/case4_h.txt", 2023};
+  } else {
+    testCaseFileName[ICCAD2022_CASE1] = {"ICCAD/2022/siteDefined_case1.txt", 2022};
+    testCaseFileName[ICCAD2022_CASE2] = {"ICCAD/2022/siteDefined_case2.txt", 2022};
+    testCaseFileName[ICCAD2022_CASE3] = {"ICCAD/2022/siteDefined_case3.txt", 2022};
+    testCaseFileName[ICCAD2022_CASE4] = {"ICCAD/2022/siteDefined_case4.txt", 2022};
+    testCaseFileName[ICCAD2022_CASE2_H] = {"ICCAD/2022/siteDefined_case2_h.txt", 2022};
+    testCaseFileName[ICCAD2022_CASE3_H] = {"ICCAD/2022/siteDefined_case3_h.txt", 2022};
+    testCaseFileName[ICCAD2022_CASE4_H] = {"ICCAD/2022/siteDefined_case4_h.txt", 2022};
+    testCaseFileName[ICCAD2023_CASE1] = {"ICCAD/2023/siteDefined_case1.txt", 2023};
+    testCaseFileName[ICCAD2023_CASE2] = {"ICCAD/2023/siteDefined_case2.txt", 2023};
+    testCaseFileName[ICCAD2023_CASE3] = {"ICCAD/2023/siteDefined_case3.txt", 2023};
+    testCaseFileName[ICCAD2023_CASE4] = {"ICCAD/2023/siteDefined_case4.txt", 2023};
+    testCaseFileName[ICCAD2023_CASE2_H] = {"ICCAD/2023/siteDefined_case2_h.txt", 2023};
+    testCaseFileName[ICCAD2023_CASE3_H] = {"ICCAD/2023/siteDefined_case3_h.txt", 2023};
+    testCaseFileName[ICCAD2023_CASE4_H] = {"ICCAD/2023/siteDefined_case4_h.txt", 2023};
+  }
+  // clang-format on
+  testcase_ = testCase;
+  auto it = testCaseFileName.find(testCase);
+  if (it != testCaseFileName.end()) {
     return it->second;
   }
   assert(false);
+}
+
+std::pair<int, int> TestCaseManager::getSiteWidth()
+{
+  map<TESTCASE, vector<int>> data;
+  data[ICCAD2022_CASE2] = {21, 30};
+  data[ICCAD2022_CASE2_H] = {30};
+  data[ICCAD2022_CASE3] = {14};
+  data[ICCAD2022_CASE3_H] = {11, 14};
+  data[ICCAD2022_CASE4] = {17, 21};
+  data[ICCAD2022_CASE4_H] = {18, 21};
+
+  int widthTA = 1;
+  int widthTB = 1;
+  if (siteDefined_) {
+    auto it = data.find(testcase_);
+    if (it != data.end()) {
+      widthTA = it->second.size() > 0 ? it->second.at(0) : 1;
+      widthTB = it->second.size() > 1 ? it->second.at(1) : widthTA;
+    }
+  }
+
+  widthTA *= scale_;
+  widthTB *= scale_;
+  return std::make_pair(widthTA, widthTB);
 }
 
 void TestCaseManager::setScale(int scale)
@@ -772,10 +819,16 @@ void TestCaseManager::parseICCADOutput(const std::string& fileName,
   iccadOutputParser_.makePartitionFile(fileName + ".par");
   inputFile.close();
 }
+
 void TestCaseManager::setMDM(MultiDieManager* mdm)
 {
   mdm_ = mdm;
   iccadOutputParser_.setDb(mdm_->getDB());
+}
+
+void TestCaseManager::setSiteDefined(bool siteDefined)
+{
+  siteDefined_ = siteDefined;
 }
 
 void ICCADOutputParser::parseOutput(ifstream& outputFile)
@@ -822,6 +875,7 @@ void ICCADOutputParser::parseOutput(ifstream& outputFile)
 
   parsed_ = true;
 }
+
 void ICCADOutputParser::applyCoordinates(odb::dbBlock* targetBlock)
 {  // apply the parsed coordinate to the database
   vector<odb::dbBlock*> blockSet;

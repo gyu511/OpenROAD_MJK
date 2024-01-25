@@ -125,7 +125,7 @@ class MultiDieManager
 
   void timingTestOneDie();
 
-  void ICCADParse(const std::string& testCase);
+  void ICCADParse(const std::string& testCase, bool siteDefined=false);
 
   void setPartitionFile(char* partitionFile);
 

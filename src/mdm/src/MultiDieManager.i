@@ -85,9 +85,9 @@ constructSimpleExample1()
 }
 
 void
-ICCADParse(char* testCase)
+ICCADParse(char* testCase, bool siteDefined=false)
 {
-  getMultiDieManager()->ICCADParse(testCase);
+  getMultiDieManager()->ICCADParse(testCase, siteDefined);
 }
 
 void

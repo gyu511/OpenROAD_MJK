@@ -201,6 +201,21 @@ class TestCaseManager
   bool isICCADParsed() { return isICCADParsed_; };
   void rowConstruction();
 
+  /**
+   * This function should be called only when `siteDefined_` is true.
+   * And this is only for the ICCAD contest benchmark.
+   * The ICCAD contest benchmark doesn't have site definition,
+   * so we made the edited benchmark, which have the site definition.
+   * p.s.) The cell width should be the multiply of site width.
+   *
+   * The site varies for each benchmark,
+   * so this function returns the site width for each benchmark.
+   * Two site width is returned, because there are two die.
+   * */
+  std::pair<int, int> getSiteWidth();
+
+  void setSiteDefined(bool siteDefined);
+
  private:
   void ICCADContest2022(const std::string& inputFileName,
                         MultiDieManager* mdManager);
@@ -211,7 +226,7 @@ class TestCaseManager
   /**
    * Get the input file name and the contest year of the input file
    * */
-  std::pair<std::string, int> fetchInputFileInfo(TESTCASE testCase) const;
+  std::pair<std::string, int> fetchInputFileInfo(TESTCASE testCase);
 
   ICCADOutputParser iccadOutputParser_;
   bool isICCADParsed_ = false;
@@ -223,6 +238,7 @@ class TestCaseManager
   MultiDieManager* mdm_ = nullptr;
   TESTCASE testcase_;
   int scale_ = 1;
+  bool siteDefined_{false};
 };
 
 }  // namespace mdm
