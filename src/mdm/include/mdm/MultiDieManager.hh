@@ -157,8 +157,8 @@ class MultiDieManager
   void destroyOneDie(char* DIE);
 
   /**
-   * Reading function for partitioning information in `par` is not work in
-   * proper way. So make this function as temporal solution.
+   * The reading function for partitioning information in `par` doesn't
+   * work properly. So this function is made as a temporal solution.
    * */
   void readPartitionInfo(const char* fileNameChar);
 
