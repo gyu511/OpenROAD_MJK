@@ -114,6 +114,12 @@ class MultiDieManager
 
   void runSemiLegalizer(char* targetDie="");
 
+  /**
+   * \pre
+   * `mdm::makeInterconnections` & placement
+   * */
+  void setInterconnectCoordinates();
+
   void constructSimpleExample1();
 
   /**

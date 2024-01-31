@@ -73,6 +73,12 @@ multiDieDPO()
 }
 
 void
+multiDieDRT()
+{
+  getMultiDieManager()->multiDieDRT();
+}
+
+void
 runSemiLegalizer(char* targetDie="")
 {
   getMultiDieManager()->runSemiLegalizer(targetDie);
