@@ -61,21 +61,15 @@ makeShrunkLef()
 }
 
 void
-multiDieDetailPlace()
+multiDieDPL()
 {
-  getMultiDieManager()->multiDieDetailPlacement();
+  getMultiDieManager()->multiDieDPL();
 }
 
 void
 multiDieDPO()
 {
   getMultiDieManager()->multiDieDPO();
-}
-
-void
-multiDieDRT()
-{
-  getMultiDieManager()->multiDieDRT();
 }
 
 void

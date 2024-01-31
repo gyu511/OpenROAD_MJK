@@ -108,7 +108,7 @@ class MultiDieManager
    * */
   void makeShrunkLefs();
 
-  void multiDieDetailPlacement();
+  void multiDieDPL();
 
   void multiDieDPO();
 

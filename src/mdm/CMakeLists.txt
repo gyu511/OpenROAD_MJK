@@ -48,7 +48,7 @@ target_sources(mdm
         src/MakeMultiDieManager.cc
         src/MultiDieManager.cc
         src/SwitchInstHelper.cpp
-        src/DetailPlacementMgr.cpp
+        src/AppManager.cpp
         src/Util.cpp
         src/TestCaseManager.cpp
         src/SemiLegalizer.cpp

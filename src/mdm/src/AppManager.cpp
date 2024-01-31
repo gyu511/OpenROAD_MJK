@@ -34,7 +34,7 @@
 #include "mdm/MultiDieManager.hh"
 namespace mdm {
 using namespace std;
-void MultiDieManager::multiDieDetailPlacement()
+void MultiDieManager::multiDieDPL()
 {
   auto odp = new dpl::Opendp();
   odp->init(db_, logger_);

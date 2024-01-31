@@ -207,7 +207,7 @@ void MultiDieManager::setInterconnectCoordinates()
   // set the interconnection (hybrid bond) coordinates
   // check it is multi-die structure
   if (db_->getChip()->getBlock()->getChildren().size() <= 1) {
-    logger_->warn(utl::MDM, 1, "This is not multi-die structure");
+    logger_->warn(utl::MDM, 14, "This is not multi-die structure");
     return;
   }
 
