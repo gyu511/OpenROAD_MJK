@@ -724,7 +724,7 @@ pair<string, int> TestCaseManager::fetchInputFileInfo(TESTCASE testCase)
 {
   std::map<TESTCASE, std::pair<std::string, int>> testCaseFileName;
   // clang-format off
-  if (siteDefined_) {
+  if (!siteDefined_) {
     testCaseFileName[ICCAD2022_CASE1] = {"ICCAD/2022/case1.txt", 2022};
     testCaseFileName[ICCAD2022_CASE2] = {"ICCAD/2022/case2.txt", 2022};
     testCaseFileName[ICCAD2022_CASE3] = {"ICCAD/2022/case3.txt", 2022};
