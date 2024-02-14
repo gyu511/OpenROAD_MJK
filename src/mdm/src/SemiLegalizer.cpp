@@ -66,6 +66,7 @@ void SemiLegalizer::runAbacus(odb::dbBlock* block)
   targetBlock_ = block;
   std::vector<instInRow> rowSet;
 
+  adjustRowCapacity();
   initRows(&rowSet);
 
   for (const auto& row : rowSet) {
