@@ -245,6 +245,31 @@ void MultiDieManager::inheritRows(odb::dbBlock* parentBlock,
                        row->getSpacing());
   }
 }
+
+void MultiDieManager::inheritGrid(odb::dbBlock* parentBlock,
+                                  odb::dbBlock* childBlock)
+{
+  // ! This code assumes that the parent and child blocks have the same tech !
+  // TODO: let them handle different techs
+
+  for (auto parentGrid : parentBlock->getTrackGrids()) {
+    auto layerName = parentGrid->getTechLayer()->getName();
+    auto layer = childBlock->getTech()->findLayer(layerName.c_str());
+    auto grid = odb::dbTrackGrid::create(childBlock, layer);
+
+    for (int i = 0; i < parentGrid->getNumGridPatternsX(); ++i) {
+      int origin_x, line_count, step;
+      parentGrid->getGridPatternX(i, origin_x, line_count, step);
+      grid->addGridPatternX(origin_x, line_count, step);
+    }
+    for (int i = 0; i < parentGrid->getNumGridPatternsY(); ++i) {
+      int origin_x, line_count, step;
+      parentGrid->getGridPatternY(i, origin_x, line_count, step);
+      grid->addGridPatternY(origin_x, line_count, step);
+    }
+  }
+}
+
 void MultiDieManager::makeIOPinInterconnections()
 {
   auto topBlock = db_->getChip()->getBlock();

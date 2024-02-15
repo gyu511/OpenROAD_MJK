@@ -114,14 +114,14 @@ void MultiDieManager::makeSubBlocks()
         = odb::dbBlock::create(topBlock, dieName.c_str(), *techIter++);
     odb::dbInst::create(topBlock, childBlock, dieName.c_str());
     childBlock->setDieArea(dieArea);
-    if (!testCaseManager_.isICCADParsed()){
+    if (!testCaseManager_.isICCADParsed()) {
       inheritRows(topBlock, childBlock);
     }
+    inheritGrid(topBlock, childBlock);
   }
-  if (testCaseManager_.isICCADParsed()){
+  if (testCaseManager_.isICCADParsed()) {
     testCaseManager_.rowConstruction();
   }
-
 }
 void MultiDieManager::switchInstancesToAssignedDie()
 {

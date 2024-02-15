@@ -207,6 +207,7 @@ class MultiDieManager
   void switchInstancesToAssignedDie();
   void makeInterconnections(odb::dbBlock* lowerBlock, odb::dbBlock* upperBlock);
   void inheritRows(odb::dbBlock* parentBlock, odb::dbBlock* childBlock);
+  void inheritGrid(odb::dbBlock* parentBlock, odb::dbBlock* childBlock);
   void makeIOPinInterconnections();
   void rowConstruction(int dieWidth,
                        int dieHeight,
