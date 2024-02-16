@@ -305,6 +305,54 @@ void MultiDieManager::makeIOPinInterconnections()
   }
 }
 
+void MultiDieManager::getInterconnectArea(int pinX,
+                                          int pinY,
+                                          odb::dbTechLayer* pinLayer,
+                                          int& lowerBoundX,
+                                          int& lowerBoundY,
+                                          int& upperBoundX,
+                                          int& upperBoundY)
+{
+  // refer to ppl::IOPlacer::placePin()
+
+  auto unit = pinLayer->getTech()->getLefUnits();
+  auto minArea = pinLayer->getArea() * unit * unit;
+  uint width, height;
+
+  if (pinLayer->getDirection() == odb::dbTechLayerDir::VERTICAL) {
+    width = pinLayer->getWidth();
+    height = int(std::max(static_cast<double>(width), ceil(minArea / width)));
+  } else {
+    height = pinLayer->getMinWidth();
+    width = int(std::max(static_cast<double>(height), ceil(minArea / height)));
+  }
+  auto mfg_grid = pinLayer->getTech()->getManufacturingGrid();
+  if (width % mfg_grid != 0) {
+    width = mfg_grid * std::ceil(static_cast<float>(width) / mfg_grid);
+  }
+  if (width % 2 != 0) {
+    // ensure width is a even multiple of mfg_grid since its divided by 2 later
+    width += mfg_grid;
+  }
+
+  if (height % mfg_grid != 0) {
+    height = mfg_grid * std::ceil(static_cast<float>(height) / mfg_grid);
+  }
+  if (height % 2 != 0) {
+    // ensure height is a even multiple of mfg_grid since its divided by 2 later
+    height += mfg_grid;
+  }
+
+  odb::Point pos = odb::Point(pinX, pinY);
+  odb::Point ll = odb::Point(pos.x() - width / 2, pos.y() - height / 2);
+  odb::Point ur = odb::Point(pos.x() + width / 2, pos.y() + height / 2);
+
+  lowerBoundX = ll.x();
+  lowerBoundY = ll.y();
+  upperBoundX = ur.x();
+  upperBoundY = ur.y();
+}
+
 void MultiDieManager::constructSimpleExample1()
 {
   numberOfDie_ = 2;

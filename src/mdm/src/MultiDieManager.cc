@@ -274,15 +274,25 @@ void MultiDieManager::setInterconnectCoordinates()
         }
       }
       auto bPin = odb::dbBPin::create(bTerm);
-      // todo: layer assignment
-      auto topLayerIdx = bTerm->getBlock()->getTech()->getLayerCount();
-      auto topLayer = bTerm->getBlock()->getTech()->findLayer(topLayerIdx);
-      odb::dbBox::create(bPin,
-                         topLayer,
-                         point.getX(),
-                         point.getY(),
-                         point.getX() + 1,
-                         point.getY() + 1);
+      auto tech = bTerm->getBlock()->getTech();
+      auto topLayerIdx = tech->getLayerCount() - 1;
+      auto topLayer = tech->findLayer(topLayerIdx);
+      if (topLayer->getName() == "OVERLAP") {  // what is this for? @Matt
+        topLayerIdx--;
+        topLayer = tech->findLayer(topLayerIdx);
+      }
+
+      int lowerBoundX, lowerBoundY, upperBoundX, upperBoundY;
+
+      getInterconnectArea(point.x(),
+                          point.y(),
+                          topLayer,
+                          lowerBoundX,
+                          lowerBoundY,
+                          upperBoundX,
+                          upperBoundY);
+      odb::dbBox::create(
+          bPin, topLayer, lowerBoundX, lowerBoundY, upperBoundX, upperBoundY);
     }
   }
 }

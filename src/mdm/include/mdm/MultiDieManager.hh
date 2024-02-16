@@ -218,6 +218,13 @@ class MultiDieManager
                        odb::dbLib* lib2,
                        const odb::dbInst* inst1,
                        const odb::dbInst* inst2) const;
+  void getInterconnectArea(int pinX,
+                           int pinY,
+                           odb::dbTechLayer* pinLayer,
+                           int& lowerBoundX,
+                           int& lowerBoundY,
+                           int& upperBoundX,
+                           int& upperBoundY);
 
   TestCaseManager testCaseManager_;
 
