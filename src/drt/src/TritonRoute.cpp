@@ -518,10 +518,14 @@ void TritonRoute::init(Tcl_Interp* tcl_interp,
   dist_ = dist;
   stt_builder_ = stt_builder;
   design_ = std::make_unique<frDesign>(logger_);
-  dist->addCallBack(new RoutingCallBack(this, dist, logger));
-  // Define swig TCL commands.
-  Drt_Init(tcl_interp);
-  sta::evalTclInit(tcl_interp, sta::drt_tcl_inits);
+  if (dist != nullptr) {
+    dist->addCallBack(new RoutingCallBack(this, dist, logger));
+  }
+  if (tcl_interp != nullptr) {
+    // Define swig TCL commands.
+    Drt_Init(tcl_interp);
+    sta::evalTclInit(tcl_interp, sta::drt_tcl_inits);
+  }
   FlexDRGraphics::init();
 }
 
@@ -542,7 +546,7 @@ void TritonRoute::initDesign()
   io::Parser parser(db_, getDesign(), logger_);
   parser.readTechAndLibs(db_);
   processBTermsAboveTopLayer();
-  parser.readDesign(db_);
+  parser.readDesign(db_, target_block_);
   auto tech = getDesign()->getTech();
 
   if (!VIAINPIN_BOTTOMLAYER_NAME.empty()) {
@@ -835,8 +839,15 @@ void TritonRoute::sendDesignUpdates(const std::string& globals_path)
   design_->incrementVersion();
 }
 
-int TritonRoute::main()
+int TritonRoute::main(odb::dbBlock* block)
 {
+  if (block == nullptr) {
+    // single die case
+    target_block_ = db_->getChip()->getBlock();
+  } else {
+    // multi die case
+    target_block_ = block;
+  }
   if (DBPROCESSNODE == "GF14_13M_3Mx_2Cx_4Kx_2Hx_2Gx_LB") {
     USENONPREFTRACKS = false;
   }

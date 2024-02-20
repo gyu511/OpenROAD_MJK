@@ -580,6 +580,13 @@ inline void getTrackLocs(bool isHorzTracks,
       if (trackNum * (int) tp->getTrackSpacing() + tp->getStartCoord() < low) {
         ++trackNum;
       }
+      auto trackNums = (int) tp->getNumTracks();
+      auto spacing = (int) tp->getTrackSpacing();
+      auto startCoordinate = tp->getStartCoord();
+      auto condition1 = trackNum < (int) tp->getNumTracks();
+      auto condition2
+          = trackNum * (int) tp->getTrackSpacing() + tp->getStartCoord()
+            <= high;
       for (; trackNum < (int) tp->getNumTracks()
              && trackNum * (int) tp->getTrackSpacing() + tp->getStartCoord()
                     <= high;

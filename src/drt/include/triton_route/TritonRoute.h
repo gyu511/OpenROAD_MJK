@@ -54,6 +54,7 @@ class frMarker;
 
 namespace odb {
 class dbDatabase;
+class dbBlock;
 class dbInst;
 class dbBTerm;
 class dbNet;
@@ -110,7 +111,7 @@ class TritonRoute
 
   fr::frDesign* getDesign() const { return design_.get(); }
 
-  int main();
+  int main(odb::dbBlock* block = nullptr);
   void endFR();
   void pinAccess(std::vector<odb::dbInst*> target_insts
                  = std::vector<odb::dbInst*>());
@@ -191,6 +192,7 @@ class TritonRoute
   std::unique_ptr<fr::DesignCallBack> db_callback_;
   odb::dbDatabase* db_;
   utl::Logger* logger_;
+  odb::dbBlock* target_block_;
   std::unique_ptr<fr::FlexDR> dr_;  // kept for single stepping
   stt::SteinerTreeBuilder* stt_builder_;
   int num_drvs_;

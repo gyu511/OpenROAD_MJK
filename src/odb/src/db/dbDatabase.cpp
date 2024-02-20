@@ -443,9 +443,10 @@ dbTech* dbDatabase::getTech()
     return nullptr;
   }
 
-  if (num_tech == 1) {
+  // temporary solution for multi-die drt
+//  if (num_tech == 1) {
     return *techs.begin();
-  }
+//  }
 
   auto impl = (_dbDatabase*) this;
   impl->_logger->error(

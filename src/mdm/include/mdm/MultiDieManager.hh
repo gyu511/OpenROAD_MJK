@@ -93,8 +93,8 @@ class MultiDieManager
 
   odb::dbDatabase* getDB() { return db_; }
 
-  void get3DHPWL(bool approximate=true);
-  void getHPWL(const char* dieInfo=nullptr);
+  void get3DHPWL(bool approximate = true);
+  void getHPWL(const char* dieInfo = nullptr);
 
   /**
    * \brief
@@ -112,7 +112,9 @@ class MultiDieManager
 
   void multiDieDPO();
 
-  void runSemiLegalizer(char* targetDie="");
+  void multiDieDRT();
+
+  void runSemiLegalizer(char* targetDie = "");
 
   /**
    * \pre
@@ -131,7 +133,7 @@ class MultiDieManager
 
   void timingTestOneDie();
 
-  void ICCADParse(const std::string& testCase, bool siteDefined=false);
+  void ICCADParse(const std::string& testCase, bool siteDefined = false);
 
   void setPartitionFile(char* partitionFile);
 
@@ -149,7 +151,8 @@ class MultiDieManager
    * This is Experiment utilization.
    * \brief
    * This is Experiment utilization.
-   * Imports and parses exported file to temporarily retrieve die coordinates for debugging.
+   * Imports and parses exported file to temporarily retrieve die coordinates
+   * for debugging.
    * */
   void importCoordinates(char* fileName);
 
@@ -168,7 +171,9 @@ class MultiDieManager
    * */
   void readPartitionInfo(const char* fileNameChar);
 
-  void parseICCADOutput(char* filenameChar, char* whichDie="");
+  void parseICCADOutput(char* filenameChar, char* whichDie = "");
+
+  odb::dbBlock* getChildBlock(int order);
 
  private:
   odb::dbTech* makeNewTech(const std::string& techName);

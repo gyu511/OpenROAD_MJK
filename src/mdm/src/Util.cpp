@@ -1164,5 +1164,13 @@ void MultiDieManager::setICCADScale(int scale)
 {
   testCaseManager_.setScale(scale);
 }
+odb::dbBlock* MultiDieManager::getChildBlock(int order)
+{
+  auto blockIter = db_->getChip()->getBlock()->getChildren().begin();
+  for (int i = 0; i < order; ++i) {
+    blockIter++;
+  }
+  return *blockIter;
+}
 
 }  // namespace mdm

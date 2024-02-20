@@ -292,6 +292,18 @@ report_layer_wire_lengths()
   getGlobalRouter()->reportLayerWireLengths();
 }
 
+void
+set_block(odb::dbBlock* block)
+{
+  getGlobalRouter()->setBlock(block);
+}
+
+void
+set_multi_block_mode()
+{
+  getGlobalRouter()->setMultiBlockMode();
+}
+
 } // namespace
 
 %} // inline

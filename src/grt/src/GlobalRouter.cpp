@@ -264,7 +264,9 @@ void GlobalRouter::globalRoute(bool save_guides,
       grouter_cbk_ = nullptr;
     } else {
       clear();
-      block_ = db_->getChip()->getBlock();
+      if (block_ == nullptr) {
+        block_ = db_->getChip()->getBlock();
+      }
 
       if (max_routing_layer_ == -1) {
         max_routing_layer_ = computeMaxRoutingLayer();
@@ -478,7 +480,7 @@ void GlobalRouter::initCoreGrid(int max_routing_layer)
 
 void GlobalRouter::initRoutingLayers()
 {
-  odb::dbTech* tech = db_->getTech();
+  odb::dbTech* tech = block_->getTech();
 
   int valid_layers = 1;
   for (int l = 1; l <= tech->getRoutingLayerCount(); l++) {
@@ -1453,7 +1455,9 @@ void GlobalRouter::perturbCapacities()
 
 void GlobalRouter::initGridAndNets()
 {
-  block_ = db_->getChip()->getBlock();
+  if (block_ == nullptr) {
+    block_ = db_->getChip()->getBlock();
+  }
   routes_.clear();
   if (max_routing_layer_ == -1 || routing_layers_.empty()) {
     max_routing_layer_ = computeMaxRoutingLayer();
@@ -1476,7 +1480,7 @@ void GlobalRouter::initGridAndNets()
 void GlobalRouter::readGuides(const char* file_name)
 {
   if (db_->getChip() == nullptr || db_->getChip()->getBlock() == nullptr
-      || db_->getTech() == nullptr) {
+      || block_->getTech() == nullptr) {
     logger_->error(GRT, 249, "Load design before reading guides");
   }
 
@@ -1512,7 +1516,9 @@ void GlobalRouter::readGuides(const char* file_name)
     if (tokens.size() == 1) {
       net = block_->findNet(tokens[0].c_str());
       net_name = tokens[0];
-      if (!net) {
+      if (multi_block_mode_) {
+        continue;
+      } else if (!net) {
         logger_->error(GRT, 234, "Cannot find net {}.", tokens[0]);
       }
       skip = false;
@@ -2881,7 +2887,7 @@ void GlobalRouter::makeItermPins(Net* net,
           29,
           "Pin {} does not have geometries below the max routing layer ({}).",
           getITermName(iterm),
-          getLayerName(max_routing_layer, db_));
+          getLayerName(max_routing_layer, block_));
     }
 
     Pin pin(iterm,
@@ -2965,9 +2971,9 @@ std::string getITermName(odb::dbITerm* iterm)
   return pin_name;
 }
 
-std::string getLayerName(int layer_idx, odb::dbDatabase* db)
+std::string getLayerName(int layer_idx, odb::dbBlock* block)
 {
-  odb::dbTech* tech = db->getTech();
+  odb::dbTech* tech = block->getTech();
   odb::dbTechLayer* tech_layer = tech->findRoutingLayer(layer_idx);
   return tech_layer->getName();
 }
@@ -3346,7 +3352,7 @@ int GlobalRouter::computeMaxRoutingLayer()
 {
   int max_routing_layer = -1;
 
-  odb::dbTech* tech = db_->getTech();
+  odb::dbTech* tech = block_->getTech();
 
   int valid_layers = 1;
   for (int layer = 1; layer <= tech->getRoutingLayerCount(); layer++) {
@@ -3669,7 +3675,9 @@ void GlobalRouter::reportNetWireLength(odb::dbNet* net,
 
   int pin_count = net->getITermCount() + net->getBTermCount();
 
-  block_ = db_->getChip()->getBlock();
+  if (block_ == nullptr) {
+    block_ = db_->getChip()->getBlock();
+  }
   if (global_route) {
     if (routes_.find(net) == routes_.end()) {
       logger_->warn(

@@ -324,6 +324,7 @@ inline Point::Point(const Point& p) : Point(p.x_, p.y_)
 inline Point::Point(int x, int y)
 {
   x_ = x;
+
   y_ = y;
 }
 

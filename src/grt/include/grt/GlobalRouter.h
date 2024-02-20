@@ -154,6 +154,8 @@ class GlobalRouter : public ant::GlobalRouteSource
 
   void clear();
 
+  void setBlock(odb::dbBlock* block) { block_ = block; }
+  void setMultiBlockMode() { multi_block_mode_ = true; }
   void setAdjustment(const float adjustment);
   void setMinRoutingLayer(const int min_layer);
   void setMaxRoutingLayer(const int max_layer);
@@ -444,6 +446,8 @@ class GlobalRouter : public ant::GlobalRouteSource
   odb::dbDatabase* db_;
   odb::dbBlock* block_;
 
+  bool multi_block_mode_ = false;
+
   std::set<odb::dbNet*> dirty_nets_;
   std::vector<odb::dbNet*> nets_to_route_;
 
@@ -462,7 +466,7 @@ class GlobalRouter : public ant::GlobalRouteSource
 };
 
 std::string getITermName(odb::dbITerm* iterm);
-std::string getLayerName(int layer_idx, odb::dbDatabase* db);
+std::string getLayerName(int layer_idx, odb::dbBlock* block);
 
 class GRouteDbCbk : public odb::dbBlockCallBackObj
 {

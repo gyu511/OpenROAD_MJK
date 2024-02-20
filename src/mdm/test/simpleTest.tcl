@@ -10,5 +10,16 @@ set_3D_IC -die_number 2
 
 gui::design_created
 
-#gpl::global_placement_debug
-#global_placement -skip_initial_place
+mdm::setInterconnectCoordinates
+
+
+# get the guide files
+set childBlock1 [mdm::getChildBlock 0]
+grt::set_block $childBlock1
+grt::set_multi_block_mode
+grt::read_guides ispd18/ispd18_test1/ispd18_test1.input.guide
+
+set childBlock2 [mdm::getChildBlock 0]
+grt::set_block $childBlock2
+grt::set_multi_block_mode
+grt::read_guides ispd18/ispd18_test1/ispd18_test1.input.guide

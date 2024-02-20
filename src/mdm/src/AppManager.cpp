@@ -32,6 +32,10 @@
 ///////////////////////////////////////////////////////////////////////////////
 
 #include "mdm/MultiDieManager.hh"
+#include "stt/SteinerTreeBuilder.h"
+#include "triton_route/TritonRoute.h"
+#include "grt/GlobalRouter.h"
+
 namespace mdm {
 using namespace std;
 void MultiDieManager::multiDieDPL()
@@ -53,6 +57,70 @@ void MultiDieManager::multiDieDPO()
   dpo->improvePlacement(1, 0, 0, db_->getChip()->getBlock(), false);
   for (auto block : db_->getChip()->getBlock()->getChildren()) {
     dpo->improvePlacement(1, 0, 0, block, false);
+  }
+}
+
+void MultiDieManager::multiDieDRT()
+{
+  // set the guide file
+//  for (auto block : db_->getChip()->getBlock()->getChildren()) {
+//    auto grt = new grt::GlobalRouter();
+//        grt->init(db_, logger_);
+//
+//  }
+
+  // Default values based on TCL file for drt
+  const char* outputMazeFile = "";
+  const char* outputDrcFile = "";
+  std::optional<int> drcReportIterStepOpt;
+  const char* outputCmapFile = "";
+  const char* outputGuideCoverageFile = "";
+  const char* dbProcessNode = "";
+  bool enableViaGen = true;
+  int drouteEndIter = -1;
+  const char* viaInPinBottomLayer = "";
+  const char* viaInPinTopLayer = "";
+  int orSeed = -1;
+  double orK = 0.0;
+  const char* bottomRoutingLayer = "";
+  const char* topRoutingLayer = "";
+  int verbose = 1;
+  bool cleanPatches = false;
+  bool noPa = false;
+  bool singleStepDR = false;
+  int minAccessPoints = -1;
+  bool saveGuideUpdates = false;
+  const char* repairPDNLayerName = "";
+
+  for (auto block : db_->getChip()->getBlock()->getChildren()) {
+    auto router = new triton_route::TritonRoute();
+    auto stt = new stt::SteinerTreeBuilder();
+    stt->init(db_, logger_);
+    router->init(nullptr, db_, logger_, nullptr, stt);
+    router->setParams({outputMazeFile,
+                       outputDrcFile,
+                       drcReportIterStepOpt,
+                       outputCmapFile,
+                       outputGuideCoverageFile,
+                       dbProcessNode,
+                       enableViaGen,
+                       drouteEndIter,
+                       viaInPinBottomLayer,
+                       viaInPinTopLayer,
+                       orSeed,
+                       orK,
+                       bottomRoutingLayer,
+                       topRoutingLayer,
+                       verbose,
+                       cleanPatches,
+                       !noPa,
+                       singleStepDR,
+                       minAccessPoints,
+                       saveGuideUpdates,
+                       repairPDNLayerName});
+    router->main(block);
+    delete stt;
+    delete router;
   }
 }
 

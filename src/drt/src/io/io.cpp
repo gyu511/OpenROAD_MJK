@@ -1134,7 +1134,7 @@ void io::Parser::setAccessPoints(odb::dbDatabase* db)
   }
 }
 
-void io::Parser::readDesign(odb::dbDatabase* db)
+void io::Parser::readDesign(odb::dbDatabase* db, odb::dbBlock* block)
 {
   if (design_->getTopBlock() != nullptr) {
     return;
@@ -1146,7 +1146,6 @@ void io::Parser::readDesign(odb::dbDatabase* db)
   ProfileTask profile("IO:readDesign");
   if (db->getChip() == nullptr)
     logger_->error(DRT, 116, "Load design first.");
-  odb::dbBlock* block = db->getChip()->getBlock();
   if (block == nullptr)
     logger_->error(DRT, 117, "Load design first.");
   tmpBlock_ = std::make_unique<frBlock>(std::string(block->getName()));

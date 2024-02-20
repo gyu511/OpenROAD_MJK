@@ -73,6 +73,18 @@ multiDieDPO()
 }
 
 void
+multiDieDRT()
+{
+  getMultiDieManager()->multiDieDRT();
+}
+
+void
+setInterconnectCoordinates()
+{
+  getMultiDieManager()->setInterconnectCoordinates();
+}
+
+void
 runSemiLegalizer(char* targetDie="")
 {
   getMultiDieManager()->runSemiLegalizer(targetDie);
@@ -154,6 +166,12 @@ void
 setICCADScale(int scale)
 {
   getMultiDieManager()->setICCADScale(scale);
+}
+
+odb::dbBlock *
+getChildBlock(int order=0)
+{
+  return getMultiDieManager()->getChildBlock(order);
 }
 
 %} // inline

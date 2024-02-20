@@ -1,3 +1,4 @@
+cd ../../src/ifp/test
 # init_floorplan
 source "helpers.tcl"
 read_lef Nangate45/Nangate45.lef
