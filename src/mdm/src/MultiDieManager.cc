@@ -114,14 +114,13 @@ void MultiDieManager::makeSubBlocks()
         = odb::dbBlock::create(topBlock, dieName.c_str(), *techIter++);
     odb::dbInst::create(topBlock, childBlock, dieName.c_str());
     childBlock->setDieArea(dieArea);
-    if (!testCaseManager_.isICCADParsed()){
+    if (!testCaseManager_.isICCADParsed()) {
       inheritRows(topBlock, childBlock);
     }
   }
-  if (testCaseManager_.isICCADParsed()){
+  if (testCaseManager_.isICCADParsed()) {
     testCaseManager_.rowConstruction();
   }
-
 }
 void MultiDieManager::switchInstancesToAssignedDie()
 {
@@ -141,7 +140,14 @@ void MultiDieManager::switchInstancesToAssignedDie()
 
   // switch the instances one by one
   for (auto inst : instSet) {
-    SwitchInstanceHelper::switchInstanceToAssignedDie(this, inst);
+    if (!odb::dbIntProperty::find(inst, "partition_id")) {
+      logger_->warn(
+          utl::MDM,
+          0,
+          "The " + inst->getName() + " doesn't have the partition id.");
+    } else {
+      SwitchInstanceHelper::switchInstanceToAssignedDie(this, inst);
+    }
   }
 }
 
