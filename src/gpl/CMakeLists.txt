@@ -75,6 +75,7 @@ target_include_directories(gpl
   PUBLIC
     include
     ${LEMON_INCLUDE_DIRS}
+    ${CMAKE_CURRENT_SOURCE_DIR}/../mdm/src #####
 )
 
 target_link_libraries(gpl
@@ -89,6 +90,7 @@ target_link_libraries(gpl
     ortools::ortools
     Threads::Threads
     OpenMP::OpenMP_CXX
+    mdm #####
 )
 
 # Allow users to use GPU or not
@@ -145,6 +147,7 @@ if (Python3_FOUND AND BUILD_PYTHON)
       OpenSTA
       rsz
       grt
+      mdm #####
   )
 
 endif()
