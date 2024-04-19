@@ -45,6 +45,9 @@
 #include "placerBase.h"
 #include "utl/Logger.h"
 
+#include "mdm/MultiDieManager.hh"
+#include <cmath>
+
 #define REPLACE_SQRT2 1.414213562373095048801L
 
 namespace gpl {
@@ -984,8 +987,88 @@ void NesterovBaseCommon::updateWireLengthForceWA(float wlCoeffX, float wlCoeffY)
     gPin->clearWaVars();
   }
 
+  /////////////////////////////////////////////////////////////////////
+  mdm::MultiDieManager multiDieManager;
+  float critical_net_weight = multiDieManager.getCriticalNetWeight();
+  std::vector<std::pair<std::string, std::string>> critical_interconnect = multiDieManager.getCriticalInterconnect();
+  float addweight_x = 0;
+  float addweight_y = 0;
+
+  log_->report("critical_net_weight: {}", critical_net_weight); 
+  std::ostringstream ci;
+  for (const auto& item : critical_interconnect) {
+      ci << "(" << item.first << ", " << item.second << ") ";
+  }
+  log_->report(ci.str());
+  /////////////////////////////////////////////////////////////////////
+
   for (auto& gNet : gNets_) {
     gNet->updateBox();
+
+    /////////////////////////////////////////////////////////////////////
+    // 해당 net의 cell 이름과 pin 좌표 저장
+    std::vector<std::string> cell_list;
+    std::vector<std::pair<float, float>> pin_coordinate;
+    for (auto& gPin : gNet->gPins()) {
+      if (gPin->gCell() && gPin->gCell()->isInstance()) {
+        cell_list.push_back(gPin->gCell()->instance()->dbInst()->getConstName());
+        pin_coordinate.push_back(std::make_pair(gPin->cx(), gPin->cy()));
+      }
+    }
+    // std::ostringstream cl;
+    // cl << "cell_list: [";
+    // bool first_item = true;
+    // for (const auto& item : cell_list) {
+    //     if (!first_item) {
+    //         cl << ", ";
+    //     }
+    //     cl << item;
+    //     first_item = false;
+    // }
+    // cl << "]";
+    // log_->report(cl.str());
+
+    std::vector<std::string> in_cell;
+    for (const auto& cell_pair : multiDieManager.critical_interconnect) {
+      auto first_idx = std::find(cell_list.begin(), cell_list.end(), cell_pair.first);
+      auto second_idx = std::find(cell_list.begin(), cell_list.end(), cell_pair.second);
+      bool first_found = first_idx != cell_list.end();
+      bool second_found = second_idx != cell_list.end();
+
+      log_->report("first_idx: {}, second_idx: {}, first_found: {}, second_found: {}",
+      *first_idx, *second_idx, first_found, second_found);        
+
+      if (first_found && second_found) {
+        // 해당하는 cell 이름 저장
+        in_cell.push_back(*first_idx);
+        in_cell.push_back(*second_idx);
+        // 좌표에 따른 weight 변경
+        int idx1 = std::distance(cell_list.begin(), first_idx);
+        int idx2 = std::distance(cell_list.begin(), second_idx);
+        float c1_x = pin_coordinate[idx1].first;
+        float c1_y = pin_coordinate[idx1].second;
+        float c2_x = pin_coordinate[idx2].first;
+        float c2_y = pin_coordinate[idx2].second;
+        addweight_x = std::abs(c1_x - c2_x) * 0.1;
+        addweight_y = std::abs(c1_y - c2_y) * 0.1;
+
+        std::ostringstream ic;
+        ic << "in_cell: [";
+        bool first_item = true;
+        for (const auto& item : in_cell) {
+          if (!first_item) {
+              ic << ", ";
+          }
+          ic << item;
+          first_item = false;
+        }
+        ic << "]";
+        log_->report(ic.str());
+      }
+    }
+    // log_->report("critical_net_weight: {}, addweight_x: {}, addweight_y: {}",
+    // critical_net_weight, addweight_x, addweight_y);  
+    /////////////////////////////////////////////////////////////////////
 
     for (auto& gPin : gNet->gPins()) {
       // The WA terms are shift invariant:
@@ -995,10 +1078,19 @@ void NesterovBaseCommon::updateWireLengthForceWA(float wlCoeffX, float wlCoeffY)
       //   Sum(exp(x_i))          Sum(exp(x_i - C))
       //
       // So we shift to keep the exponential from overflowing
-      float expMinX = (gNet->lx() - gPin->cx()) * wlCoeffX;
-      float expMaxX = (gPin->cx() - gNet->ux()) * wlCoeffX;
-      float expMinY = (gNet->ly() - gPin->cy()) * wlCoeffY;
-      float expMaxY = (gPin->cy() - gNet->uy()) * wlCoeffY;
+      /////////////////////////////////////////////////////////////////////////////////
+      // critical path에 있는 pin이면 weight 증가
+      int is_critical_cell = 0;
+      if (gPin->gCell() && gPin->gCell()->isInstance()) {
+        if (std::find(in_cell.begin(), in_cell.end(), gPin->gCell()->instance()->dbInst()->getConstName()) != in_cell.end()){
+          is_critical_cell = 1;
+        }
+      }
+      float expMinX = (gNet->lx() - gPin->cx()) * wlCoeffX + (critical_net_weight * addweight_x * is_critical_cell);
+      float expMaxX = (gPin->cx() - gNet->ux()) * wlCoeffX + (critical_net_weight * addweight_x * is_critical_cell);
+      float expMinY = (gNet->ly() - gPin->cy()) * wlCoeffY + (critical_net_weight * addweight_y * is_critical_cell);
+      float expMaxY = (gPin->cy() - gNet->uy()) * wlCoeffY + (critical_net_weight * addweight_y * is_critical_cell);
+      /////////////////////////////////////////////////////////////////////////////////
 
       // min x
       if (expMinX > nbVars_.minWireLengthForceBar) {
