@@ -39,6 +39,7 @@
 #include <iostream>
 #include <string>
 #include <vector>
+#include <utility>
 
 #include "SemiLegalizer.h"
 #include "TestCaseManager.h"
@@ -169,6 +170,16 @@ class MultiDieManager
   void readPartitionInfo(const char* fileNameChar);
 
   void parseICCADOutput(char* filenameChar, char* whichDie="");
+
+  ////////////////////////////////////////////////////////////////////////////
+  std::string CellFile_;
+  std::vector<std::pair<std::string, std::string>> critical_interconnect;
+  float critical_net_weight = 0;
+  void readCriticalCell(const char* CellFile);
+  void setNetWeight(float weight);
+  std::vector<std::pair<std::string, std::string>> getCriticalInterconnect() { return critical_interconnect; }
+  float getCriticalNetWeight() { return critical_net_weight; }
+  ////////////////////////////////////////////////////////////////////////////
 
  private:
   odb::dbTech* makeNewTech(const std::string& techName);
