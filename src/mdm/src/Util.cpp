@@ -1092,4 +1092,42 @@ void MultiDieManager::setICCADScale(int scale)
   testCaseManager_.setScale(scale);
 }
 
+/////////////////////////////////////////////////////////////////////////////
+void MultiDieManager::readCriticalCell(const char* fileNameChar)
+{
+  string fileName{fileNameChar};
+  if (fileName.empty()) {
+    fileName = CellFile_;
+  }
+  // read partition file and apply it
+  ifstream CellFile(fileName);
+  if (!CellFile.is_open()) {
+    logger_->report("Cannot open critical cell file");
+  } else {
+    string line;
+    while (getline(CellFile, line)) {
+      istringstream iss(line);
+      string die1_instName;
+      string die2_instName;
+      iss >> die1_instName >> die2_instName;
+      critical_interconnect.push_back(std::make_pair(die1_instName, die2_instName));
+    }
+  }
+  CellFile.close();
+
+  // std::ostringstream ss;
+  // for (const auto& item : critical_interconnect) {
+  //     ss << "(" << item.first << ", " << item.second << ") ";
+  // }
+  // logger_->report(ss.str()); 
+
+  logger_->report("# of interconnected critical path net: {}", critical_interconnect.size());
+}
+
+void MultiDieManager::setNetWeight(float weight)
+{
+  logger_->report("Set Critical Net Weight is: {}", weight);
+  critical_net_weight = weight;
+}
+
 }  // namespace mdm
