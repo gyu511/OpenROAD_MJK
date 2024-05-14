@@ -739,6 +739,7 @@ class NesterovBaseVars
   // temp variables
   bool isSetBinCnt = false;
   bool useUniformTargetDensity = false;
+  float interconnectWeight = 1.0;
 
   void reset();
 };

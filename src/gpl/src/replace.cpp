@@ -287,6 +287,7 @@ bool Replace::initNesterovPlace()
     pbVars.padLeft = padLeft_;
     pbVars.padRight = padRight_;
     pbVars.skipIoMode = skipIoMode_;
+    pbVars.interconnectWeight = interconnectNetWeight_;
 
     pbc_ = std::make_shared<PlacerBaseCommon>(db_, pbVars, log_);
 
@@ -327,6 +328,7 @@ bool Replace::initNesterovPlace()
     //  This needs a editing of the tcl command.
     NesterovBaseVars nbVars;
     nbVars.targetDensity = density_;
+    nbVars.interconnectWeight = interconnectNetWeight_;
 
     if (binGridCntX_ != 0 && binGridCntY_ != 0) {
       nbVars.isSetBinCnt = true;
@@ -601,6 +603,11 @@ void Replace::addTimingNetWeightOverflow(int overflow)
 void Replace::setTimingNetWeightMax(float max)
 {
   timingNetWeightMax_ = max;
+}
+
+void Replace::setInterconnectNetWeight(float net_weight)
+{
+  interconnectNetWeight_ = net_weight;
 }
 
 }  // namespace gpl

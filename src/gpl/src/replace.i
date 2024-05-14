@@ -268,7 +268,12 @@ set_timing_driven_net_weight_max_cmd(float max)
   return replace->setTimingNetWeightMax(max);
 }
 
-
+void
+set_interconnect_net_weight(float net_weight)
+{
+  Replace* replace = getReplace();
+  return replace->setInterconnectNetWeight(net_weight);
+}
 
 void
 set_debug_cmd(int pause_iterations,

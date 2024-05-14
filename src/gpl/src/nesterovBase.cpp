@@ -986,6 +986,33 @@ void NesterovBaseCommon::updateWireLengthForceWA(float wlCoeffX, float wlCoeffY)
 
   for (auto& gNet : gNets_) {
     gNet->updateBox();
+    auto dbNet = gNet->net()->dbNet();
+    float interconnectWeightX = 1.0;
+    float interconnectWeightY = 1.0;
+    if (gNet->net()->isIntersected()) {
+      int blockIdx = 0;
+      std::pair<int, int> topBlockNetCenter;
+      std::pair<int, int> bottomBlockNetCenter;
+      for (auto iTerm : dbNet->getITerms()) {
+        auto childBlockNet = iTerm->getBTerm()->getNet();
+        if (blockIdx == 0) {
+          topBlockNetCenter = {childBlockNet->getTermBBox().xCenter(),
+                               childBlockNet->getTermBBox().yCenter()};
+        } else {
+          bottomBlockNetCenter = {childBlockNet->getTermBBox().xCenter(),
+                                  childBlockNet->getTermBBox().yCenter()};
+        }
+        blockIdx++;
+      }
+      interconnectWeightX
+          = topBlockNetCenter.first - bottomBlockNetCenter.first;
+      interconnectWeightY
+          = topBlockNetCenter.second - bottomBlockNetCenter.second;
+      interconnectWeightX = abs(interconnectWeightX);
+      interconnectWeightY = abs(interconnectWeightY);
+      interconnectWeightX *= nbVars_.interconnectWeight;
+      interconnectWeightY *= nbVars_.interconnectWeight;
+    }
 
     for (auto& gPin : gNet->gPins()) {
       // The WA terms are shift invariant:
@@ -995,10 +1022,14 @@ void NesterovBaseCommon::updateWireLengthForceWA(float wlCoeffX, float wlCoeffY)
       //   Sum(exp(x_i))          Sum(exp(x_i - C))
       //
       // So we shift to keep the exponential from overflowing
-      float expMinX = (gNet->lx() - gPin->cx()) * wlCoeffX;
-      float expMaxX = (gPin->cx() - gNet->ux()) * wlCoeffX;
-      float expMinY = (gNet->ly() - gPin->cy()) * wlCoeffY;
-      float expMaxY = (gPin->cy() - gNet->uy()) * wlCoeffY;
+      float expMinX
+          = (gNet->lx() - gPin->cx()) * wlCoeffX + interconnectWeightX;
+      float expMaxX
+          = (gPin->cx() - gNet->ux()) * wlCoeffX + interconnectWeightX;
+      float expMinY
+          = (gNet->ly() - gPin->cy()) * wlCoeffY + interconnectWeightY;
+      float expMaxY
+          = (gPin->cy() - gNet->uy()) * wlCoeffY + interconnectWeightY;
 
       // min x
       if (expMinX > nbVars_.minWireLengthForceBar) {

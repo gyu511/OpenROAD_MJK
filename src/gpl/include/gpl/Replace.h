@@ -136,6 +136,7 @@ class Replace
 
   void addTimingNetWeightOverflow(int overflow);
   void setTimingNetWeightMax(float max);
+  void setInterconnectNetWeight(float net_weight);
 
   void setDebug(int pause_iterations,
                 int update_iterations,
@@ -215,5 +216,6 @@ class Replace
   int gui_debug_draw_bins_ = false;
   int gui_debug_initial_ = false;
   odb::dbInst* gui_debug_inst_ = nullptr;
+  float interconnectNetWeight_ = 1.0;
 };
 }  // namespace gpl
