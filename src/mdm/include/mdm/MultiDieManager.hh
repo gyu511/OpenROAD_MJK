@@ -172,7 +172,7 @@ class MultiDieManager
 
   void setNetWeight(float weight);
 
-  void readCriticalCell(const char* fileNameChar);
+  void readCriticalCells(const char* fileNameChar);
 
  private:
   odb::dbTech* makeNewTech(const std::string& techName);

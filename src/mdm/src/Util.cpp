@@ -1097,7 +1097,7 @@ void MultiDieManager::setNetWeight(float weight)
   logger_->report("Set Critical Net Weight is: {}", weight);
   odb::dbDoubleProperty::create(db_->getChip(), "criticalNetWeight", weight);
 }
-void MultiDieManager::readCriticalCell(const char* fileNameChar)
+void MultiDieManager::readCriticalCells(const char* fileNameChar)
 {
   vector<pair<string, string>> critical_interconnect;
 
