@@ -170,6 +170,10 @@ class MultiDieManager
 
   void parseICCADOutput(char* filenameChar, char* whichDie="");
 
+  void setNetWeight(float weight);
+
+  void readCriticalCell(const char* fileNameChar);
+
  private:
   odb::dbTech* makeNewTech(const std::string& techName);
   void makeShrunkLib(const std::string& whichDie,

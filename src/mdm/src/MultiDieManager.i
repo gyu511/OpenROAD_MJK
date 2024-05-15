@@ -156,4 +156,16 @@ setICCADScale(int scale)
   getMultiDieManager()->setICCADScale(scale);
 }
 
+void
+readCriticalCells(char* filename)
+{
+  getMultiDieManager()->readCriticalCells(filename);
+}
+
+void
+setNetWeight(float weight)
+{
+  getMultiDieManager()->setNetWeight(weight);
+}
+
 %} // inline

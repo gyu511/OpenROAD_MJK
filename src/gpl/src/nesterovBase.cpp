@@ -688,10 +688,7 @@ void BinGrid::updateBinsNonPlaceArea()
         // See MS-replace paper
         //
         bin.addNonPlaceArea(
-            getOverlapArea(
-                &bin,
-                inst,
-                pb_->block()->getDbUnitsPerMicron())
+            getOverlapArea(&bin, inst, pb_->block()->getDbUnitsPerMicron())
             * bin.targetDensity());
         bin.addNonPlaceAreaUnscaled(getOverlapAreaUnscaled(&bin, inst)
                                     * bin.targetDensity());
@@ -975,6 +972,31 @@ void NesterovBaseCommon::updateWireLengthForceWA(float wlCoeffX, float wlCoeffY)
   // Comment by minjae
   // TODO: check;
   //  shouldn't the wlCoeff separated by the dbGroup or dbBlocks?
+  bool isMultiDieCase = false;
+  odb::dbBlock* topDieBlock = nullptr;
+  odb::dbBlock* bottomDieBlock = nullptr;
+  double criticalNetWeight = 0;
+
+  if (!this->pbc_->db()->getChip()->getBlock()->getChildren().empty()) {
+    // if this is multi-die case
+    isMultiDieCase = true;
+    auto criticalNetWeightProperty = odb::dbDoubleProperty::find(
+        this->pbc_->db()->getChip(), "criticalNetWeight");
+    if (criticalNetWeightProperty) {
+      criticalNetWeight = criticalNetWeightProperty->getValue();
+    } else {
+      log_->warn(utl::MDM, 100, "Critical net weight is not set");
+    }
+    int dieIdx = 0;
+    for (auto childBlock : pbc_->db()->getChip()->getBlock()->getChildren()) {
+      if (dieIdx == 0) {
+        topDieBlock = childBlock;
+      } else if (dieIdx == 1) {
+        bottomDieBlock = childBlock;
+      }
+      dieIdx++;
+    }
+  }
 
   // clear all WA variables.
   for (auto& gNet : gNets_) {
@@ -988,6 +1010,37 @@ void NesterovBaseCommon::updateWireLengthForceWA(float wlCoeffX, float wlCoeffY)
     gNet->updateBox();
 
     for (auto& gPin : gNet->gPins()) {
+      float additionalWeightX = 0;
+      float additionalWeightY = 0;
+      if (odb::dbBoolProperty::find(gPin->gCell()->instance()->dbInst(),
+                                    "criticalPathInst")) {
+        auto inst = gPin->gCell()->instance()->dbInst();
+        odb::dbInst* otherSideInst = nullptr;
+        auto otherSideInstName = odb::dbStringProperty::find(
+            gPin->gCell()->instance()->dbInst(), "criticalPathOtherSideInst");
+
+        if (inst->getBlock() == topDieBlock) {
+          // if the instance is in the top die, the other side instance should
+          // be in the bottom die
+          otherSideInst
+              = bottomDieBlock->findInst(otherSideInstName->getValue().c_str());
+        } else if (inst->getBlock() == bottomDieBlock) {
+          // if the instance is in the bottom die, the other side instance
+          // should be in the top die
+          otherSideInst
+              = topDieBlock->findInst(otherSideInstName->getValue().c_str());
+        } else {
+          log_->error(GPL, 1, "Critical path instance is not in any die");
+          assert(0);
+        }
+        auto distanceX = inst->getBBox()->getBox().xCenter()
+                         - otherSideInst->getBBox()->getBox().xCenter();
+        auto distanceY = inst->getBBox()->getBox().yCenter()
+                         - otherSideInst->getBBox()->getBox().yCenter();
+        additionalWeightX = std::abs(distanceX) * criticalNetWeight;
+        additionalWeightY = std::abs(distanceY) * criticalNetWeight;
+      }
+
       // The WA terms are shift invariant:
       //
       //   Sum(x_i * exp(x_i))    Sum(x_i * exp(x_i - C))
@@ -995,10 +1048,10 @@ void NesterovBaseCommon::updateWireLengthForceWA(float wlCoeffX, float wlCoeffY)
       //   Sum(exp(x_i))          Sum(exp(x_i - C))
       //
       // So we shift to keep the exponential from overflowing
-      float expMinX = (gNet->lx() - gPin->cx()) * wlCoeffX;
-      float expMaxX = (gPin->cx() - gNet->ux()) * wlCoeffX;
-      float expMinY = (gNet->ly() - gPin->cy()) * wlCoeffY;
-      float expMaxY = (gPin->cy() - gNet->uy()) * wlCoeffY;
+      float expMinX = (gNet->lx() - gPin->cx()) * wlCoeffX + additionalWeightX;
+      float expMaxX = (gPin->cx() - gNet->ux()) * wlCoeffX + additionalWeightX;
+      float expMinY = (gNet->ly() - gPin->cy()) * wlCoeffY + additionalWeightY;
+      float expMaxY = (gPin->cy() - gNet->uy()) * wlCoeffY + additionalWeightY;
 
       // min x
       if (expMinX > nbVars_.minWireLengthForceBar) {
@@ -1230,7 +1283,8 @@ NesterovBase::NesterovBase(NesterovBaseVars nbVars,
   stdInstsArea_ = pb_->stdInstsArea();
   macroInstsArea_ = pb_->macroInstsArea();
 
-  int dbu_per_micron = pb_->block()->getDbUnitsPerMicron();;
+  int dbu_per_micron = pb_->block()->getDbUnitsPerMicron();
+  ;
 
   // update gFillerCells
   initFillerGCells();

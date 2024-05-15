@@ -1092,4 +1092,57 @@ void MultiDieManager::setICCADScale(int scale)
   testCaseManager_.setScale(scale);
 }
 
+void MultiDieManager::setNetWeight(float weight)
+{
+  logger_->report("Set Critical Net Weight is: {}", weight);
+  odb::dbDoubleProperty::create(db_->getChip(), "criticalNetWeight", weight);
+}
+void MultiDieManager::readCriticalCell(const char* fileNameChar)
+{
+  vector<pair<string, string>> critical_interconnect;
+
+  // read file
+  string fileName{fileNameChar};
+  ifstream CellFile(fileName);
+  if (!CellFile.is_open()) {
+    logger_->report("Cannot open critical cell file");
+    return;
+  }
+  string line;
+  while (getline(CellFile, line)) {
+    istringstream iss(line);
+    string die1_instName;
+    string die2_instName;
+    iss >> die1_instName >> die2_instName;
+    critical_interconnect.emplace_back(die1_instName, die2_instName);
+  }
+  CellFile.close();
+
+  // apply the information into the db
+  odb::dbBlock* topDie = nullptr;
+  odb::dbBlock* bottomDie = nullptr;
+  int dieIdx = 0;
+  for (auto childBlock : db_->getChip()->getBlock()->getChildren()) {
+    if (dieIdx == 0) {
+      topDie = childBlock;
+    } else {
+      bottomDie = childBlock;
+    }
+    dieIdx++;
+  }
+  for (auto& [die1_instName, die2_instName] : critical_interconnect) {
+    auto inst1 = topDie->findInst(die1_instName.c_str());
+    auto inst2 = bottomDie->findInst(die2_instName.c_str());
+    if (inst1 == nullptr || inst2 == nullptr) {
+      logger_->report(
+          "Cannot find the instance: {} or {}", die1_instName, die2_instName);
+      continue;
+    }
+    odb::dbBoolProperty::create(inst1, "criticalPathInst", true);
+    odb::dbBoolProperty::create(inst2, "criticalPathInst", true);
+    odb::dbStringProperty::create(inst1, "otherSideInstName", inst2->getConstName());
+    odb::dbStringProperty::create(inst2, "otherSideInstName", inst1->getConstName());
+  }
+}
+
 }  // namespace mdm
