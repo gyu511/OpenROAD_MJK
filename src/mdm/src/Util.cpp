@@ -1140,6 +1140,12 @@ void MultiDieManager::readCriticalCells(const char* fileNameChar)
     }
     odb::dbBoolProperty::create(inst1, "criticalPathInst", true);
     odb::dbBoolProperty::create(inst2, "criticalPathInst", true);
+    if (inst1->getName() == "sa33_reg_7_"){
+      int test = 0;
+    }
+    if (inst2->getName() == "sa33_reg_7_"){
+      int test = 0;
+    }
     odb::dbStringProperty::create(inst1, "otherSideInstName", inst2->getConstName());
     odb::dbStringProperty::create(inst2, "otherSideInstName", inst1->getConstName());
   }

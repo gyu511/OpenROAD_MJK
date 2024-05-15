@@ -1016,8 +1016,9 @@ void NesterovBaseCommon::updateWireLengthForceWA(float wlCoeffX, float wlCoeffY)
                                     "criticalPathInst")) {
         auto inst = gPin->gCell()->instance()->dbInst();
         odb::dbInst* otherSideInst = nullptr;
-        auto otherSideInstName = odb::dbStringProperty::find(
-            gPin->gCell()->instance()->dbInst(), "criticalPathOtherSideInst");
+        auto otherSideInstName
+            = odb::dbStringProperty::find(inst, "otherSideInstName");
+        assert(otherSideInstName != nullptr);
 
         if (inst->getBlock() == topDieBlock) {
           // if the instance is in the top die, the other side instance should
