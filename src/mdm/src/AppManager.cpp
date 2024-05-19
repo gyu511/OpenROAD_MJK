@@ -30,8 +30,9 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ///////////////////////////////////////////////////////////////////////////////
-
 #include "mdm/MultiDieManager.hh"
+#include "odb/defout.h"
+#include "odb/lefout.h"
 namespace mdm {
 using namespace std;
 void MultiDieManager::multiDieDPL()
@@ -85,9 +86,10 @@ void MultiDieManager::interconnectionLegalize(uint gridSize)
     auto interconnectionNet = interconnectionInfo.first;
     auto interconnectionCoordinate = interconnectionInfo.second;
     auto inst = odb::dbInst::create(
-        block, master, interconnectionNet->getConstName());
+        block, master, ("instance_" + interconnectionNet->getName()).c_str());
     inst->setLocation(interconnectionCoordinate.getX(),
                       interconnectionCoordinate.getY());
+    int test = 0;
   }
 
   // make rows for interconnections
@@ -106,9 +108,20 @@ void MultiDieManager::interconnectionLegalize(uint gridSize)
                        numOfSites);
   }
 
+  // write def file for debugging
+  odb::defout def_writer(logger_);
+  def_writer.setVersion(odb::defout::Version::DEF_5_8);
+  def_writer.writeBlock(block, "interconnectionLegalizationBefore.def");
+
+  // write lef file for debugging
+  std::ofstream os;
+  os.open("interconnectionLegalizationBefore.lef");
+  odb::lefout lef_writer(logger_, os);
+  lef_writer.writeLib(lib);
+
   // do interconnection legalization
   odp->init(db, logger_);
-  odp->detailedPlacement(0, 0, "", false, block);
+  //  odp->detailedPlacement(0, 0, "", false, block);
 
   // apply the placement to member variable
   for (auto inst : block->getInsts()) {

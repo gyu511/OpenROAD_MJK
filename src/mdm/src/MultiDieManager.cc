@@ -268,7 +268,7 @@ void MultiDieManager::setInterconnectCoordinates()
   }
 
   // set the grid size for interconnection legalization
-  interconnectionLegalize(10);
+  interconnectionLegalize(1000);
 
 
   // apply the coordinate
