@@ -265,11 +265,42 @@ void MultiDieManager::setInterconnectCoordinates()
     temporaryInterconnectCoordinateMap_[intersectedTopHierNet] = point;
     temporaryInterconnectCoordinates_.emplace_back(intersectedTopHierNet,
                                                    point);
+  }
 
-    // set the grid size for interconnection legalization
-    interconnectionLegalize(10);
+  // set the grid size for interconnection legalization
+  interconnectionLegalize(10);
 
-    // apply the coordinate
+
+  // apply the coordinate
+  for (auto intersectedTopHierNet : topBlock->getNets()) {
+    if (!odb::dbBoolProperty::find(intersectedTopHierNet, "intersected")) {
+      continue;
+    }
+    // Only the intersected nets in lower hierarchy block
+    // will be collected in `intersectedNets`.
+    vector<odb::dbNet*> intersectedNets;
+    // Interconnections as seen from the top hierarchy block
+    vector<odb::dbITerm*> interconnectionITerms;
+    // Interconnections as seen from the lower hierarchy block
+    vector<odb::dbBTerm*> interconnectionBTerms;
+    // The size of these vector should be two.
+
+    unordered_map<odb::dbNet*, odb::dbITerm*> netToITerm;
+    unordered_map<odb::dbNet*, odb::dbBTerm*> netToBTerm;
+
+    for (auto iterm : intersectedTopHierNet->getITerms()) {
+      if (!iterm->getBTerm()) {
+        continue;
+      }
+      interconnectionITerms.push_back(iterm);
+      interconnectionBTerms.push_back(iterm->getBTerm());
+      intersectedNets.push_back(iterm->getBTerm()->getNet());
+      netToITerm[intersectedTopHierNet] = iterm;
+      netToBTerm[intersectedTopHierNet] = iterm->getBTerm();
+    }
+
+    auto point = temporaryInterconnectCoordinateMap_[intersectedTopHierNet];
+
     for (auto iTerm : interconnectionITerms) {
       if (!iTerm->getMTerm()->getMPins().empty()) {
         for (auto mPin : iTerm->getMTerm()->getMPins()) {
