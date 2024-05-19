@@ -156,6 +156,11 @@ setICCADScale(int scale)
   getMultiDieManager()->setICCADScale(scale);
 }
 
+void setInterconnectCoordinates()
+{
+  getMultiDieManager()->setInterconnectCoordinates();
+}
+
 void
 readCriticalCells(char* filename)
 {

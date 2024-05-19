@@ -56,6 +56,69 @@ void MultiDieManager::multiDieDPO()
   }
 }
 
+void MultiDieManager::interconnectionLegalize(uint gridSize)
+{
+  // grid size means the size of the grid for interconnection
+
+  auto odp = new dpl::Opendp();
+  // make new fake db for interconnection legalization
+  auto db = odb::dbDatabase::create();
+  auto chip = odb::dbChip::create(db);
+  auto tech = odb::dbTech::create(db, "fakeTech");
+  auto lib = odb::dbLib::create(db, "fakeLib", tech);
+  auto block = odb::dbBlock::create(chip, "fakeBlock", tech);
+
+  block->setDieArea(db_->getChip()->getBlock()->getDieArea());
+
+  // make fake master for interconnection
+  odb::dbSite* site = odb::dbSite::create(lib, "Site");
+  site->setWidth(gridSize);
+  site->setHeight(gridSize);
+  auto master = odb::dbMaster::create(lib, "interconnectionShape");
+  master->setHeight(gridSize);
+  master->setWidth(gridSize);
+  master->setType(odb::dbMasterType::CORE);
+  master->setSite(site);
+  master->setFrozen();
+
+  for (const auto& interconnectionInfo : temporaryInterconnectCoordinates_) {
+    auto interconnectionNet = interconnectionInfo.first;
+    auto interconnectionCoordinate = interconnectionInfo.second;
+    auto inst = odb::dbInst::create(
+        block, master, interconnectionNet->getConstName());
+    inst->setLocation(interconnectionCoordinate.getX(),
+                      interconnectionCoordinate.getY());
+  }
+
+  // make rows for interconnections
+  int numOfSites = block->getDieArea().dx() / gridSize;
+  int numOfRows = block->getDieArea().dy() / gridSize;
+
+  for (int i = 0; i < numOfRows; ++i) {
+    odb::dbRow::create(block,
+                       ("row" + to_string(i)).c_str(),
+                       site,
+                       0,
+                       i * gridSize,
+                       odb::dbOrientType::MX,
+                       odb::dbRowDir::HORIZONTAL,
+                       numOfSites,
+                       numOfSites);
+  }
+
+  // do interconnection legalization
+  odp->init(db, logger_);
+  odp->detailedPlacement(0, 0, "", false, block);
+
+  // apply the placement to member variable
+  for (auto inst : block->getInsts()) {
+    auto instName = inst->getConstName();
+    temporaryInterconnectCoordinateMap_[db_->getChip()->getBlock()->findNet(
+        instName)]
+        = odb::Point(inst->getLocation().getX(), inst->getLocation().getY());
+  }
+}
+
 void MultiDieManager::runSemiLegalizer(char* targetDie)
 {
   SemiLegalizer semiLegalizer{};

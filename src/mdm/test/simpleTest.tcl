@@ -10,5 +10,7 @@ set_3D_IC -die_number 2
 
 gui::design_created
 
+mdm::setInterconnectCoordinates
+
 #gpl::global_placement_debug
 #global_placement -skip_initial_place

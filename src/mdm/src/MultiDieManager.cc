@@ -262,6 +262,12 @@ void MultiDieManager::setInterconnectCoordinates()
                yCandidates.at(2));
     }
     odb::Point point{box.xCenter(), box.yCenter()};
+    temporaryInterconnectCoordinateMap_[intersectedTopHierNet] = point;
+    temporaryInterconnectCoordinates_.emplace_back(intersectedTopHierNet,
+                                                   point);
+
+    interconnectionLegalize(
+        1000);  // set the grid size for interconnection legalization
 
     // apply the coordinate
     for (auto iTerm : interconnectionITerms) {
@@ -281,7 +287,7 @@ void MultiDieManager::setInterconnectCoordinates()
       }
       auto bPin = odb::dbBPin::create(bTerm);
       // todo: layer assignment
-      auto topLayerIdx = bTerm->getBlock()->getTech()->getLayerCount();
+      auto topLayerIdx = bTerm->getBlock()->getTech()->getLayerCount() - 1;
       auto topLayer = bTerm->getBlock()->getTech()->findLayer(topLayerIdx);
       odb::dbBox::create(bPin,
                          topLayer,

@@ -93,8 +93,8 @@ class MultiDieManager
 
   odb::dbDatabase* getDB() { return db_; }
 
-  void get3DHPWL(bool approximate=true);
-  void getHPWL(const char* dieInfo=nullptr);
+  void get3DHPWL(bool approximate = true);
+  void getHPWL(const char* dieInfo = nullptr);
 
   /**
    * \brief
@@ -112,7 +112,7 @@ class MultiDieManager
 
   void multiDieDPO();
 
-  void runSemiLegalizer(char* targetDie="");
+  void runSemiLegalizer(char* targetDie = "");
 
   /**
    * \pre
@@ -131,7 +131,7 @@ class MultiDieManager
 
   void timingTestOneDie();
 
-  void ICCADParse(const std::string& testCase, bool siteDefined=false);
+  void ICCADParse(const std::string& testCase, bool siteDefined = false);
 
   void setPartitionFile(char* partitionFile);
 
@@ -149,7 +149,8 @@ class MultiDieManager
    * This is Experiment utilization.
    * \brief
    * This is Experiment utilization.
-   * Imports and parses exported file to temporarily retrieve die coordinates for debugging.
+   * Imports and parses exported file to temporarily retrieve die coordinates
+   * for debugging.
    * */
   void importCoordinates(char* fileName);
 
@@ -168,7 +169,7 @@ class MultiDieManager
    * */
   void readPartitionInfo(const char* fileNameChar);
 
-  void parseICCADOutput(char* filenameChar, char* whichDie="");
+  void parseICCADOutput(char* filenameChar, char* whichDie = "");
 
   void setNetWeight(float weight);
 
@@ -200,6 +201,13 @@ class MultiDieManager
    */
   void makeSubBlocks();
 
+  /*
+   * This function will get the legalized coordinates for the interconnections,
+   * and store that information in temporaryInterconnectCoordinateMap_.
+   * This function will be called only in setInterconnectCoordinates().
+   * */
+  void interconnectionLegalize(uint gridSize);
+
   /**
    * Below functions are for detail placement.
    * */
@@ -230,6 +238,10 @@ class MultiDieManager
   gpl::Replace* replace_{};
   dpl::Opendp* opendp_{};
   sta::dbSta* sta_{};
+  std::unordered_map<odb::dbNet*, odb::Point>
+      temporaryInterconnectCoordinateMap_;
+  std::vector<std::pair<odb::dbNet*, odb::Point> >
+      temporaryInterconnectCoordinates_;
 
   int numberOfDie_{};
   float shrinkAreaRatio_{};
