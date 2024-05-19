@@ -266,8 +266,8 @@ void MultiDieManager::setInterconnectCoordinates()
     temporaryInterconnectCoordinates_.emplace_back(intersectedTopHierNet,
                                                    point);
 
-    interconnectionLegalize(
-        1000);  // set the grid size for interconnection legalization
+    // set the grid size for interconnection legalization
+    interconnectionLegalize(10);
 
     // apply the coordinate
     for (auto iTerm : interconnectionITerms) {
