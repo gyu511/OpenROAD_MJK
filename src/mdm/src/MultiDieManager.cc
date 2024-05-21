@@ -208,7 +208,7 @@ void MultiDieManager::makeInterconnections(odb::dbBlock* lowerBlock,
       utl::MDM, 12, "The interconnection number: {}", interconnectionNum);
 }
 
-void MultiDieManager::setInterconnectCoordinates()
+void MultiDieManager::setInterconnectCoordinates(int gridsize)
 {
   // set the interconnection (hybrid bond) coordinates
   // check it is multi-die structure
@@ -244,7 +244,7 @@ void MultiDieManager::setInterconnectCoordinates()
     odb::Rect box1, box2, box;
     box1 = intersectedNets.at(0)->getTermBBox();
     box2 = intersectedNets.at(1)->getTermBBox();
-    if (box.intersects(box2)) {
+    if (box1.intersects(box2)) {
       box = box1.intersect(box2);
     } else {
       vector<int> xCandidates
@@ -268,7 +268,7 @@ void MultiDieManager::setInterconnectCoordinates()
   }
 
   // set the grid size for interconnection legalization
-  interconnectionLegalize(1000);
+  interconnectionLegalize(gridsize);
 
 
   // apply the coordinate

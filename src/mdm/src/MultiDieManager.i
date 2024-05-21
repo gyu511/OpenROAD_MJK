@@ -156,9 +156,9 @@ setICCADScale(int scale)
   getMultiDieManager()->setICCADScale(scale);
 }
 
-void setInterconnectCoordinates()
+void setInterconnectCoordinates(int gridsize)
 {
-  getMultiDieManager()->setInterconnectCoordinates();
+  getMultiDieManager()->setInterconnectCoordinates(gridsize);
 }
 
 void

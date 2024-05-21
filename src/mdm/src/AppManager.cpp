@@ -89,7 +89,8 @@ void MultiDieManager::interconnectionLegalize(uint gridSize)
         block, master, ("instance_" + interconnectionNet->getName()).c_str());
     inst->setLocation(interconnectionCoordinate.getX(),
                       interconnectionCoordinate.getY());
-    int test = 0;
+    inst->setPlacementStatus("PLACED");
+    // logger_->info(utl::MDM, 32, "interconnectionCoordinate: {}, {}", inst->getLocation().getX(), inst->getLocation().getY());
   }
 
   // make rows for interconnections
@@ -121,7 +122,7 @@ void MultiDieManager::interconnectionLegalize(uint gridSize)
 
   // do interconnection legalization
   odp->init(db, logger_);
-  //  odp->detailedPlacement(0, 0, "", false, block);
+  odp->detailedPlacement(0, 0, "", false, block);
 
   // apply the placement to member variable
   for (auto inst : block->getInsts()) {
@@ -130,6 +131,11 @@ void MultiDieManager::interconnectionLegalize(uint gridSize)
         instName)]
         = odb::Point(inst->getLocation().getX(), inst->getLocation().getY());
   }
+
+  // write def file for debugging
+  odb::defout def_writer(logger_);
+  def_writer.setVersion(odb::defout::Version::DEF_5_8);
+  def_writer.writeBlock(block, "interconnectionLegalizationAfter.def");  
 }
 
 void MultiDieManager::runSemiLegalizer(char* targetDie)
