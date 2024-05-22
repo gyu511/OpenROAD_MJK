@@ -60,6 +60,13 @@ void MultiDieManager::multiDieDPO()
 void MultiDieManager::interconnectionLegalize(uint gridSize)
 {
   // grid size means the size of the grid for interconnection
+  auto layer = db_->getChip()->getBlock()->getTech()->findLayer("M6");
+
+  auto m6originY = 36;
+  auto m6height = layer->getPitch();
+  auto m6number
+      = (db_->getChip()->getBlock()->getDieArea().dy() - m6originY) / m6height;
+
 
   auto odp = new dpl::Opendp();
   // make new fake db for interconnection legalization
@@ -74,10 +81,10 @@ void MultiDieManager::interconnectionLegalize(uint gridSize)
   // make fake master for interconnection
   odb::dbSite* site = odb::dbSite::create(lib, "Site");
   site->setWidth(gridSize);
-  site->setHeight(gridSize);
+  site->setHeight(m6height);
   auto master = odb::dbMaster::create(lib, "interconnectionShape");
   master->setHeight(gridSize);
-  master->setWidth(gridSize);
+  master->setWidth(m6height);
   master->setType(odb::dbMasterType::CORE);
   master->setSite(site);
   master->setFrozen();
@@ -90,23 +97,25 @@ void MultiDieManager::interconnectionLegalize(uint gridSize)
     inst->setLocation(interconnectionCoordinate.getX(),
                       interconnectionCoordinate.getY());
     inst->setPlacementStatus("PLACED");
-    // logger_->info(utl::MDM, 32, "interconnectionCoordinate: {}, {}", inst->getLocation().getX(), inst->getLocation().getY());
+    // logger_->info(utl::MDM, 32, "interconnectionCoordinate: {}, {}",
+    // inst->getLocation().getX(), inst->getLocation().getY());
   }
 
   // make rows for interconnections
   int numOfSites = block->getDieArea().dx() / gridSize;
-  int numOfRows = block->getDieArea().dy() / gridSize;
+  int numOfRows = m6number;
+  auto offsetY = m6originY*2;
 
-  for (int i = 0; i < numOfRows; ++i) {
+  for (int i = 1; i < numOfRows; ++i) {
     odb::dbRow::create(block,
                        ("row" + to_string(i)).c_str(),
                        site,
                        0,
-                       i * gridSize,
+                       offsetY + i * m6height,
                        odb::dbOrientType::MX,
                        odb::dbRowDir::HORIZONTAL,
                        numOfSites,
-                       numOfSites);
+                       gridSize);
   }
 
   // write def file for debugging
@@ -134,7 +143,7 @@ void MultiDieManager::interconnectionLegalize(uint gridSize)
 
   // write def file for debugging
   def_writer.setVersion(odb::defout::Version::DEF_5_8);
-  def_writer.writeBlock(block, "interconnectionLegalizationAfter.def");  
+  def_writer.writeBlock(block, "interconnectionLegalizationAfter.def");
 }
 
 void MultiDieManager::runSemiLegalizer(char* targetDie)

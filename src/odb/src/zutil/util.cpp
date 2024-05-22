@@ -53,7 +53,7 @@ RUDYCalculator::RUDYCalculator(dbBlock* block) : block_(block)
     return;
   }
   // TODO: Match the wire width with the paper definition
-  wireWidth_ = block_->getTech()->findRoutingLayer(1)->getWidth();
+//  wireWidth_ = block_->getTech()->findRoutingLayer(1)->getWidth();
 
   odb::dbTechLayer* tech_layer = block_->getTech()->findRoutingLayer(3);
   odb::dbTrackGrid* track_grid = block_->findTrackGrid(tech_layer);
