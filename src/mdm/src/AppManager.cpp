@@ -133,7 +133,6 @@ void MultiDieManager::interconnectionLegalize(uint gridSize)
   }
 
   // write def file for debugging
-  odb::defout def_writer(logger_);
   def_writer.setVersion(odb::defout::Version::DEF_5_8);
   def_writer.writeBlock(block, "interconnectionLegalizationAfter.def");  
 }
