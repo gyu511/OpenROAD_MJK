@@ -1012,76 +1012,80 @@ void NesterovBaseCommon::updateWireLengthForceWA(float wlCoeffX, float wlCoeffY)
     for (auto& gPin : gNet->gPins()) {
       float additionalWeightX = 0;
       float additionalWeightY = 0;
-      if (odb::dbBoolProperty::find(gPin->gCell()->instance()->dbInst(),
-                                    "criticalPathInst")) {
-        auto inst = gPin->gCell()->instance()->dbInst();
-        odb::dbInst* otherSideInst = nullptr;
-        auto otherSideInstName
-            = odb::dbStringProperty::find(inst, "otherSideInstName");
+      if (gPin->gCell()) {
+        if (odb::dbBoolProperty::find(gPin->gCell()->instance()->dbInst(),
+                                      "criticalPathInst")) {
+          auto inst = gPin->gCell()->instance()->dbInst();
+          odb::dbInst* otherSideInst = nullptr;
+          auto otherSideInstName
+              = odb::dbStringProperty::find(inst, "otherSideInstName");
 
-        if (otherSideInstName->getValue().find(" ") != std::string::npos) {
-          // if `otherSideInstName` has space,
-          // it means it has several other side instances
-          std::vector<std::string> otherSideInstNames;
-          odb::Rect otherSideInstBox;
-          otherSideInstBox.mergeInit();
-          // split the string by space
-          std::istringstream iss(otherSideInstName->getValue());
-          for (std::string s; iss >> s;) {
-            otherSideInstNames.push_back(s);
-          }
-          for (auto& otherSideInstName : otherSideInstNames) {
+          if (otherSideInstName->getValue().find(" ") != std::string::npos) {
+            // if `otherSideInstName` has space,
+            // it means it has several other side instances
+            std::vector<std::string> otherSideInstNames;
+            odb::Rect otherSideInstBox;
+            otherSideInstBox.mergeInit();
+            // split the string by space
+            std::istringstream iss(otherSideInstName->getValue());
+            for (std::string s; iss >> s;) {
+              otherSideInstNames.push_back(s);
+            }
+            for (auto& otherSideInstName : otherSideInstNames) {
+              if (inst->getBlock() == topDieBlock) {
+                // if the instance is in the top die, the other side instance
+                // should be in the bottom die
+                otherSideInst
+                    = bottomDieBlock->findInst(otherSideInstName.c_str());
+              } else if (inst->getBlock() == bottomDieBlock) {
+                // if the instance is in the bottom die, the other side instance
+                // should be in the top die
+                otherSideInst
+                    = topDieBlock->findInst(otherSideInstName.c_str());
+              } else {
+                log_->error(
+                    GPL, 41, "Critical path instance is not in any die");
+                assert(0);
+              }
+              if (!otherSideInst) {
+                log_->error(GPL, 42, "Can not find the other side instance.");
+                assert(0);
+              }
+              otherSideInstBox.merge(otherSideInst->getBBox()->getBox());
+            }
+            auto distanceX = inst->getBBox()->getBox().xCenter()
+                             - otherSideInstBox.xCenter();
+            auto distanceY = inst->getBBox()->getBox().yCenter()
+                             - otherSideInstBox.yCenter();
+            additionalWeightX = std::abs(distanceX) * criticalNetWeight;
+            additionalWeightY = std::abs(distanceY) * criticalNetWeight;
+          } else {
             if (inst->getBlock() == topDieBlock) {
               // if the instance is in the top die, the other side instance
               // should be in the bottom die
-              otherSideInst
-                  = bottomDieBlock->findInst(otherSideInstName.c_str());
+              otherSideInst = bottomDieBlock->findInst(
+                  otherSideInstName->getValue().c_str());
             } else if (inst->getBlock() == bottomDieBlock) {
               // if the instance is in the bottom die, the other side instance
               // should be in the top die
-              otherSideInst = topDieBlock->findInst(otherSideInstName.c_str());
+              otherSideInst = topDieBlock->findInst(
+                  otherSideInstName->getValue().c_str());
+
             } else {
-              log_->error(GPL, 41, "Critical path instance is not in any die");
+              log_->error(GPL, 43, "Critical path instance is not in any die");
               assert(0);
             }
             if (!otherSideInst) {
-              log_->error(GPL, 42, "Can not find the other side instance.");
+              log_->error(GPL, 44, "Can not find the other side instance.");
               assert(0);
             }
-            otherSideInstBox.merge(otherSideInst->getBBox()->getBox());
+            auto distanceX = inst->getBBox()->getBox().xCenter()
+                             - otherSideInst->getBBox()->getBox().xCenter();
+            auto distanceY = inst->getBBox()->getBox().yCenter()
+                             - otherSideInst->getBBox()->getBox().yCenter();
+            additionalWeightX = std::abs(distanceX) * criticalNetWeight;
+            additionalWeightY = std::abs(distanceY) * criticalNetWeight;
           }
-          auto distanceX = inst->getBBox()->getBox().xCenter()
-                           - otherSideInstBox.xCenter();
-          auto distanceY = inst->getBBox()->getBox().yCenter()
-                           - otherSideInstBox.yCenter();
-          additionalWeightX = std::abs(distanceX) * criticalNetWeight;
-          additionalWeightY = std::abs(distanceY) * criticalNetWeight;
-        } else {
-          if (inst->getBlock() == topDieBlock) {
-            // if the instance is in the top die, the other side instance should
-            // be in the bottom die
-            otherSideInst = bottomDieBlock->findInst(
-                otherSideInstName->getValue().c_str());
-          } else if (inst->getBlock() == bottomDieBlock) {
-            // if the instance is in the bottom die, the other side instance
-            // should be in the top die
-            otherSideInst
-                = topDieBlock->findInst(otherSideInstName->getValue().c_str());
-
-          } else {
-            log_->error(GPL, 43, "Critical path instance is not in any die");
-            assert(0);
-          }
-          if (!otherSideInst) {
-            log_->error(GPL, 44, "Can not find the other side instance.");
-            assert(0);
-          }
-          auto distanceX = inst->getBBox()->getBox().xCenter()
-                           - otherSideInst->getBBox()->getBox().xCenter();
-          auto distanceY = inst->getBBox()->getBox().yCenter()
-                           - otherSideInst->getBBox()->getBox().yCenter();
-          additionalWeightX = std::abs(distanceX) * criticalNetWeight;
-          additionalWeightY = std::abs(distanceY) * criticalNetWeight;
         }
       }
 
