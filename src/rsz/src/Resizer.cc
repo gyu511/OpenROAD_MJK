@@ -236,7 +236,7 @@ Resizer::initBlock()
                    && core_.xMax() == 0
                    && core_.yMin() == 0
                    && core_.yMax() == 0);
-  dbu_ = db_->getTech()->getDbUnitsPerMicron();
+    dbu_ = db_->getChip()->getBlock()->getDbUnitsPerMicron();
 }
 
 void
