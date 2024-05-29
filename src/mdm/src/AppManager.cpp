@@ -63,10 +63,7 @@ void MultiDieManager::interconnectionLegalize(uint gridSize)
   auto layer = db_->getChip()->getBlock()->getTech()->findLayer("M6");
 
   auto m6originY = 36;
-  auto m6height = layer->getPitch();
-  auto m6number
-      = (db_->getChip()->getBlock()->getDieArea().dy() - m6originY) / m6height;
-
+  auto m6height = 64;
 
   auto odp = new dpl::Opendp();
   // make new fake db for interconnection legalization
@@ -83,8 +80,8 @@ void MultiDieManager::interconnectionLegalize(uint gridSize)
   site->setWidth(gridSize);
   site->setHeight(m6height);
   auto master = odb::dbMaster::create(lib, "interconnectionShape");
-  master->setHeight(gridSize);
-  master->setWidth(m6height);
+  master->setHeight(m6height);
+  master->setWidth(gridSize);
   master->setType(odb::dbMasterType::CORE);
   master->setSite(site);
   master->setFrozen();
@@ -103,15 +100,16 @@ void MultiDieManager::interconnectionLegalize(uint gridSize)
 
   // make rows for interconnections
   int numOfSites = block->getDieArea().dx() / gridSize;
-  int numOfRows = m6number;
-  auto offsetY = m6originY*2;
+  //int numOfRows = (db_->getChip()->getBlock()->getDieArea().dy() - (m6originY * 2)) / m6height;
+  int numOfRows = (db_->getChip()->getBlock()->getDieArea().dy()) / m6height;
+  auto offsetY = m6originY + (m6height / 2);
 
-  for (int i = 1; i < numOfRows; ++i) {
+  for (int i = 0; i < numOfRows; ++i) {
     odb::dbRow::create(block,
                        ("row" + to_string(i)).c_str(),
                        site,
                        0,
-                       offsetY + i * m6height,
+                       70 + (i * m6height),
                        odb::dbOrientType::MX,
                        odb::dbRowDir::HORIZONTAL,
                        numOfSites,
