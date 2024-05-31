@@ -1036,7 +1036,8 @@ void MultiDieManager::exportCoordinates(char* fileName)
         continue;
       }
       outputFile << inst->getName() << " " << inst->getLocation().getX() << " "
-                 << inst->getLocation().getY() << "\n";
+                 << inst->getLocation().getY() << " "
+                 << inst->getOrient().getString() << "\n";
     }
   }
   outputFile.close();
@@ -1140,8 +1141,10 @@ void MultiDieManager::readCriticalCells(const char* fileNameChar)
     }
     odb::dbBoolProperty::create(inst1, "criticalPathInst", true);
     odb::dbBoolProperty::create(inst2, "criticalPathInst", true);
-    odb::dbStringProperty::create(inst1, "otherSideInstName", inst2->getConstName());
-    odb::dbStringProperty::create(inst2, "otherSideInstName", inst1->getConstName());
+    odb::dbStringProperty::create(
+        inst1, "otherSideInstName", inst2->getConstName());
+    odb::dbStringProperty::create(
+        inst2, "otherSideInstName", inst1->getConstName());
   }
 }
 
