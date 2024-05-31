@@ -1147,5 +1147,80 @@ void MultiDieManager::readCriticalCells(const char* fileNameChar)
         inst2, "otherSideInstName", inst1->getConstName());
   }
 }
+void MultiDieManager::makeInterconnectCell(const char* interconnectNetFile)
+{
+  // read interconnect net file
+  vector<string> interconnectNetNames;
+  // read file
+  ifstream CellFile(interconnectNetFile);
+  if (!CellFile.is_open()) {
+    logger_->report("Cannot open interconnect net file");
+    return;
+  }
+  string line;
+  while (getline(CellFile, line)) {
+    interconnectNetNames.push_back(line);
+  }
+  CellFile.close();
+
+  // get the bump master cell
+  odb::dbMaster* bumpMaster = db_->findMaster("BUMP_ASAP7_6t_R");
+
+  // create interconnect cell
+  for (const auto& netName : interconnectNetNames) {
+    auto net = db_->getChip()->getBlock()->findNet(netName.c_str());
+    if (net == nullptr) {
+      logger_->report("Cannot find the net: {}", netName);
+      continue;
+    }
+
+    // collect the input/output ITerms and BTerms in the original net
+    vector<odb::dbITerm*> outputITerms, inputITerms;
+    vector<odb::dbBTerm*> outputBTerms, inputBTerms;
+    for (auto bterm : net->getBTerms()) {
+      if (bterm->getIoType() == odb::dbIoType::OUTPUT) {
+        outputBTerms.push_back(bterm);
+      } else {
+        inputBTerms.push_back(bterm);
+      }
+    }
+    for (auto iterm : net->getITerms()) {
+      if (iterm->getIoType() == odb::dbIoType::OUTPUT) {
+        outputITerms.push_back(iterm);
+      } else {
+        inputITerms.push_back(iterm);
+      }
+    }
+    // destroy net
+    odb::dbNet::destroy(net);
+
+    // for each interconnect net, make one interconnect inst
+    auto interconnectInst = odb::dbInst::create(
+        db_->getChip()->getBlock(), bumpMaster, netName.c_str());
+    auto interconnectInputPin = interconnectInst->findITerm("A");
+    auto interconnectOutputPin = interconnectInst->findITerm("Y");
+    interconnectInst->setPlacementStatus(odb::dbPlacementStatus::PLACED);
+
+    // make two net; input net and output net
+    auto inputNet = odb::dbNet::create(db_->getChip()->getBlock(),
+                                       (netName + "inputNet").c_str());
+    auto outputNet = odb::dbNet::create(db_->getChip()->getBlock(),
+                                        (netName + "outputNet").c_str());
+
+    // connect to the input/output ITerms and BTerms
+    for (auto bterm : inputBTerms) {
+      bterm->getITerm()->connect(inputNet);
+    }
+    for (auto bterm : outputBTerms) {
+      bterm->getITerm()->connect(outputNet);
+    }
+    for (auto iterm : inputITerms) {
+      iterm->connect(inputNet);
+    }
+    for (auto iterm : outputITerms) {
+      iterm->connect(outputNet);
+    }
+  }
+}
 
 }  // namespace mdm

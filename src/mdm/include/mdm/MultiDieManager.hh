@@ -175,6 +175,9 @@ class MultiDieManager
 
   void readCriticalCells(const char* fileNameChar);
 
+  // This is only for the sta experiment
+  void makeInterconnectCell(const char* interconnectNetFile);
+
  private:
   odb::dbTech* makeNewTech(const std::string& techName);
   void makeShrunkLib(const std::string& whichDie,
