@@ -1206,6 +1206,8 @@ void MultiDieManager::makeInterconnectCell(const char* interconnectNetFile)
                                        (netName + "inputNet").c_str());
     auto outputNet = odb::dbNet::create(db_->getChip()->getBlock(),
                                         (netName + "outputNet").c_str());
+    interconnectInputPin->connect(inputNet);
+    interconnectOutputPin->connect(outputNet);
 
     // connect to the input/output ITerms and BTerms
     for (auto bterm : inputBTerms) {
