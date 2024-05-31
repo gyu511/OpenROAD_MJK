@@ -1151,6 +1151,7 @@ void MultiDieManager::makeInterconnectCell(const char* interconnectNetFile)
 {
   // read interconnect net file
   vector<string> interconnectNetNames;
+  vector<pair<int, int>> interconnectCoordinates;
   // read file
   ifstream CellFile(interconnectNetFile);
   if (!CellFile.is_open()) {
@@ -1159,7 +1160,12 @@ void MultiDieManager::makeInterconnectCell(const char* interconnectNetFile)
   }
   string line;
   while (getline(CellFile, line)) {
-    interconnectNetNames.push_back(line);
+    istringstream iss(line);
+    string netName;
+    int x, y;
+    iss >> netName >> x >> y;
+    interconnectNetNames.push_back(netName);
+    interconnectCoordinates.emplace_back(x, y);
   }
   CellFile.close();
 
@@ -1167,6 +1173,7 @@ void MultiDieManager::makeInterconnectCell(const char* interconnectNetFile)
   odb::dbMaster* bumpMaster = db_->findMaster("BUMP_ASAP7_6t_R");
 
   // create interconnect cell
+  int interconnectIdx = 0;
   for (const auto& netName : interconnectNetNames) {
     auto net = db_->getChip()->getBlock()->findNet(netName.c_str());
     if (net == nullptr) {
@@ -1201,6 +1208,10 @@ void MultiDieManager::makeInterconnectCell(const char* interconnectNetFile)
         (netName.c_str() + string("_interconnectInstant")).c_str());
     auto interconnectInputPin = interconnectInst->findITerm("A");
     auto interconnectOutputPin = interconnectInst->findITerm("Y");
+
+    auto interconnectCoordinate = interconnectCoordinates.at(interconnectIdx);
+    interconnectInst->setLocation(interconnectCoordinate.first,
+                                  interconnectCoordinate.second);
     interconnectInst->setPlacementStatus(odb::dbPlacementStatus::PLACED);
 
     // make two net; input net and output net
@@ -1224,6 +1235,7 @@ void MultiDieManager::makeInterconnectCell(const char* interconnectNetFile)
     for (auto iterm : outputITerms) {
       iterm->connect(outputSignalNet);
     }
+    interconnectIdx++;
   }
 }
 
