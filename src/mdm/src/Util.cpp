@@ -1196,16 +1196,18 @@ void MultiDieManager::makeInterconnectCell(const char* interconnectNetFile)
 
     // for each interconnect net, make one interconnect inst
     auto interconnectInst = odb::dbInst::create(
-        db_->getChip()->getBlock(), bumpMaster, netName.c_str());
+        db_->getChip()->getBlock(),
+        bumpMaster,
+        (netName.c_str() + string("_interconnectInstant")).c_str());
     auto interconnectInputPin = interconnectInst->findITerm("A");
     auto interconnectOutputPin = interconnectInst->findITerm("Y");
     interconnectInst->setPlacementStatus(odb::dbPlacementStatus::PLACED);
 
     // make two net; input net and output net
-    auto inputSignalNet = odb::dbNet::create(db_->getChip()->getBlock(),
-                                       (netName + "inputSignalNet").c_str());
-    auto outputSignalNet = odb::dbNet::create(db_->getChip()->getBlock(),
-                                        (netName + "outputSignalNet").c_str());
+    auto inputSignalNet = odb::dbNet::create(
+        db_->getChip()->getBlock(), (netName + "inputSignalNet").c_str());
+    auto outputSignalNet = odb::dbNet::create(
+        db_->getChip()->getBlock(), (netName + "outputSignalNet").c_str());
     interconnectOutputPin->connect(inputSignalNet);
     interconnectInputPin->connect(outputSignalNet);
 
