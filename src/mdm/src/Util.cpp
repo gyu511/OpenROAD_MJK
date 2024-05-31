@@ -1202,25 +1202,25 @@ void MultiDieManager::makeInterconnectCell(const char* interconnectNetFile)
     interconnectInst->setPlacementStatus(odb::dbPlacementStatus::PLACED);
 
     // make two net; input net and output net
-    auto inputNet = odb::dbNet::create(db_->getChip()->getBlock(),
-                                       (netName + "inputNet").c_str());
-    auto outputNet = odb::dbNet::create(db_->getChip()->getBlock(),
-                                        (netName + "outputNet").c_str());
-    interconnectInputPin->connect(inputNet);
-    interconnectOutputPin->connect(outputNet);
+    auto inputSignalNet = odb::dbNet::create(db_->getChip()->getBlock(),
+                                       (netName + "inputSignalNet").c_str());
+    auto outputSignalNet = odb::dbNet::create(db_->getChip()->getBlock(),
+                                        (netName + "outputSignalNet").c_str());
+    interconnectOutputPin->connect(inputSignalNet);
+    interconnectInputPin->connect(outputSignalNet);
 
     // connect to the input/output ITerms and BTerms
     for (auto bterm : inputBTerms) {
-      bterm->getITerm()->connect(inputNet);
+      bterm->connect(inputSignalNet);
     }
     for (auto bterm : outputBTerms) {
-      bterm->getITerm()->connect(outputNet);
+      bterm->connect(outputSignalNet);
     }
     for (auto iterm : inputITerms) {
-      iterm->connect(inputNet);
+      iterm->connect(inputSignalNet);
     }
     for (auto iterm : outputITerms) {
-      iterm->connect(outputNet);
+      iterm->connect(outputSignalNet);
     }
   }
 }
