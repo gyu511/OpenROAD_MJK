@@ -1281,5 +1281,108 @@ void MultiDieManager::makeInterconnectCell(const char* interconnectNetFile, cons
     interconnectIdx++;
   }
 }
+void MultiDieManager::get3DPinHPWL()
+{
+  int64_t hpwl = 0;
+  for (auto block : db_->getChip()->getBlock()->getChildren()) {
+    for (auto net : block->getNets()) {
+      if (odb::dbBoolProperty::find(net, "intersected")) {
+        continue;
+      }
+      hpwl += net->getTermBBox().dx() + net->getTermBBox().dy();
+    }
+  }
+
+  for (auto intersectedNet1 : // 교차된 넷 하나 가져오고
+       db_->getChip()->getBlock()->getChildren().begin()->getNets()) {
+    if (!odb::dbBoolProperty::find(intersectedNet1, "intersected")) {
+      continue;
+    }
+    odb::dbNet* intersectedNet2 = nullptr;
+    odb::Rect box1, box2, box3;
+    for (auto bterm : intersectedNet1->getBTerms()) {
+      if (bterm->getITerm()) {
+        for (auto iterm : bterm->getITerm()->getNet()->getITerms()) {
+          if (iterm->getBTerm()) {
+            if (iterm->getBTerm()->getBlock() != intersectedNet1->getBlock()) {
+              intersectedNet2 = iterm->getBTerm()->getNet(); // 가져온 넷의 port가 다른 다이랑 연결된 거면 그 net 가져옴
+            }
+          }
+        }
+      }
+    }
+    assert(intersectedNet2 != nullptr);
+    box1 = intersectedNet1->getTermBBox();
+    box2 = intersectedNet2->getTermBBox();
+
+    // output pin이 어느 다이에 있는지 확인
+    int driverITermDie = 3;
+    odb::dbITerm* driverITerm = nullptr;
+    for (auto topITerm : intersectedNet1->getITerms()) {
+      if (topITerm->getIoType() == odb::dbIoType::OUTPUT) {
+        driverITerm = topITerm;
+        driverITermDie = 0;
+        break;
+      }
+    }
+    for (auto bottomITerm : intersectedNet2->getITerms()) {
+      if (bottomITerm->getIoType() == odb::dbIoType::OUTPUT) {
+        driverITerm = bottomITerm;
+        driverITermDie = 1;
+        break;
+      }
+    }
+
+    if (driverITermDie == 3) {
+      logger_->report("not exist the Output pin in net {}", intersectedNet1->getName());
+    }
+
+    if (driverITerm){
+      // output pin의 상대 box에 pin의 좌표가 포함되는지 확인 -> 있으면 HPWL 그대로 계산, 없으면 output pin까지 박스 확대
+      if (driverITermDie == 0){
+        if(!box2.intersects(driverITerm->getBBox())){
+          box2.merge(driverITerm->getBBox());
+        }
+      } else if (driverITermDie == 1){
+        if(!box1.intersects(driverITerm->getBBox())){
+          box1.merge(driverITerm->getBBox());
+        }
+      }
+    } else {
+        if (box1.intersects(box2)) {
+          box3 = box1.intersect(box2);
+        } else {
+          vector<int> xCandidates
+              = {box1.xMin(), box1.xMax(), box2.xMin(), box2.xMax()};
+          vector<int> yCandidates
+              = {box1.yMin(), box1.yMax(), box2.yMin(), box2.yMax()};
+
+          // sort by the value
+          std::sort(xCandidates.begin(), xCandidates.end());
+          std::sort(yCandidates.begin(), yCandidates.end());
+
+          box3.init(xCandidates.at(1),
+                    yCandidates.at(1),
+                    xCandidates.at(2),
+                    yCandidates.at(2));
+        }
+        odb::Rect center{
+            box3.xCenter(), box3.yCenter(), box3.xCenter(), box3.yCenter()};
+
+        box1.merge(center);
+        box2.merge(center);
+    }  
+
+    hpwl += (box1.dx() + box1.dy());
+    hpwl += (box2.dx() + box2.dy());
+  }
+
+  hpwl /= testCaseManager_.getScale();
+  ostringstream stream;
+  stream.imbue(std::locale(""));
+  stream << std::fixed << std::setprecision(2) << hpwl;
+  string hpwl_scientific = stream.str();
+  logger_->report("Output Pin HPWL is: {}", hpwl_scientific);
+}
 
 }  // namespace mdm

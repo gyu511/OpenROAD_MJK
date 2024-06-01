@@ -184,4 +184,10 @@ makeInterconnectCell(char* interconnectNetFile, char* interconnectCellFile)
   getMultiDieManager()->makeInterconnectCell(interconnectNetFile, interconnectCellFile);
 }
 
+void
+get3DPinHPWL()
+{
+  getMultiDieManager()->get3DPinHPWL();
+}
+
 %} // inline

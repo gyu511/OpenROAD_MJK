@@ -180,6 +180,8 @@ class MultiDieManager
   // This is only for the sta experiment
   void makeInterconnectCell(const char* interconnectNetFile, const char* interconnectCellFile);
 
+  void get3DPinHPWL();
+
  private:
   odb::dbTech* makeNewTech(const std::string& techName);
   void makeShrunkLib(const std::string& whichDie,

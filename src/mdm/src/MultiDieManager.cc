@@ -304,7 +304,7 @@ void MultiDieManager::setInterconnectCoordinates(int gridsize,
         point = {driverITerm->getBBox().xCenter(),
                  driverITerm->getBBox().yCenter()};
       } else {
-        logger_->warn(utl::MDM, 15, "The driver pin is not found");
+        logger_->warn(utl::MDM, 15, "The driver pin is not found in net {} and {}", topDieNet->getName());
       }
     }
     temporaryInterconnectCoordinateMap_[intersectedTopHierNet] = point;
