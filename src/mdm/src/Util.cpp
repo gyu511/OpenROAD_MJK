@@ -1147,7 +1147,7 @@ void MultiDieManager::readCriticalCells(const char* fileNameChar)
         inst2, "otherSideInstName", inst1->getConstName());
   }
 }
-void MultiDieManager::makeInterconnectCell(const char* interconnectNetFile)
+void MultiDieManager::makeInterconnectCell(const char* interconnectNetFile, const char* interconnectCellFile)
 {
   // read interconnect net file
   vector<string> interconnectNetNames;
@@ -1169,6 +1169,29 @@ void MultiDieManager::makeInterconnectCell(const char* interconnectNetFile)
   }
   CellFile.close();
 
+  // read interconnect cell file
+  std::map<std::string, int> interconnectCell;
+  string fileName{interconnectCellFile};
+  if (fileName.empty()) {
+    fileName = partitionFile_;
+  }
+  // read partition file and apply it
+  ifstream partitionFile(fileName);
+  if (!partitionFile.is_open()) {
+    logger_->report("Cannot open interconnect Cell file");
+    return;
+  }    
+  string line_;
+  while (getline(partitionFile, line_)) {
+    istringstream iss(line_);
+    string instName;
+    int partitionId;
+    iss >> instName >> partitionId;
+    interconnectCell.emplace(instName, partitionId);
+
+  }
+  partitionFile.close();  
+
   // get the bump master cell
   odb::dbMaster* bumpMaster = db_->findMaster("BUMP_ASAP7_6t_R");
 
@@ -1182,22 +1205,31 @@ void MultiDieManager::makeInterconnectCell(const char* interconnectNetFile)
     }
 
     // collect the input/output ITerms and BTerms in the original net
-    vector<odb::dbITerm*> outputITerms, inputITerms;
-    vector<odb::dbBTerm*> outputBTerms, inputBTerms;
+    auto dinstDie = interconnectCell[net->getFirstOutput()->getInst()->getName()];
+    odb::dbITerm* dinstTerm = net->getFirstOutput();
+
+    vector<odb::dbITerm*> outputITerms, inputITerms, originalITerms;
+    vector<odb::dbBTerm*> outputBTerms, inputBTerms, originalBTerms;
     for (auto bterm : net->getBTerms()) {
       if (bterm->getIoType() == odb::dbIoType::OUTPUT) {
         outputBTerms.push_back(bterm);
-      } else {
-        inputBTerms.push_back(bterm);
+      } else {    
+          originalBTerms.push_back(bterm);
+          inputBTerms.push_back(bterm);
       }
     }
     for (auto iterm : net->getITerms()) {
       if (iterm->getIoType() == odb::dbIoType::OUTPUT) {
         outputITerms.push_back(iterm);
-      } else {
-        inputITerms.push_back(iterm);
-      }
-    }
+      } else {    
+        if( interconnectCell[iterm->getInst()->getName()] == dinstDie) {
+          originalITerms.push_back(iterm);
+        } else {
+          inputITerms.push_back(iterm);
+        }
+      }  
+    }    
+
     // destroy net
     odb::dbNet::destroy(net);
 
@@ -1221,6 +1253,17 @@ void MultiDieManager::makeInterconnectCell(const char* interconnectNetFile)
         db_->getChip()->getBlock(), (netName + "outputSignalNet").c_str());
     interconnectOutputPin->connect(inputSignalNet);
     interconnectInputPin->connect(outputSignalNet);
+
+    // make original net & connect
+    auto originaNet = odb::dbNet::create(
+        db_->getChip()->getBlock(), (netName).c_str());
+    dinstTerm->connect(originaNet);   
+    for (auto bterm : originalBTerms) {
+      bterm->connect(originaNet);
+    }  
+    for (auto iterm : originalITerms) {
+      iterm->connect(originaNet);    
+    } 
 
     // connect to the input/output ITerms and BTerms
     for (auto bterm : inputBTerms) {

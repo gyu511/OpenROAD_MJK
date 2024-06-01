@@ -174,9 +174,9 @@ setNetWeight(float weight)
 }
 
 void
-makeInterconnectCell(char* interconnectNetFile)
+makeInterconnectCell(char* interconnectNetFile, char* interconnectCellFile)
 {
-  getMultiDieManager()->makeInterconnectCell(interconnectNetFile);
+  getMultiDieManager()->makeInterconnectCell(interconnectNetFile, interconnectCellFile);
 }
 
 %} // inline
