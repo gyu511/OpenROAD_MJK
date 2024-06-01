@@ -1208,13 +1208,13 @@ void MultiDieManager::makeInterconnectCell(const char* interconnectNetFile, cons
     auto dinstDie = interconnectCell[net->getFirstOutput()->getInst()->getName()];
     odb::dbITerm* dinstTerm = net->getFirstOutput();
 
-    vector<odb::dbITerm*> outputITerms, inputITerms, originalITerms;
-    vector<odb::dbBTerm*> outputBTerms, inputBTerms, originalBTerms;
+    vector<odb::dbITerm*> outputITerms, inputITerms, originalInputITerms;
+    vector<odb::dbBTerm*> outputBTerms, inputBTerms, originalInputBTerms;
     for (auto bterm : net->getBTerms()) {
       if (bterm->getIoType() == odb::dbIoType::OUTPUT) {
         outputBTerms.push_back(bterm);
       } else {    
-          originalBTerms.push_back(bterm);
+          originalInputBTerms.push_back(bterm);
           inputBTerms.push_back(bterm);
       }
     }
@@ -1223,7 +1223,7 @@ void MultiDieManager::makeInterconnectCell(const char* interconnectNetFile, cons
         outputITerms.push_back(iterm);
       } else {    
         if( interconnectCell[iterm->getInst()->getName()] == dinstDie) {
-          originalITerms.push_back(iterm);
+          originalInputITerms.push_back(iterm);
         } else {
           inputITerms.push_back(iterm);
         }
@@ -1257,19 +1257,25 @@ void MultiDieManager::makeInterconnectCell(const char* interconnectNetFile, cons
     // make original net & connect
     // auto originaNet = odb::dbNet::create(
     //     db_->getChip()->getBlock(), (netName).c_str());
-    dinstTerm->connect(inputSignalNet);   
+    dinstTerm->connect(outputSignalNet);
 
     // connect to the input/output ITerms and BTerms
+    for (auto bterm : outputBTerms) {
+      bterm->connect(outputSignalNet);
+    }
     for (auto bterm : inputBTerms) {
       bterm->connect(inputSignalNet);
-    }
-    for (auto bterm : originalBTerms) {
+    }    
+    for (auto bterm : originalInputBTerms) {
       bterm->connect(outputSignalNet);
+    }
+    for (auto iterm : outputITerms) {
+      iterm->connect(outputSignalNet);
     }
     for (auto iterm : inputITerms) {
       iterm->connect(inputSignalNet);
     }
-    for (auto iterm : originalITerms) {
+    for (auto iterm : originalInputITerms) {
       iterm->connect(outputSignalNet);
     }
     interconnectIdx++;
