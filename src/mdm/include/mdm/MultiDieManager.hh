@@ -176,7 +176,7 @@ class MultiDieManager
   void readCriticalCells(const char* fileNameChar);
 
   // This is only for the sta experiment
-  void makeInterconnectCell(const char* interconnectNetFile);
+  void makeInterconnectCell(const char* interconnectNetFile, const char* interconnectCellFile);
 
  private:
   odb::dbTech* makeNewTech(const std::string& techName);
