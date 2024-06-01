@@ -220,8 +220,8 @@ void MultiDieManager::setInterconnectCoordinates(int gridsize,
 
   // At the top die, there will be only the interconnections and IO pads
   // if it is multi-die structure.
-  auto topBlock = db_->getChip()->getBlock();
-  for (auto intersectedTopHierNet : topBlock->getNets()) {
+  auto topHierarchyBlock = db_->getChip()->getBlock();
+  for (auto intersectedTopHierNet : topHierarchyBlock->getNets()) {
     if (!odb::dbBoolProperty::find(intersectedTopHierNet, "intersected")) {
       continue;
     }
@@ -275,7 +275,7 @@ void MultiDieManager::setInterconnectCoordinates(int gridsize,
 
       // the block terminal will only in the top hierarchy block
       for (auto blockTerm : intersectedTopHierNet->getBTerms()) {
-        if (blockTerm->getIoType() == odb::dbIoType::OUTPUT) {
+        if (blockTerm->getIoType() == odb::dbIoType::INPUT) {
           driverBTerm = blockTerm;
           break;
         }
@@ -316,7 +316,7 @@ void MultiDieManager::setInterconnectCoordinates(int gridsize,
   interconnectionLegalize(gridsize);
 
   // apply the coordinate
-  for (auto intersectedTopHierNet : topBlock->getNets()) {
+  for (auto intersectedTopHierNet : topHierarchyBlock->getNets()) {
     if (!odb::dbBoolProperty::find(intersectedTopHierNet, "intersected")) {
       continue;
     }
