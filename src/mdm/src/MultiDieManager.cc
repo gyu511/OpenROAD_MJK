@@ -208,7 +208,8 @@ void MultiDieManager::makeInterconnections(odb::dbBlock* lowerBlock,
       utl::MDM, 12, "The interconnection number: {}", interconnectionNum);
 }
 
-void MultiDieManager::setInterconnectCoordinates(int gridsize)
+void MultiDieManager::setInterconnectCoordinates(int gridsize,
+                                                 bool timingDriven)
 {
   // set the interconnection (hybrid bond) coordinates
   // check it is multi-die structure
@@ -224,6 +225,7 @@ void MultiDieManager::setInterconnectCoordinates(int gridsize)
     if (!odb::dbBoolProperty::find(intersectedTopHierNet, "intersected")) {
       continue;
     }
+    odb::Point point;
     // Only the intersected nets in lower hierarchy block
     // will be collected in `intersectedNets`.
     vector<odb::dbNet*> intersectedNets;
@@ -241,27 +243,70 @@ void MultiDieManager::setInterconnectCoordinates(int gridsize)
       interconnectionBTerms.push_back(iterm->getBTerm());
       intersectedNets.push_back(iterm->getBTerm()->getNet());
     }
-    odb::Rect box1, box2, box;
-    box1 = intersectedNets.at(0)->getTermBBox();
-    box2 = intersectedNets.at(1)->getTermBBox();
-    if (box1.intersects(box2)) {
-      box = box1.intersect(box2);
+    auto topDieNet = intersectedNets.at(0);
+    auto bottomDieNet = intersectedNets.at(1);
+
+    if (!timingDriven) {
+      odb::Rect box1, box2, box;
+      box1 = topDieNet->getTermBBox();
+      box2 = bottomDieNet->getTermBBox();
+      if (box1.intersects(box2)) {
+        box = box1.intersect(box2);
+      } else {
+        vector<int> xCandidates
+            = {box1.xMin(), box1.xMax(), box2.xMin(), box2.xMax()};
+        vector<int> yCandidates
+            = {box1.yMin(), box1.yMax(), box2.yMin(), box2.yMax()};
+
+        // sort by the value
+        std::sort(xCandidates.begin(), xCandidates.end());
+        std::sort(yCandidates.begin(), yCandidates.end());
+
+        box.init(xCandidates.at(1),
+                 yCandidates.at(1),
+                 xCandidates.at(2),
+                 yCandidates.at(2));
+      }
+      point = {box.xCenter(), box.yCenter()};
     } else {
-      vector<int> xCandidates
-          = {box1.xMin(), box1.xMax(), box2.xMin(), box2.xMax()};
-      vector<int> yCandidates
-          = {box1.yMin(), box1.yMax(), box2.yMin(), box2.yMax()};
+      odb::dbITerm* driverITerm = nullptr;
+      odb::dbBTerm* driverBTerm = nullptr;
+      // Assume: the driver pin will be only one.
 
-      // sort by the value
-      std::sort(xCandidates.begin(), xCandidates.end());
-      std::sort(yCandidates.begin(), yCandidates.end());
+      // the block terminal will only in the top hierarchy block
+      for (auto blockTerm : intersectedTopHierNet->getBTerms()) {
+        if (blockTerm->getIoType() == odb::dbIoType::OUTPUT) {
+          driverBTerm = blockTerm;
+          break;
+        }
+      }
 
-      box.init(xCandidates.at(1),
-               yCandidates.at(1),
-               xCandidates.at(2),
-               yCandidates.at(2));
+      // inspect the top die net has output pin
+      // DISCLAIMER: "top die" and "top hierarchy block" are different.
+      for (auto topITerm : topDieNet->getITerms()) {
+        if (topITerm->getIoType() == odb::dbIoType::OUTPUT) {
+          driverITerm = topITerm;
+          break;
+        }
+      }
+
+      // inspect the bottom die net has output pin
+      for (auto bottomITerm : bottomDieNet->getITerms()) {
+        if (bottomITerm->getIoType() == odb::dbIoType::OUTPUT) {
+          driverITerm = bottomITerm;
+          break;
+        }
+      }
+      if (driverBTerm) {
+        point = {driverBTerm->getBBox().xCenter(),
+                 driverBTerm->getBBox().yCenter()};
+      } else if (driverITerm) {
+        point = {driverITerm->getBBox().xCenter(),
+                 driverITerm->getBBox().yCenter()};
+      } else {
+        logger_->warn(utl::MDM, 15, "The driver pin is not found");
+      }
     }
-    odb::Point point{box.xCenter(), box.yCenter()};
     temporaryInterconnectCoordinateMap_[intersectedTopHierNet] = point;
     temporaryInterconnectCoordinates_.emplace_back(intersectedTopHierNet,
                                                    point);
@@ -269,7 +314,6 @@ void MultiDieManager::setInterconnectCoordinates(int gridsize)
 
   // set the grid size for interconnection legalization
   interconnectionLegalize(gridsize);
-
 
   // apply the coordinate
   for (auto intersectedTopHierNet : topBlock->getNets()) {
@@ -328,6 +372,10 @@ void MultiDieManager::setInterconnectCoordinates(int gridsize)
                          point.getY() + 1);
     }
   }
+}
+void MultiDieManager::setInterconnectCoordinatesTimingDriven(int gridSize)
+{
+  this->setInterconnectCoordinates(gridSize, true);
 }
 
 }  // namespace mdm

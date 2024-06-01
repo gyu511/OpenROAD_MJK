@@ -118,7 +118,9 @@ class MultiDieManager
    * \pre
    * `mdm::makeInterconnections` & placement
    * */
-  void setInterconnectCoordinates(int gridSize);
+  void setInterconnectCoordinates(int gridSize, bool timingDriven = false);
+
+  void setInterconnectCoordinatesTimingDriven(int gridSize);
 
   void constructSimpleExample1();
 

@@ -161,6 +161,11 @@ void setInterconnectCoordinates(int gridsize)
   getMultiDieManager()->setInterconnectCoordinates(gridsize);
 }
 
+void setInterconnectCoordinatesTimingDriven(int gridsize)
+{
+  getMultiDieManager()->setInterconnectCoordinatesTimingDriven(gridsize);
+}
+
 void
 readCriticalCells(char* filename)
 {
