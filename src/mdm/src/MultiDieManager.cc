@@ -241,38 +241,27 @@ void MultiDieManager::setInterconnectCoordinates(int gridsize)
       interconnectionBTerms.push_back(iterm->getBTerm());
       intersectedNets.push_back(iterm->getBTerm()->getNet());
     }
-    // odb::Rect box1, box2, box;
-    // box1 = intersectedNets.at(0)->getTermBBox();
-    // box2 = intersectedNets.at(1)->getTermBBox();
-    // if (box1.intersects(box2)) {
-    //   box = box1.intersect(box2);
-    // } else {
-    //   vector<int> xCandidates
-    //       = {box1.xMin(), box1.xMax(), box2.xMin(), box2.xMax()};
-    //   vector<int> yCandidates
-    //       = {box1.yMin(), box1.yMax(), box2.yMin(), box2.yMax()};
-
-    //   // sort by the value
-    //   std::sort(xCandidates.begin(), xCandidates.end());
-    //   std::sort(yCandidates.begin(), yCandidates.end());
-
-    //   box.init(xCandidates.at(1),
-    //            yCandidates.at(1),
-    //            xCandidates.at(2),
-    //            yCandidates.at(2));
-    // }
-    // odb::Point point{box.xCenter(), box.yCenter()};
-
-    // set net output pin coordinate as bond coordinate
-    odb::Point point;
-    if (intersectedNets.at(0)->getDrivingITerm() < 0 & intersectedNets.at(1)->getDrivingITerm() < 0) { continue; }
-    logger_->report("# top net output pin: {}", intersectedNets.at(0)->getDrivingITerm());
-    logger_->report("#bottom net output pin: {}", intersectedNets.at(1)->getDrivingITerm());
-    if (intersectedNets.at(0)->getDrivingITerm() > 0) {
-        point = odb::Point{intersectedNets.at(0)->getFirstOutput()->getBBox().xCenter(), intersectedNets.at(0)->getFirstOutput()->getBBox().yCenter()};
+    odb::Rect box1, box2, box;
+    box1 = intersectedNets.at(0)->getTermBBox();
+    box2 = intersectedNets.at(1)->getTermBBox();
+    if (box1.intersects(box2)) {
+      box = box1.intersect(box2);
     } else {
-        point = odb::Point{intersectedNets.at(1)->getFirstOutput()->getBBox().xCenter(), intersectedNets.at(1)->getFirstOutput()->getBBox().yCenter()};
+      vector<int> xCandidates
+          = {box1.xMin(), box1.xMax(), box2.xMin(), box2.xMax()};
+      vector<int> yCandidates
+          = {box1.yMin(), box1.yMax(), box2.yMin(), box2.yMax()};
+
+      // sort by the value
+      std::sort(xCandidates.begin(), xCandidates.end());
+      std::sort(yCandidates.begin(), yCandidates.end());
+
+      box.init(xCandidates.at(1),
+               yCandidates.at(1),
+               xCandidates.at(2),
+               yCandidates.at(2));
     }
+    odb::Point point{box.xCenter(), box.yCenter()};
     temporaryInterconnectCoordinateMap_[intersectedTopHierNet] = point;
     temporaryInterconnectCoordinates_.emplace_back(intersectedTopHierNet,
                                                    point);
