@@ -972,31 +972,6 @@ void NesterovBaseCommon::updateWireLengthForceWA(float wlCoeffX, float wlCoeffY)
   // Comment by minjae
   // TODO: check;
   //  shouldn't the wlCoeff separated by the dbGroup or dbBlocks?
-  bool isMultiDieCase = false;
-  odb::dbBlock* topDieBlock = nullptr;
-  odb::dbBlock* bottomDieBlock = nullptr;
-  double criticalNetWeight = 0;
-
-  if (!this->pbc_->db()->getChip()->getBlock()->getChildren().empty()) {
-    // if this is multi-die case
-    isMultiDieCase = true;
-    auto criticalNetWeightProperty = odb::dbDoubleProperty::find(
-        this->pbc_->db()->getChip(), "criticalNetWeight");
-    if (criticalNetWeightProperty) {
-      criticalNetWeight = criticalNetWeightProperty->getValue();
-    } else {
-      log_->warn(utl::MDM, 100, "Critical net weight is not set");
-    }
-    int dieIdx = 0;
-    for (auto childBlock : pbc_->db()->getChip()->getBlock()->getChildren()) {
-      if (dieIdx == 0) {
-        topDieBlock = childBlock;
-      } else if (dieIdx == 1) {
-        bottomDieBlock = childBlock;
-      }
-      dieIdx++;
-    }
-  }
 
   // clear all WA variables.
   for (auto& gNet : gNets_) {
@@ -1010,85 +985,6 @@ void NesterovBaseCommon::updateWireLengthForceWA(float wlCoeffX, float wlCoeffY)
     gNet->updateBox();
 
     for (auto& gPin : gNet->gPins()) {
-      float additionalWeightX = 0;
-      float additionalWeightY = 0;
-      if (gPin->gCell()) {
-        if (odb::dbBoolProperty::find(gPin->gCell()->instance()->dbInst(),
-                                      "criticalPathInst")) {
-          auto inst = gPin->gCell()->instance()->dbInst();
-          odb::dbInst* otherSideInst = nullptr;
-          auto otherSideInstName
-              = odb::dbStringProperty::find(inst, "otherSideInstName");
-
-          if (otherSideInstName->getValue().find(" ") != std::string::npos) {
-            // if `otherSideInstName` has space,
-            // it means it has several other side instances
-            std::vector<std::string> otherSideInstNames;
-            odb::Rect otherSideInstBox;
-            otherSideInstBox.mergeInit();
-            // split the string by space
-            std::istringstream iss(otherSideInstName->getValue());
-            for (std::string s; iss >> s;) {
-              otherSideInstNames.push_back(s);
-            }
-            for (auto& otherSideInstName : otherSideInstNames) {
-              if (inst->getBlock() == topDieBlock) {
-                // if the instance is in the top die, the other side instance
-                // should be in the bottom die
-                otherSideInst
-                    = bottomDieBlock->findInst(otherSideInstName.c_str());
-              } else if (inst->getBlock() == bottomDieBlock) {
-                // if the instance is in the bottom die, the other side instance
-                // should be in the top die
-                otherSideInst
-                    = topDieBlock->findInst(otherSideInstName.c_str());
-              } else {
-                log_->error(
-                    GPL, 41, "Critical path instance is not in any die");
-                assert(0);
-              }
-              if (!otherSideInst) {
-                log_->error(GPL, 42, "Can not find the other side instance.");
-                assert(0);
-              }
-              otherSideInstBox.merge(otherSideInst->getBBox()->getBox());
-            }
-            auto distanceX = inst->getBBox()->getBox().xCenter()
-                             - otherSideInstBox.xCenter();
-            auto distanceY = inst->getBBox()->getBox().yCenter()
-                             - otherSideInstBox.yCenter();
-            additionalWeightX = std::abs(distanceX) * criticalNetWeight;
-            additionalWeightY = std::abs(distanceY) * criticalNetWeight;
-          } else {
-            if (inst->getBlock() == topDieBlock) {
-              // if the instance is in the top die, the other side instance
-              // should be in the bottom die
-              otherSideInst = bottomDieBlock->findInst(
-                  otherSideInstName->getValue().c_str());
-            } else if (inst->getBlock() == bottomDieBlock) {
-              // if the instance is in the bottom die, the other side instance
-              // should be in the top die
-              otherSideInst = topDieBlock->findInst(
-                  otherSideInstName->getValue().c_str());
-
-            } else {
-              log_->error(GPL, 43, "Critical path instance is not in any die");
-              assert(0);
-            }
-            if (!otherSideInst) {
-              log_->error(GPL, 44, "Can not find the other side instance.");
-              assert(0);
-            }
-            auto distanceX = inst->getBBox()->getBox().xCenter()
-                             - otherSideInst->getBBox()->getBox().xCenter();
-            auto distanceY = inst->getBBox()->getBox().yCenter()
-                             - otherSideInst->getBBox()->getBox().yCenter();
-            additionalWeightX = std::abs(distanceX) * criticalNetWeight;
-            additionalWeightY = std::abs(distanceY) * criticalNetWeight;
-          }
-        }
-      }
-
       // The WA terms are shift invariant:
       //
       //   Sum(x_i * exp(x_i))    Sum(x_i * exp(x_i - C))
@@ -1096,10 +992,10 @@ void NesterovBaseCommon::updateWireLengthForceWA(float wlCoeffX, float wlCoeffY)
       //   Sum(exp(x_i))          Sum(exp(x_i - C))
       //
       // So we shift to keep the exponential from overflowing
-      float expMinX = (gNet->lx() - gPin->cx()) * wlCoeffX + additionalWeightX;
-      float expMaxX = (gPin->cx() - gNet->ux()) * wlCoeffX + additionalWeightX;
-      float expMinY = (gNet->ly() - gPin->cy()) * wlCoeffY + additionalWeightY;
-      float expMaxY = (gPin->cy() - gNet->uy()) * wlCoeffY + additionalWeightY;
+      float expMinX = (gNet->lx() - gPin->cx()) * wlCoeffX;
+      float expMaxX = (gPin->cx() - gNet->ux()) * wlCoeffX;
+      float expMinY = (gNet->ly() - gPin->cy()) * wlCoeffY;
+      float expMaxY = (gPin->cy() - gNet->uy()) * wlCoeffY;
 
       // min x
       if (expMinX > nbVars_.minWireLengthForceBar) {
@@ -1175,6 +1071,123 @@ FloatPoint NesterovBaseCommon::getWireLengthGradientWA(const GCell* gCell,
 {
   FloatPoint gradientPair;
 
+  bool isMultiDieCase = false;
+  odb::dbBlock* topDieBlock = nullptr;
+  odb::dbBlock* bottomDieBlock = nullptr;
+  double criticalNetWeight = 0;
+
+  if (!this->pbc_->db()->getChip()->getBlock()->getChildren().empty()) {
+    // if this is multi-die case
+    isMultiDieCase = true;
+    auto criticalNetWeightProperty = odb::dbDoubleProperty::find(
+        this->pbc_->db()->getChip(), "criticalNetWeight");
+    if (criticalNetWeightProperty) {
+      criticalNetWeight = criticalNetWeightProperty->getValue();
+    } else {
+      log_->warn(utl::MDM, 100, "Critical net weight is not set");
+    }
+    int dieIdx = 0;
+    for (auto childBlock : pbc_->db()->getChip()->getBlock()->getChildren()) {
+      if (dieIdx == 0) {
+        topDieBlock = childBlock;
+      } else if (dieIdx == 1) {
+        bottomDieBlock = childBlock;
+      }
+      dieIdx++;
+    }
+  }  
+
+  std::map<std::string, std::pair<float, float>> PinWeight;
+  if (criticalNetWeight != 0) {
+    for (auto& gNet : gNets_) {
+      float additionalWeightX = 0;
+      float additionalWeightY = 0;
+      for (auto& gPin : gNet->gPins()) {
+        if (gPin->gCell()) {
+          if (odb::dbBoolProperty::find(gPin->gCell()->instance()->dbInst(),
+                                        "criticalPathInst")) {
+            auto inst = gPin->gCell()->instance()->dbInst();
+            odb::dbInst* otherSideInst = nullptr;
+            auto otherSideInstName
+                = odb::dbStringProperty::find(inst, "otherSideInstName");
+
+            if (otherSideInstName->getValue().find(" ") != std::string::npos) {
+              // if `otherSideInstName` has space,
+              // it means it has several other side instances
+              std::vector<std::string> otherSideInstNames;
+              odb::Rect otherSideInstBox;
+              otherSideInstBox.mergeInit();
+              // split the string by space
+              std::istringstream iss(otherSideInstName->getValue());
+              for (std::string s; iss >> s;) {
+                otherSideInstNames.push_back(s);
+              }
+              for (auto& otherSideInstName : otherSideInstNames) {
+                if (inst->getBlock() == topDieBlock) {
+                  // if the instance is in the top die, the other side instance
+                  // should be in the bottom die
+                  otherSideInst
+                      = bottomDieBlock->findInst(otherSideInstName.c_str());
+                } else if (inst->getBlock() == bottomDieBlock) {
+                  // if the instance is in the bottom die, the other side instance
+                  // should be in the top die
+                  otherSideInst
+                      = topDieBlock->findInst(otherSideInstName.c_str());
+                } else {
+                  log_->error(
+                      GPL, 41, "Critical path instance is not in any die");
+                  assert(0);
+                }
+                if (!otherSideInst) {
+                  log_->error(GPL, 42, "Can not find the other side instance.");
+                  assert(0);
+                }
+                otherSideInstBox.merge(otherSideInst->getBBox()->getBox());
+              }
+              auto distanceX = inst->getBBox()->getBox().xCenter()
+                              - otherSideInstBox.xCenter();
+              auto distanceY = inst->getBBox()->getBox().yCenter()
+                              - otherSideInstBox.yCenter();
+              additionalWeightX = std::abs(distanceX) * criticalNetWeight;
+              additionalWeightY = std::abs(distanceY) * criticalNetWeight;
+            } else {
+              if (inst->getBlock() == topDieBlock) {
+                // if the instance is in the top die, the other side instance
+                // should be in the bottom die
+                otherSideInst = bottomDieBlock->findInst(
+                    otherSideInstName->getValue().c_str());
+              } else if (inst->getBlock() == bottomDieBlock) {
+                // if the instance is in the bottom die, the other side instance
+                // should be in the top die
+                otherSideInst = topDieBlock->findInst(
+                    otherSideInstName->getValue().c_str());
+
+              } else {
+                log_->error(GPL, 43, "Critical path instance is not in any die");
+                assert(0);
+              }
+              if (!otherSideInst) {
+                log_->error(GPL, 44, "Can not find the other side instance.");
+                assert(0);
+              }
+              auto distanceX = inst->getBBox()->getBox().xCenter()
+                              - otherSideInst->getBBox()->getBox().xCenter();
+              auto distanceY = inst->getBBox()->getBox().yCenter()
+                              - otherSideInst->getBBox()->getBox().yCenter();
+              
+              additionalWeightX = (std::abs(distanceX)/1000000) * criticalNetWeight;
+              additionalWeightY = (std::abs(distanceY)/1000000) * criticalNetWeight;
+            }
+            if (gPin->pin()->dbITerm())
+              {
+                PinWeight[gPin->pin()->dbITerm()->getName()] = std::make_pair(additionalWeightX, additionalWeightY);
+              }
+          }
+        }
+      }
+    }
+  }
+
   for (auto& gPin : gCell->gPins()) {
     auto tmpPair = getWireLengthGradientPinWA(gPin, wlCoeffX, wlCoeffY);
 
@@ -1187,8 +1200,14 @@ FloatPoint NesterovBaseCommon::getWireLengthGradientWA(const GCell* gCell,
                tmpPair.y);
 
     // apply timing/custom net weight
-    tmpPair.x *= gPin->gNet()->totalWeight();
-    tmpPair.y *= gPin->gNet()->totalWeight();
+    if(criticalNetWeight != 0 && PinWeight.find(gPin->pin()->dbITerm()->getName()) != PinWeight.end()){
+      tmpPair.x = tmpPair.x * gPin->gNet()->totalWeight() + PinWeight[gPin->pin()->dbITerm()->getName()].first;
+      tmpPair.y = tmpPair.y * gPin->gNet()->totalWeight() + PinWeight[gPin->pin()->dbITerm()->getName()].second;
+    }
+    else {
+      tmpPair.x *= gPin->gNet()->totalWeight();
+      tmpPair.y *= gPin->gNet()->totalWeight();
+    }
 
     gradientPair.x += tmpPair.x;
     gradientPair.y += tmpPair.y;
